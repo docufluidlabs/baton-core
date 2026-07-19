@@ -739,7 +739,7 @@ describe('SlackTab', () => {
     fireEvent.click(screen.getByText('Send Test Message'));
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalledWith('Test failed — check bot token and channel');
+      expect(toast.error).toHaveBeenCalledWith('Test failed - check bot token and channel');
     });
   });
 

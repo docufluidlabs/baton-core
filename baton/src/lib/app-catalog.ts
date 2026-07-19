@@ -62,7 +62,7 @@ export const APP_TEMPLATES: Partial<Record<AppSlug, AppTemplate>> = {
   salesforce: {
     slug: 'salesforce',
     name: 'Salesforce',
-    description: 'CRM platform — leads, opportunities, contacts, accounts',
+    description: 'CRM platform - leads, opportunities, contacts, accounts',
     logoUrl: '/assets/logos/salesforce.svg',
     category: 'CRM',
     icon: '☁️',
@@ -99,7 +99,7 @@ export const APP_TEMPLATES: Partial<Record<AppSlug, AppTemplate>> = {
   hubspot: {
     slug: 'hubspot',
     name: 'HubSpot',
-    description: 'CRM and marketing — contacts, deals, companies',
+    description: 'CRM and marketing - contacts, deals, companies',
     logoUrl: '/assets/logos/hubspot.svg',
     category: 'CRM',
     icon: '🔶',
@@ -114,7 +114,7 @@ export const APP_TEMPLATES: Partial<Record<AppSlug, AppTemplate>> = {
       { step: 1, title: 'Open HubSpot Developer Portal', description: 'Go to developers.hubspot.com and navigate to your app.' },
       { step: 2, title: 'Go to Webhooks tab', description: 'In your app settings, click "Webhooks" and then "Create subscription".' },
       { step: 3, title: 'Paste Baton Webhook URL', description: 'Set the target URL to the Baton webhook URL shown above.' },
-      { step: 4, title: 'Copy the Client Secret', description: 'Go to App Credentials tab and copy the Client Secret — paste it below.' },
+      { step: 4, title: 'Copy the Client Secret', description: 'Go to App Credentials tab and copy the Client Secret - paste it below.' },
     ],
     supportedEvents: [
       { eventType: 'contact.created', label: 'Contact Created', description: 'A new contact was created' },
@@ -130,7 +130,7 @@ export const APP_TEMPLATES: Partial<Record<AppSlug, AppTemplate>> = {
   zohocrm: {
     slug: 'zohocrm',
     name: 'Zoho CRM',
-    description: 'Customer relationship management — deals, contacts, leads',
+    description: 'Customer relationship management - deals, contacts, leads',
     logoUrl: '/assets/logos/zohocrm.svg',
     category: 'CRM',
     icon: '💼',
@@ -142,7 +142,7 @@ export const APP_TEMPLATES: Partial<Record<AppSlug, AppTemplate>> = {
       type: 'basic_auth',
     },
     setupInstructions: [
-      { step: 1, title: 'Choose your credentials', description: 'Create a username and password for this webhook. These are not your Zoho login — choose any values you like.' },
+      { step: 1, title: 'Choose your credentials', description: 'Create a username and password for this webhook. These are not your Zoho login - choose any values you like.' },
       { step: 2, title: 'Open Zoho CRM Webhooks', description: 'Go to Setup → Developer Space → Webhooks and click "Configure Webhook".' },
       { step: 3, title: 'Paste the Baton URL', description: 'In the Webhook URL field, paste the URL shown above.' },
       { step: 4, title: 'Enable Basic Authentication', description: 'In the webhook config, select "Basic Authentication" and enter the same username and password from step 1.' },
@@ -161,7 +161,7 @@ export const APP_TEMPLATES: Partial<Record<AppSlug, AppTemplate>> = {
   powerautomate: {
     slug: 'powerautomate',
     name: 'Microsoft Power Automate',
-    description: 'Automate Microsoft 365 & Dataverse — flows push events into Baton via the HTTP action',
+    description: 'Automate Microsoft 365 & Dataverse - flows push events into Baton via the HTTP action',
     logoUrl: '/assets/logos/powerautomate.svg',
     category: 'Automation',
     icon: '⚡',
@@ -173,7 +173,7 @@ export const APP_TEMPLATES: Partial<Record<AppSlug, AppTemplate>> = {
       type: 'basic_auth',
     },
     setupInstructions: [
-      { step: 1, title: 'Choose your credentials', description: 'Create a username and password for this webhook. These are not your Microsoft login — choose any values you like (use a long random password).' },
+      { step: 1, title: 'Choose your credentials', description: 'Create a username and password for this webhook. These are not your Microsoft login - choose any values you like (use a long random password).' },
       { step: 2, title: 'Add an HTTP action to your flow', description: 'In your Power Automate cloud flow, add the premium "HTTP" action after the trigger. Set Method to POST and paste the Baton URL shown above into URI.' },
       { step: 3, title: 'Set Basic authentication', description: 'In the HTTP action, expand "Advanced parameters" → set Authentication to "Basic" and enter the same username and password from step 1.' },
       { step: 4, title: 'Build the JSON body', description: 'Set the body to JSON containing at least "event" (e.g. "invoice.approved") and "recordId". Add any extra fields under "data". Save the flow.', screenshotHint: '{ "event": "invoice.approved", "recordId": "INV-1001", "data": { } }' },
@@ -195,7 +195,7 @@ export const APP_TEMPLATES: Partial<Record<AppSlug, AppTemplate>> = {
   zendesk: {
     slug: 'zendesk',
     name: 'Zendesk',
-    description: 'Customer support — tickets, users, organizations, satisfaction ratings',
+    description: 'Customer support - tickets, users, organizations, satisfaction ratings',
     logoUrl: '/assets/logos/zendesk.svg',
     category: 'Support',
     icon: '🎫',
@@ -209,7 +209,7 @@ export const APP_TEMPLATES: Partial<Record<AppSlug, AppTemplate>> = {
     setupInstructions: [
       { step: 1, title: 'Open Zendesk Admin Center', description: 'Go to Admin Center → Apps and integrations → Webhooks → Create webhook.' },
       { step: 2, title: 'Connect to Zendesk events', description: 'Choose "Zendesk events" as the source, then select the event types you want (e.g. Ticket Created, Ticket Solved).' },
-      { step: 3, title: 'Configure the endpoint', description: 'Set the Endpoint URL to the Baton URL shown above, Request method to POST, and Request format to JSON. Set Authentication to "None" — Baton verifies authenticity using the signing secret below, not an auth header.' },
+      { step: 3, title: 'Configure the endpoint', description: 'Set the Endpoint URL to the Baton URL shown above, Request method to POST, and Request format to JSON. Set Authentication to "None" - Baton verifies authenticity using the signing secret below, not an auth header.' },
       { step: 4, title: 'Copy the Signing Secret', description: 'After saving, open the webhook and copy its Signing Secret, then paste it below.' },
     ],
     supportedEvents: [
@@ -227,7 +227,7 @@ export const APP_TEMPLATES: Partial<Record<AppSlug, AppTemplate>> = {
   greenhouse: {
     slug: 'greenhouse',
     name: 'Greenhouse',
-    description: 'Talent acquisition — candidates, applications, jobs, interviews, offers',
+    description: 'Talent acquisition - candidates, applications, jobs, interviews, offers',
     logoUrl: '/assets/logos/greenhouse.svg',
     category: 'HR / Recruiting',
     icon: '🌱',
@@ -259,12 +259,12 @@ export const APP_TEMPLATES: Partial<Record<AppSlug, AppTemplate>> = {
   mondaycom: {
     slug: 'mondaycom',
     name: 'monday.com',
-    description: 'Work OS — boards, items, automations, dashboards',
+    description: 'Work OS - boards, items, automations, dashboards',
     logoUrl: '/assets/logos/mondaycom.svg',
     category: 'Project Management',
     icon: '📅',
     secretKeyLabel: 'No secret required',
-    secretKeyHint: 'monday.com does not sign webhook payloads — no secret needed',
+    secretKeyHint: 'monday.com does not sign webhook payloads - no secret needed',
     verificationMethod: {
       type: 'none',
     },
@@ -290,7 +290,7 @@ export const APP_TEMPLATES: Partial<Record<AppSlug, AppTemplate>> = {
   bamboohr: {
     slug: 'bamboohr',
     name: 'BambooHR',
-    description: 'HR platform — employees, time-off, onboarding, performance, org chart',
+    description: 'HR platform - employees, time-off, onboarding, performance, org chart',
     logoUrl: '/assets/logos/bamboohr.svg',
     category: 'HR',
     icon: '🎋',

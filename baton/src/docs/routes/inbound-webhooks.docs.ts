@@ -80,7 +80,7 @@ for (const p of providerWebhooks) {
     summary: `${p.provider} → Baton (signed)`,
     description:
       `${p.description}\n\n` +
-      `**Try-It-Out is disabled** — this endpoint expects a signed raw-body payload from ${p.provider}. ` +
+      `**Try-It-Out is disabled** - this endpoint expects a signed raw-body payload from ${p.provider}. ` +
       `Documentation is for reference only.`,
     request: {
       headers: p.headers,
@@ -110,7 +110,7 @@ registry.registerPath({
     'Generic catchall for installed platforms (Apps catalog). The `webhookKey` in the URL identifies ' +
     'the org and platform; the signature header is verified against the encrypted `secretKeyEnc` stored ' +
     'on the `OrgApp` record.\n\n' +
-    '**Try-It-Out is disabled** — endpoint expects a signed raw-body payload.',
+    '**Try-It-Out is disabled** - endpoint expects a signed raw-body payload.',
   request: {
     params: z.object({
       webhookKey: z.string().length(64).openapi({ description: 'Per-app capability token.' }),
@@ -136,14 +136,14 @@ registry.registerPath({
     'Dispatch endpoint for a single automation rule. Identified by the rule\'s `webhookKey`. ' +
     'Supports the `?bootstrap=<tokenId>` query param for the Salesforce managed package\'s first-call ' +
     'auto-registration flow.\n\n' +
-    '**Try-It-Out is disabled** — endpoint expects a signed raw-body payload.',
+    '**Try-It-Out is disabled** - endpoint expects a signed raw-body payload.',
   request: {
     params: z.object({
       webhookKey: z.string().length(64).openapi({ description: 'Per-automation capability token.' }),
     }),
     query: z.object({
       bootstrap: z.string().optional().openapi({
-        description: 'One-time bootstrap token (SF managed package) — exchanged for a persisted HMAC secret.',
+        description: 'One-time bootstrap token (SF managed package) - exchanged for a persisted HMAC secret.',
       }),
     }),
     headers: hmacSignatureHeader,
@@ -165,7 +165,7 @@ registry.registerPath({
   description:
     'User-defined webhook destination created via `POST /api/webhook-endpoints`. If the endpoint has an ' +
     '`apiKey`, requests must include it in the `X-API-Key` header.\n\n' +
-    '**Try-It-Out is disabled** — endpoint expects a raw JSON body matching the configured payload shape.',
+    '**Try-It-Out is disabled** - endpoint expects a raw JSON body matching the configured payload shape.',
   request: {
     params: z.object({
       orgId: z.string(),
@@ -198,7 +198,7 @@ registry.registerPath({
   description:
     'Receives Slack `event_callback`, `url_verification`, and `app_uninstalled` events. ' +
     'Verified via the Slack signing secret.\n\n' +
-    '**Try-It-Out is disabled** — endpoint expects a Slack-signed raw-body payload.',
+    '**Try-It-Out is disabled** - endpoint expects a Slack-signed raw-body payload.',
   request: {
     headers: z.object({
       'x-slack-request-timestamp': z.string(),
@@ -221,7 +221,7 @@ registry.registerPath({
   description:
     'Public install URL that Slack validates by following the redirect. Returns 302 to ' +
     'Slack\'s OAuth consent screen.\n\n' +
-    '**Try-It-Out is disabled** — this is a redirect endpoint, not an API call.',
+    '**Try-It-Out is disabled** - this is a redirect endpoint, not an API call.',
   responses: {
     302: { description: 'Redirect to Slack OAuth consent screen' },
     500: { description: 'SLACK_CLIENT_ID not configured' },
@@ -238,8 +238,8 @@ registry.registerPath({
   description:
     'Called by the Salesforce managed package (Apex `BatonDispatcher`) on its first webhook dispatch. ' +
     'Exchanges a one-time `bootstrapToken` for a persisted HMAC secret keyed by `sfOrgId`. ' +
-    'Idempotent — replays with the same `Idempotency-Key` return the original response.\n\n' +
-    '**Try-It-Out is disabled** — intended only for the managed-package Apex client.',
+    'Idempotent - replays with the same `Idempotency-Key` return the original response.\n\n' +
+    '**Try-It-Out is disabled** - intended only for the managed-package Apex client.',
   request: {
     headers: z.object({
       'idempotency-key': z.string().min(8).max(256).openapi({

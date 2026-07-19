@@ -18,7 +18,7 @@ const errorReportLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many error reports — please slow down' },
+  message: { error: 'Too many error reports - please slow down' },
 });
 
 router.use(errorReportLimiter);

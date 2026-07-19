@@ -18,7 +18,7 @@ registry.registerPath({
   description:
     'Returns a `webhookUrl` that already contains `?bootstrap=<tokenId>`. ' +
     'Pasted into Salesforce Flow Builder, the URL lets the Apex managed package ' +
-    'register its HMAC secret on first dispatch — no manual secret entry.',
+    'register its HMAC secret on first dispatch - no manual secret entry.',
   security: SECURITY,
   request: { body: { content: { 'application/json': { schema: SfBootstrapTokenInput } } } },
   responses: {

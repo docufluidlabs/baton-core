@@ -6,7 +6,7 @@ export const GenericWebhookPayload = registry.register(
   z.record(z.any()).openapi({
     description:
       'Free-form JSON payload as delivered by the upstream provider. The exact shape varies by ' +
-      'platform — consult the provider\'s webhook documentation for field details.',
+      'platform - consult the provider\'s webhook documentation for field details.',
   }),
 );
 

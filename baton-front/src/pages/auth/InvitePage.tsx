@@ -58,7 +58,7 @@ export default function InvitePage() {
           </div>
           <p className="text-sm text-gray-600">
             This invite link is invalid or has expired. Invite links are valid
-            for 72 hours — ask your administrator to send you a new one.
+            for 72 hours - ask your administrator to send you a new one.
           </p>
           <Link
             to="/signin"

@@ -205,7 +205,7 @@ router.post('/:orgId/:endpointId', async (req: Request, res: Response, _next: Ne
     }
 
     // 10. Queue workflow launch
-    const instanceName = `${endpoint.name} — ${recordIdStr || 'webhook'} — ${new Date().toISOString().replace('T', ' ').slice(0, 19)}`;
+    const instanceName = `${endpoint.name} - ${recordIdStr || 'webhook'} - ${new Date().toISOString().replace('T', ' ').slice(0, 19)}`;
 
     await sendMessage<WorkflowLaunchJob>(QueueNames.WORKFLOW_LAUNCHER, {
       ruleId: `endpoint:${endpointId}`,

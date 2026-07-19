@@ -4,18 +4,18 @@ export default function Verification() {
   return (
     <>
       <h1>Webhook verification methods</h1>
-      <Lead>Before Baton acts on any inbound webhook, it proves the request really came from the platform it claims to — using one of three methods, which you set up once per platform.</Lead>
+      <Lead>Before Baton acts on any inbound webhook, it proves the request really came from the platform it claims to - using one of three methods, which you set up once per platform.</Lead>
 
       <h2>Why verification matters</h2>
-      <p>A webhook URL is just an address on the internet. Without a check, anyone who learned that address could post fake events and trigger your Maestro workflows. To prevent that, every source platform uses exactly one method to prove a webhook genuinely came from it, and <strong>Baton verifies every inbound webhook before doing anything with it</strong>. If the proof is missing or wrong, the webhook is rejected and nothing runs.</p>
-      <p>Baton always responds quickly to the platform so it does not keep retrying. That means verification problems show up <em>inside Baton</em> — in the Action log — rather than as an error back to the platform.</p>
+      <p>A webhook URL is just an address on the internet. Without a check, anyone who learned that address could post fake events and trigger your Docusign workflows. To prevent that, every source platform uses exactly one method to prove a webhook genuinely came from it, and <strong>Baton verifies every inbound webhook before doing anything with it</strong>. If the proof is missing or wrong, the webhook is rejected and nothing runs.</p>
+      <p>Baton always responds quickly to the platform so it does not keep retrying. That means verification problems show up <em>inside Baton</em> - in the Action log - rather than as an error back to the platform.</p>
 
       <h2>The three methods</h2>
       <p>Each platform in the catalog uses one of the methods below. The platform's setup guide tells you which one applies, but it helps to understand what each asks of you.</p>
 
       <h3>HMAC signature (the default and most secure)</h3>
       <p>This is the strongest option and the one most platforms use. The platform computes a cryptographic <strong>signature</strong> over the webhook body using a <strong>shared secret</strong>, and sends that signature in a header. Baton recomputes the signature on its side and compares the two. If they do not match, the webhook is rejected.</p>
-      <p>From your side the task is simple: <strong>copy the platform's signing secret into Baton</strong>. Some platforms have their own HMAC variants — HubSpot, Slack, and BambooHR each sign a little differently — but the idea is identical everywhere. For HubSpot, the signing secret is the <strong>App Client Secret</strong>.</p>
+      <p>From your side the task is simple: <strong>copy the platform's signing secret into Baton</strong>. Some platforms have their own HMAC variants - HubSpot, Slack, and BambooHR each sign a little differently - but the idea is identical everywhere. For HubSpot, the signing secret is the <strong>App Client Secret</strong>.</p>
       <p>HMAC is used by HubSpot and most CRMs. Whenever a platform supports it, prefer it.</p>
 
       <h3>Basic Authentication</h3>
@@ -23,8 +23,8 @@ export default function Verification() {
       <p>The most common mistake here is a mismatch: the values must be identical in both places. Basic Authentication is used by Zoho CRM and Power Automate.</p>
 
       <h3>No signing (URL secrecy only)</h3>
-      <p>A few platforms physically cannot sign their webhooks at all — for example monday.com. For these, Baton accepts any request posted to the webhook URL. The protection comes from the URL itself: each automation's URL contains a long, random secret, so it is not guessable.</p>
-      <p>Because there is no signature, anyone who has the URL can post events that Baton will accept. <strong>Treat the URL like a password.</strong> This is the lowest-trust option — choose a real HMAC scheme whenever the platform supports one.</p>
+      <p>A few platforms physically cannot sign their webhooks at all - for example monday.com. For these, Baton accepts any request posted to the webhook URL. The protection comes from the URL itself: each automation's URL contains a long, random secret, so it is not guessable.</p>
+      <p>Because there is no signature, anyone who has the URL can post events that Baton will accept. <strong>Treat the URL like a password.</strong> This is the lowest-trust option - choose a real HMAC scheme whenever the platform supports one.</p>
 
       <Callout type="warning" title='"No signing" is the lowest-trust option'>With URL secrecy, a leaked webhook URL is enough to forge events. Keep the URL private, never post it where others can see it, and prefer HMAC whenever the platform offers it.</Callout>
 
@@ -58,7 +58,7 @@ export default function Verification() {
           <thead><tr><th>Reason</th><th>What happened</th></tr></thead>
           <tbody>
             <tr><td>Missing signature header</td><td>The request did not include the expected signature header.</td></tr>
-            <tr><td>Signature mismatch</td><td>The signature did not match — usually a wrong or changed secret.</td></tr>
+            <tr><td>Signature mismatch</td><td>The signature did not match - usually a wrong or changed secret.</td></tr>
             <tr><td>Basic Auth mismatch</td><td>The username/password did not match what you set in Baton.</td></tr>
             <tr><td>Timestamp too old</td><td>For schemes with replay protection (such as Slack and HubSpot), the request was older than the allowed window of about 5 minutes.</td></tr>
             <tr><td>No automation for that URL</td><td>The URL did not match any active automation.</td></tr>

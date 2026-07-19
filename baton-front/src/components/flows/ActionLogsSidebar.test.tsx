@@ -169,30 +169,30 @@ describe('ActionLogsSidebar', () => {
 
 // ─── Maestro Instance ID copy button ────────────────────────
 
-describe('ActionLogsSidebar — Maestro Instance ID copy button', () => {
-  it('copy button is present for Maestro Instance ID when set', async () => {
+describe('ActionLogsSidebar — Workflow Builder Instance ID copy button', () => {
+  it('copy button is present for Workflow Builder Instance ID when set', async () => {
     renderSidebar([makeAction()]); // instance.maestroInstanceId = 'maestro-inst-abc'
 
     // Expand the card
     fireEvent.click(screen.getByText('Relay 1'));
 
     await waitFor(() => {
-      expect(screen.getByText('Maestro Instance ID')).toBeInTheDocument();
+      expect(screen.getByText('Workflow Builder Instance ID')).toBeInTheDocument();
     });
 
     // The ID value should be visible
     expect(screen.getByText('maestro-inst-abc')).toBeInTheDocument();
   });
 
-  it('clicking Maestro copy button writes to clipboard', async () => {
+  it('clicking Workflow Builder copy button writes to clipboard', async () => {
     renderSidebar([makeAction()]);
 
     fireEvent.click(screen.getByText('Relay 1'));
 
     await waitFor(() => screen.getByText('maestro-inst-abc'));
 
-    // Find all copy buttons and click the one in the Maestro row
-    // The Maestro row copy button is next to 'maestro-inst-abc'
+    // Find all copy buttons and click the one in the Workflow Builder row
+    // The Workflow Builder row copy button is next to 'maestro-inst-abc'
     const maestroValue = screen.getByText('maestro-inst-abc');
     const row = maestroValue.closest('div');
     const copyBtn = row?.querySelector('button');
@@ -203,15 +203,15 @@ describe('ActionLogsSidebar — Maestro Instance ID copy button', () => {
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith('maestro-inst-abc');
   });
 
-  it('no copy button for Maestro Instance ID when null', async () => {
+  it('no copy button for Workflow Builder Instance ID when null', async () => {
     renderSidebar([makeAction({ instance: null })]);
 
     fireEvent.click(screen.getByText('Relay 1'));
 
-    await waitFor(() => screen.getByText('Maestro Instance ID'));
+    await waitFor(() => screen.getByText('Workflow Builder Instance ID'));
 
-    // Should show — instead
-    const maestroRow = screen.getByText('Maestro Instance ID').closest('div');
+    // Should show - instead
+    const maestroRow = screen.getByText('Workflow Builder Instance ID').closest('div');
     expect(maestroRow?.querySelector('button')).toBeFalsy();
   });
 });
@@ -237,28 +237,28 @@ describe('ActionLogsSidebar — stage indicators', () => {
     });
   });
 
-  it('shows Completed for the Maestro Trigger stage when an instance exists', async () => {
+  it('shows Completed for the Workflow Builder Trigger stage when an instance exists', async () => {
     renderSidebar([makeAction({ status: 'launched' })]);
     fireEvent.click(screen.getByText('Relay 1'));
 
     await waitFor(() => {
-      expect(screen.getByText('Maestro Trigger')).toBeInTheDocument();
+      expect(screen.getByText('Workflow Builder Trigger')).toBeInTheDocument();
     });
     // Instance exists → the trigger stage reads "Completed"
-    const stageRow = screen.getByText('Maestro Trigger').closest('div');
+    const stageRow = screen.getByText('Workflow Builder Trigger').closest('div');
     expect(stageRow?.textContent).toContain('Completed');
   });
 
-  it('shows a pending Maestro Trigger stage when no instance exists', async () => {
+  it('shows a pending Workflow Builder Trigger stage when no instance exists', async () => {
     renderSidebar([makeAction({ status: 'launched', instance: null })]);
     fireEvent.click(screen.getByText('Relay 1'));
 
     await waitFor(() => {
-      expect(screen.getByText('Maestro Trigger')).toBeInTheDocument();
+      expect(screen.getByText('Workflow Builder Trigger')).toBeInTheDocument();
     });
-    // No instance → the trigger stage is pending: em-dash placeholder, no "Completed"
-    const stageRow = screen.getByText('Maestro Trigger').closest('div');
-    expect(stageRow?.textContent).toContain('—');
+    // No instance → the trigger stage is pending: "-" placeholder, no "Completed"
+    const stageRow = screen.getByText('Workflow Builder Trigger').closest('div');
+    expect(stageRow?.textContent).toContain('-');
     expect(screen.queryByText('Completed')).toBeNull();
   });
 });

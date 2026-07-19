@@ -114,7 +114,7 @@ const MAESTRO_TIMEOUT_MS = 15_000;
 export async function listWorkflows(connectionId: string, status: string = 'active'): Promise<MaestroWorkflow[]> {
   const { accessToken, accountId, apiBase } = await getValidAccessToken(connectionId);
 
-  logInfo('Fetching Maestro workflows list', { accountId, status });
+  logInfo('Fetching Workflow Builder workflows list', { accountId, status });
 
   const url = `${apiBase}/v1/accounts/${accountId}/workflows`;
   const response = await fetch(url, {
@@ -181,7 +181,7 @@ export async function launchWorkflow(params: LaunchWorkflowParams): Promise<Work
   const { connectionId, workflowId, instanceName, triggerInputs } = params;
   const { accessToken, accountId, apiBase } = await getValidAccessToken(connectionId);
 
-  logInfo('Launching Maestro workflow', { workflowId, instanceName });
+  logInfo('Launching Workflow Builder workflow', { workflowId, instanceName });
 
   const url = `${apiBase}/v1/accounts/${accountId}/workflows/${workflowId}/actions/trigger`;
 

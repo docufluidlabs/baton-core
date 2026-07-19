@@ -8,15 +8,16 @@ export default function Glossary() {
 
       <KV>
         <KVRow label="Action">
-          One webhook successfully verified <em>and</em> routed to a Maestro workflow. (The Notifications
+          One webhook successfully verified <em>and</em> routed to a Docusign workflow. (The Notifications
           page sometimes calls this an "Execution"; they mean the same thing.)
         </KVRow>
         <KVRow label="Admin">
-          The single Baton role. Every signed-in user is an admin and manages the org's connections,
-          automations, and notifications.
+          One of Baton's four roles (owner, admin, member, viewer). Admins manage connections, platforms,
+          automations, settings, and members. Roles are assigned from Settings → Members, where you can
+          also invite people with an invite link.
         </KVRow>
         <KVRow label="Automation">
-          A configured pairing of a source platform's webhook URL with a Maestro workflow — the middle card
+          A configured pairing of a source platform's webhook URL with a Docusign workflow - the middle card
           on the <DocLink to="flow-builder">Flow Builder</DocLink>. Each automation has its own webhook URL.
         </KVRow>
         <KVRow label="Basic Authentication">
@@ -28,14 +29,14 @@ export default function Glossary() {
           (over OAuth); source platforms do not.
         </KVRow>
         <KVRow label="Resolution Center">
-          The page where you clear failed Maestro instances — Retry, cancel, or report them. See{' '}
+          The page where you clear failed workflow instances - retry, cancel, or report them. See{' '}
           <DocLink to="control-center">Resolution Center</DocLink>.
         </KVRow>
         <KVRow label="Docusign Connect">
           Docusign's outbound event system. It can post envelope and recipient events to Baton like any
           other webhook source.
         </KVRow>
-        <KVRow label="Docusign Maestro">
+        <KVRow label="Docusign Workflow Builder">
           Docusign's workflow-orchestration product. Baton triggers its workflows.
         </KVRow>
         <KVRow label="Endpoint / Webhook URL">
@@ -43,11 +44,11 @@ export default function Glossary() {
           is permanent for the automation's life.
         </KVRow>
         <KVRow label="Extension App">
-          A Docusign or partner app that runs as a step inside a Maestro workflow. Baton does not replace
+          A Docusign or partner app that runs as a step inside a Docusign workflow. Baton does not replace
           these.
         </KVRow>
         <KVRow label="Field mapping">
-          An optional rule that renames payload fields to the parameter names a Maestro workflow expects.
+          An optional rule that renames payload fields to the parameter names a Docusign workflow expects.
         </KVRow>
         <KVRow label="Flow Builder">
           Baton's main page: the visual canvas of platform → automation → workflow. See{' '}
@@ -57,13 +58,13 @@ export default function Glossary() {
           A verification method: the platform signs the payload with a shared secret, and Baton validates
           the signature. See <DocLink to="verification">Webhook verification methods</DocLink>.
         </KVRow>
-        <KVRow label="Instance">One execution (run) of a Maestro workflow.</KVRow>
+        <KVRow label="Instance">One execution (run) of a Docusign workflow.</KVRow>
         <KVRow label="Object ID">
-          The identifier pulled from a webhook payload and passed to Maestro. The field name comes from the
-          workflow's parameter contract.
+          The identifier pulled from a webhook payload and passed to Workflow Builder. The field name comes
+          from the workflow's parameter contract.
         </KVRow>
         <KVRow label="Preflight">
-          The validation Baton runs before saving an automation — checking the secret format, that the
+          The validation Baton runs before saving an automation - checking the secret format, that the
           workflow is reachable, and the parameter shape.
         </KVRow>
         <KVRow label="Rule conditions">
@@ -74,16 +75,16 @@ export default function Glossary() {
           <DocLink to="catalog">supported platforms</DocLink>.
         </KVRow>
         <KVRow label="Start trigger">
-          The part of a Maestro workflow that declares the API parameters it needs to launch. Baton reads
+          The part of a Docusign workflow that declares the API parameters it needs to launch. Baton reads
           this to know what to look for in a payload.
         </KVRow>
         <KVRow label="Workflow">
-          A Maestro workflow. Baton triggers Maestro's workflows and has none of its own.
+          A workflow built in Docusign Workflow Builder. Baton triggers Workflow Builder's workflows and
+          has none of its own.
         </KVRow>
         <KVRow label="Workflow Checker">
-          Baton's page that lists synced Maestro workflows and lets you launch any of them for testing. Its
-          on-screen header reads "Maestro Workflows." See the{' '}
-          <DocLink to="workflows">Workflow Checker</DocLink>.
+          Baton's page that lists synced Docusign workflows and lets you launch any of them for testing.
+          See the <DocLink to="workflows">Workflow Checker</DocLink>.
         </KVRow>
       </KV>
 

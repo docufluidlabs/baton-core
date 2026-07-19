@@ -10,8 +10,8 @@ stateDiagram-v2
     processing --> failed : Extraction or matching error
 
     matched --> launching : LauncherWorker picks up
-    launching --> completed : Maestro instance created
-    launching --> retry : Maestro API error (transient)
+    launching --> completed : Workflow Builder instance created
+    launching --> retry : Workflow Builder API error (transient)
     launching --> failed : Max retries exceeded
 
     retry --> launching : Retry after delay<br/>(linear / exponential)

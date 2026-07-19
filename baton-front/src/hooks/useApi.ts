@@ -592,7 +592,7 @@ export async function refreshConnectionToken(id: string) {
  */
 export async function syncWorkflows() {
   const res = await api.post<{ workflows: Workflow[]; synced: number }>('/workflows/sync');
-  toast.success(`Synced ${res.synced ?? res.workflows?.length ?? 0} workflows from Maestro`);
+  toast.success(`Synced ${res.synced ?? res.workflows?.length ?? 0} workflows from Workflow Builder`);
   return res;
 }
 

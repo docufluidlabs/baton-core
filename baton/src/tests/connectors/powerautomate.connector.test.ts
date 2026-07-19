@@ -49,7 +49,7 @@ describe('extractEventInfo', () => {
 
   it('auto-generates a summary from label + recordId when none is given', () => {
     const result = connector.extractEventInfo({ event: 'invoice.approved', recordId: 'INV-1001' });
-    expect(result.summary).toBe('Invoice Approved — INV-1001');
+    expect(result.summary).toBe('Invoice Approved - INV-1001');
   });
 
   it('uses an explicit summary when provided', () => {

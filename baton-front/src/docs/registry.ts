@@ -27,7 +27,7 @@ export const GROUPS: DocGroup[] = [
     title: 'Getting started',
     intro: 'New to Baton? Start here to understand what it does and ship your first automation.',
     items: [
-      { slug: 'welcome', title: 'Welcome to Baton', description: 'What Baton is and how this guide is organized.', keywords: 'overview what is intro home start docusign maestro' },
+      { slug: 'welcome', title: 'Welcome to Baton', description: 'What Baton is and how this guide is organized.', keywords: 'overview what is intro home start docusign workflow builder maestro' },
       { slug: 'how-it-works', title: 'How Baton works', description: 'The end-to-end lifecycle of an event, from webhook to workflow.', keywords: 'lifecycle pipeline webhook verify route trigger flow' },
       { slug: 'concepts', title: 'Core concepts', description: 'The key terms: connections, automations, workflows, actions, instances.', keywords: 'terms connection automation workflow action instance object id source platform' },
       { slug: 'quick-start', title: 'Quick start', description: 'Build and test your first automation, step by step.', keywords: 'first automation tutorial setup steps walkthrough' },
@@ -38,7 +38,7 @@ export const GROUPS: DocGroup[] = [
     title: 'Connect your tools',
     intro: 'Connect Docusign and the platforms that send events into Baton.',
     items: [
-      { slug: 'connect-docusign', title: 'Connect Docusign', description: 'The one connection Baton needs before anything else.', keywords: 'oauth maestro account login authorize sync token' },
+      { slug: 'connect-docusign', title: 'Connect Docusign', description: 'The one connection Baton needs before anything else.', keywords: 'oauth workflow builder maestro account login authorize sync token' },
       { slug: 'connections', title: 'Source platforms', description: 'Add a source platform and start receiving its webhooks.', keywords: 'add platform hubspot crm webhook secret connections catalog' },
       { slug: 'salesforce', title: 'Salesforce setup', description: 'Send Salesforce events to Baton with an outbound webhook you build in your org.', keywords: 'salesforce apex flow outbound message remote site hmac webhook manual' },
       { slug: 'custom-webhook', title: 'Custom POST webhooks', description: 'Send events from any system that is not in the catalog.', keywords: 'custom endpoint generic api key json bespoke' },
@@ -48,11 +48,11 @@ export const GROUPS: DocGroup[] = [
   {
     slug: 'automations',
     title: 'Build & run automations',
-    intro: 'Create the rules that turn platform events into Maestro workflow launches.',
+    intro: 'Create the rules that turn platform events into Docusign workflow launches.',
     items: [
       { slug: 'flow-builder', title: 'Flow Builder', description: 'The visual canvas where you create and watch automations.', keywords: 'automation canvas create edit pause webhook url target workflow' },
-      { slug: 'conditions', title: 'Conditions & mapping', description: 'Filter which webhooks count and map payload fields to Maestro.', keywords: 'rule conditions field mapping filter operators jsonpath payload' },
-      { slug: 'workflows', title: 'Maestro Workflows', description: 'Sync Maestro workflows and launch any of them for testing.', keywords: 'workflow checker sync parameters launch test manual' },
+      { slug: 'conditions', title: 'Conditions & mapping', description: 'Filter which webhooks count and map payload fields to Workflow Builder.', keywords: 'rule conditions field mapping filter operators jsonpath payload maestro' },
+      { slug: 'workflows', title: 'Workflow Checker', description: 'Sync Docusign workflows and launch any of them for testing.', keywords: 'workflow checker workflow builder maestro sync parameters launch test manual' },
     ],
   },
   {
@@ -61,7 +61,7 @@ export const GROUPS: DocGroup[] = [
     intro: 'Keep your automations healthy: monitor runs, fix failures, and stay alerted.',
     items: [
       { slug: 'control-center', title: 'Resolution Center', description: 'Clear failed workflow runs: retry, cancel, report.', keywords: 'resolution control center failed overdue instances retry cancel report issue fix monitor filters tabs platform automation chips add days postpone in progress' },
-      { slug: 'logs', title: 'Action logs & instances', description: 'Read action logs and Maestro run history; understand retries.', keywords: 'action log status verify route retry payload instances' },
+      { slug: 'logs', title: 'Action logs & instances', description: 'Read action logs and workflow run history; understand retries.', keywords: 'action log status verify route retry payload instances maestro' },
       { slug: 'notifications', title: 'Notifications & alerts', description: "Choose how you're alerted, in-app and in Slack.", keywords: 'inbox slack preferences events bell alerts channel' },
     ],
   },

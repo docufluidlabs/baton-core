@@ -33,7 +33,7 @@ async function seed() {
   }
 
   if (!(await needsSetup())) {
-    console.log('✅ Users already exist — nothing to seed.');
+    console.log('✅ Users already exist - nothing to seed.');
     return;
   }
 

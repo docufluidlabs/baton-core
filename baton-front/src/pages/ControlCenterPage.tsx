@@ -220,7 +220,7 @@ export default function ControlCenterPage() {
     setPostponingId(inst.id);
     try {
       await postponeInstance(inst.id, days);
-      toast.success(`Postponed ${days} day${days !== 1 ? 's' : ''} — moved to In Progress`);
+      toast.success(`Postponed ${days} day${days !== 1 ? 's' : ''} - moved to In Progress`);
       mutateRunning();
       mutate('/instances/counts');
     } catch {
@@ -458,7 +458,7 @@ export default function ControlCenterPage() {
 
 function EmptyTab({ tab }: { tab: Tab }) {
   const messages: Record<Tab, { icon: React.ReactNode; text: string }> = {
-    all:         { icon: <ShieldCheck  className="w-8 h-8 text-green-400" />, text: 'All clear — nothing to resolve' },
+    all:         { icon: <ShieldCheck  className="w-8 h-8 text-green-400" />, text: 'All clear - nothing to resolve' },
     failed:      { icon: <CheckCircle2 className="w-8 h-8 text-green-400" />, text: 'No failed instances' },
     overdue:     { icon: <CheckCircle2 className="w-8 h-8 text-green-400" />, text: 'No overdue instances' },
     in_progress: { icon: <CheckCircle2 className="w-8 h-8 text-green-400" />, text: 'No retried instances in progress' },

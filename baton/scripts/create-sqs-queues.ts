@@ -29,9 +29,9 @@ async function createQueues() {
       console.log(`  ✅ ${config.name} → ${url}`);
     } catch (error: any) {
       if (error.name === 'QueueNameExists' || error.message?.includes('already exists')) {
-        console.log(`  ✅ ${config.name} — already exists`);
+        console.log(`  ✅ ${config.name} - already exists`);
       } else {
-        console.error(`  ❌ ${config.name} — error: ${error.message}`);
+        console.error(`  ❌ ${config.name} - error: ${error.message}`);
       }
     }
   }

@@ -52,12 +52,12 @@ export function DocsLayout({
     kind === 'section'
       ? sectionMeta?.title
       : subTitle
-        ? `${subTitle} — ${pageMeta?.title ?? ''}`.trim()
+        ? `${subTitle} - ${pageMeta?.title ?? ''}`.trim()
         : pageMeta?.title;
   useEffect(() => {
     document.title = docTitle ? `${docTitle} · Baton User Guide` : 'Baton User Guide';
     return () => {
-      document.title = 'Baton — Workflow Orchestration';
+      document.title = 'Baton - Workflow Orchestration';
     };
   }, [docTitle]);
 
@@ -221,7 +221,7 @@ export function DocsLayout({
             )}
 
             <footer className="docfooter">
-              Baton — a webhook command center for Docusign Maestro. Need a hand? Email{' '}
+              Baton - a webhook command center for Docusign Workflow Builder. Need a hand? Email{' '}
               <a href="mailto:app-support@fluidlabs.com">app-support@fluidlabs.com</a>.
             </footer>
           </article>

@@ -102,7 +102,7 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
       throw new Error(`Workflow ${workflowId} not found`);
     }
     if (!workflow.maestroWorkflowId) {
-      throw new Error(`Workflow ${workflowId} has no Maestro ID`);
+      throw new Error(`Workflow ${workflowId} has no Workflow Builder ID`);
     }
 
     // 2. Find DocuSign connection for this org

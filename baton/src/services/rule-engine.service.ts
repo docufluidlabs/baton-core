@@ -755,7 +755,7 @@ function resolveTemplate(template: string, payload: Record<string, any>): string
 function generateInstanceName(ruleName: string, eventInfo: ExtractedEventInfo): string {
   const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
   const record = eventInfo.recordId ? ` #${eventInfo.recordId}` : '';
-  return `${ruleName}${record} — ${timestamp}`;
+  return `${ruleName}${record} - ${timestamp}`;
 }
 
 /**

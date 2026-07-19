@@ -271,7 +271,7 @@ router.delete('/:id', requireAdmin, async (req: Request, res: Response, next: Ne
     if (rulesResult.Items && rulesResult.Items.length > 0) {
       const ruleNames = rulesResult.Items.map((r: any) => r.name).join(', ');
       throw new ConflictError(
-        `Cannot remove platform — ${rulesResult.Items.length} active automation(s) use it: ${ruleNames}. Pause or delete those automations first.`,
+        `Cannot remove platform - ${rulesResult.Items.length} active automation(s) use it: ${ruleNames}. Pause or delete those automations first.`,
       );
     }
 

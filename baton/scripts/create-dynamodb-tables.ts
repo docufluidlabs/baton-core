@@ -21,14 +21,14 @@ async function createTables() {
     try {
       // Check if table exists
       await client.send(new DescribeTableCommand({ TableName: tableName }));
-      console.log(`  ✅ ${tableName} — already exists`);
+      console.log(`  ✅ ${tableName} - already exists`);
     } catch (error: any) {
       if (error.name === 'ResourceNotFoundException') {
         // Create table
         await client.send(new CreateTableCommand(tableDef));
-        console.log(`  🆕 ${tableName} — created`);
+        console.log(`  🆕 ${tableName} - created`);
       } else {
-        console.error(`  ❌ ${tableName} — error: ${error.message}`);
+        console.error(`  ❌ ${tableName} - error: ${error.message}`);
       }
     }
   }

@@ -31,8 +31,8 @@ const errorResp = (description: string): ErrorResponseDef => ({
 
 export const commonErrorResponses = {
   400: errorResp('Validation error'),
-  401: errorResp('Unauthorized — missing or invalid session token'),
-  403: errorResp('Forbidden — insufficient role for this operation'),
+  401: errorResp('Unauthorized - missing or invalid session token'),
+  403: errorResp('Forbidden - insufficient role for this operation'),
   404: errorResp('Not found'),
   409: errorResp('Conflict'),
   429: errorResp('Rate limit exceeded'),

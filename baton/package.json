@@ -2,7 +2,7 @@
   "name": "baton",
   "version": "1.0.0",
   "private": true,
-  "description": "Baton — Workflow orchestration platform backend (DocuSign Maestro + Business Platforms)",
+  "description": "Baton - Workflow orchestration platform backend (Docusign Workflow Builder + Business Platforms)",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",

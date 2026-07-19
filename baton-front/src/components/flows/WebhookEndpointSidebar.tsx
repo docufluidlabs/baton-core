@@ -305,7 +305,7 @@ export function WebhookEndpointSidebar({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Target Maestro Workflow</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Target Docusign Workflow</label>
             <select
               value={workflowId}
               onChange={(e) => setWorkflowId(e.target.value)}
@@ -379,7 +379,7 @@ export function WebhookEndpointSidebar({
                 </button>
               </div>
               <p className="text-xs text-gray-400 mt-1">
-                To view the full key, regenerate it — the new key will be shown once.
+                To view the full key, regenerate it - the new key will be shown once.
               </p>
             </div>
           )}

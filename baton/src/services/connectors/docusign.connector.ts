@@ -179,7 +179,7 @@ export class DocuSignConnector extends BasePlatformConnector {
       eventLabel: capitalize(event.replace('-', ' ')),
       actingUserEmail: envelopeSummary?.sender?.email,
       recordId: envelopeId,
-      summary: `Envelope ${envelopeId} — ${event}`,
+      summary: `Envelope ${envelopeId} - ${event}`,
       rawEventType: event,
       metadata: {
         envelopeId,

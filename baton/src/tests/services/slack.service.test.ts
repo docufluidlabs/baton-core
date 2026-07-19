@@ -284,7 +284,7 @@ describe('postSlackMessage', () => {
   });
 });
 
-// ── buildBlocks — dispatch by category ──────────────────────
+// ── buildBlocks - dispatch by category ──────────────────────
 
 describe('buildBlocks', () => {
   it('workflow_launched produces header with "Workflow Launched"', () => {
@@ -438,7 +438,7 @@ describe('buildBlocks', () => {
   it('workflow_synced produces sync blocks with body text', () => {
     const blocks = buildBlocks(makePayload({
       category: 'workflow_synced',
-      body: '3 workflows synced from Docusign Maestro.',
+      body: '3 workflows synced from Docusign Workflow Builder.',
     }));
     const header = blocks.find((b: any) => b.type === 'header');
     expect(header?.text.text).toContain('Workflows Synced');
@@ -471,9 +471,9 @@ describe('buildBlocks', () => {
     expect(actions).toBeUndefined();
   });
 
-  // ── buildBlocks — missing metadata fallbacks ───────────────
+  // ── buildBlocks - missing metadata fallbacks ───────────────
 
-  describe('buildBlocks — missing metadata fallbacks', () => {
+  describe('buildBlocks - missing metadata fallbacks', () => {
     // buildGenericBlocks: unknown severity uses '📢' emoji fallback
     it('generic blocks use 📢 emoji for unknown severity', () => {
       const blocks = buildGenericBlocks(makePayload({ severity: 'critical' as any }));
@@ -482,23 +482,23 @@ describe('buildBlocks', () => {
     });
 
     // buildWorkflowLaunchedBlocks
-    it('workflow_launched: no metadata → shows "—" fallbacks', () => {
+    it('workflow_launched: no metadata → shows "-" fallbacks', () => {
       const blocks = buildBlocks(makePayload({ category: 'workflow_launched', metadata: undefined }));
       const section = blocks.find((b: any) => b.type === 'section' && b.fields);
-      expect(section?.fields[0].text).toContain('—');
-      expect(section?.fields[1].text).toContain('—');
+      expect(section?.fields[0].text).toContain('-');
+      expect(section?.fields[1].text).toContain('-');
     });
 
-    it('workflow_launched: missing workflowName → shows "—"', () => {
+    it('workflow_launched: missing workflowName → shows "-"', () => {
       const blocks = buildBlocks(makePayload({ category: 'workflow_launched', metadata: { instanceId: 'i-1' } }));
       const section = blocks.find((b: any) => b.type === 'section' && b.fields);
-      expect(section?.fields[0].text).toContain('—');
+      expect(section?.fields[0].text).toContain('-');
     });
 
-    it('workflow_launched: missing instanceName and instanceId → shows "—"', () => {
+    it('workflow_launched: missing instanceName and instanceId → shows "-"', () => {
       const blocks = buildBlocks(makePayload({ category: 'workflow_launched', metadata: { workflowName: 'W' } }));
       const section = blocks.find((b: any) => b.type === 'section' && b.fields);
-      expect(section?.fields[1].text).toContain('—');
+      expect(section?.fields[1].text).toContain('-');
     });
 
     it('workflow_launched: missing actionUrl → no View in Baton button', () => {
@@ -507,19 +507,19 @@ describe('buildBlocks', () => {
       expect(actions).toBeUndefined();
     });
 
-    it('workflow_launched: maestroInstanceUrl present but no actionUrl → only Maestro button', () => {
+    it('workflow_launched: maestroInstanceUrl present but no actionUrl → only Workflow Builder button', () => {
       const blocks = buildBlocks(makePayload({ category: 'workflow_launched', metadata: { maestroInstanceUrl: 'https://maestro.example.com/i-1' }, actionUrl: undefined }));
       const actions = blocks.find((b: any) => b.type === 'actions');
       expect(actions).toBeDefined();
       expect(actions?.elements).toHaveLength(1);
-      expect(actions?.elements[0].text.text).toContain('Maestro');
+      expect(actions?.elements[0].text.text).toContain('Workflow Builder');
     });
 
     // buildWorkflowFailedBlocks
-    it('workflow_failed: no metadata → shows "—" fallbacks', () => {
+    it('workflow_failed: no metadata → shows "-" fallbacks', () => {
       const blocks = buildBlocks(makePayload({ category: 'workflow_failed', metadata: undefined }));
       const section = blocks.find((b: any) => b.type === 'section' && b.fields);
-      expect(section?.fields[0].text).toContain('—');
+      expect(section?.fields[0].text).toContain('-');
     });
 
     it('workflow_failed: missing errorMessage → no error code block', () => {
@@ -537,10 +537,10 @@ describe('buildBlocks', () => {
     });
 
     // buildWorkflowCompletedBlocks
-    it('workflow_completed: no metadata → shows "—" fallbacks', () => {
+    it('workflow_completed: no metadata → shows "-" fallbacks', () => {
       const blocks = buildBlocks(makePayload({ category: 'workflow_completed', metadata: undefined }));
       const section = blocks.find((b: any) => b.type === 'section' && b.fields);
-      expect(section?.fields[0].text).toContain('—');
+      expect(section?.fields[0].text).toContain('-');
     });
 
     it('workflow_completed: missing actionUrl and maestroInstanceUrl → no actions block', () => {
@@ -550,18 +550,18 @@ describe('buildBlocks', () => {
     });
 
     // buildConnectionBlocks
-    it('connection_degraded: no metadata → shows "—" fallbacks', () => {
+    it('connection_degraded: no metadata → shows "-" fallbacks', () => {
       const blocks = buildBlocks(makePayload({ category: 'connection_degraded', metadata: undefined }));
       const section = blocks.find((b: any) => b.type === 'section' && b.fields);
-      expect(section?.fields[0].text).toContain('—');
-      expect(section?.fields[1].text).toContain('—');
+      expect(section?.fields[0].text).toContain('-');
+      expect(section?.fields[1].text).toContain('-');
     });
 
-    it('connection_degraded: missing platform/connectionId → shows "—"', () => {
+    it('connection_degraded: missing platform/connectionId → shows "-"', () => {
       const blocks = buildBlocks(makePayload({ category: 'connection_degraded', metadata: {} }));
       const section = blocks.find((b: any) => b.type === 'section' && b.fields);
-      expect(section?.fields[0].text).toContain('—');
-      expect(section?.fields[1].text).toContain('—');
+      expect(section?.fields[0].text).toContain('-');
+      expect(section?.fields[1].text).toContain('-');
     });
 
     it('connection_degraded: missing actionUrl → no actions block', () => {
@@ -571,18 +571,18 @@ describe('buildBlocks', () => {
     });
 
     // buildRuleErrorBlocks
-    it('rule_error: no metadata → shows "—" fallbacks', () => {
+    it('rule_error: no metadata → shows "-" fallbacks', () => {
       const blocks = buildBlocks(makePayload({ category: 'rule_error', metadata: undefined }));
       const section = blocks.find((b: any) => b.type === 'section' && b.fields);
-      expect(section?.fields[0].text).toContain('—');
-      expect(section?.fields[1].text).toContain('—');
+      expect(section?.fields[0].text).toContain('-');
+      expect(section?.fields[1].text).toContain('-');
     });
 
-    it('rule_error: missing ruleName/failureCount → shows "—"', () => {
+    it('rule_error: missing ruleName/failureCount → shows "-"', () => {
       const blocks = buildBlocks(makePayload({ category: 'rule_error', metadata: {} }));
       const section = blocks.find((b: any) => b.type === 'section' && b.fields);
-      expect(section?.fields[0].text).toContain('—');
-      expect(section?.fields[1].text).toContain('—');
+      expect(section?.fields[0].text).toContain('-');
+      expect(section?.fields[1].text).toContain('-');
     });
 
     it('rule_error: missing actionUrl → no actions block', () => {
@@ -592,19 +592,19 @@ describe('buildBlocks', () => {
     });
 
     // buildRetryExhaustedBlocks
-    it('retry_exhausted: no metadata → shows "—" fallbacks', () => {
+    it('retry_exhausted: no metadata → shows "-" fallbacks', () => {
       const blocks = buildBlocks(makePayload({ category: 'retry_exhausted', metadata: undefined }));
       const section = blocks.find((b: any) => b.type === 'section' && b.fields);
-      expect(section?.fields[0].text).toContain('—');
-      expect(section?.fields[1].text).toContain('—');
+      expect(section?.fields[0].text).toContain('-');
+      expect(section?.fields[1].text).toContain('-');
     });
 
-    it('retry_exhausted: missing retryMaxAttempts → shows "—"', () => {
+    it('retry_exhausted: missing retryMaxAttempts → shows "-"', () => {
       const blocks = buildBlocks(makePayload({ category: 'retry_exhausted', metadata: { workflowName: 'W', instanceId: 'i-1' } }));
       const attemptsSection = blocks.find((b: any) =>
         b.type === 'section' && b.text?.text?.includes('Attempts'),
       );
-      expect(attemptsSection?.text.text).toContain('—');
+      expect(attemptsSection?.text.text).toContain('-');
     });
 
     it('retry_exhausted: missing actionUrl and maestroInstanceUrl → no actions block', () => {
@@ -648,18 +648,18 @@ describe('buildBlocks', () => {
     });
 
     // buildConnectionLifecycleBlocks
-    it('connection_created: no metadata → shows "—" fallbacks', () => {
+    it('connection_created: no metadata → shows "-" fallbacks', () => {
       const blocks = buildBlocks(makePayload({ category: 'connection_created', metadata: undefined }));
       const section = blocks.find((b: any) => b.type === 'section' && b.fields);
-      expect(section?.fields[0].text).toContain('—');
-      expect(section?.fields[1].text).toContain('—');
+      expect(section?.fields[0].text).toContain('-');
+      expect(section?.fields[1].text).toContain('-');
     });
 
-    it('connection_created: missing platform/displayName → shows "—"', () => {
+    it('connection_created: missing platform/displayName → shows "-"', () => {
       const blocks = buildBlocks(makePayload({ category: 'connection_created', metadata: {} }));
       const section = blocks.find((b: any) => b.type === 'section' && b.fields);
-      expect(section?.fields[0].text).toContain('—');
-      expect(section?.fields[1].text).toContain('—');
+      expect(section?.fields[0].text).toContain('-');
+      expect(section?.fields[1].text).toContain('-');
     });
 
     it('connection_disconnected: with reason → includes reason section', () => {
@@ -692,9 +692,9 @@ describe('buildBlocks', () => {
   });
 });
 
-// ── sendSlackNotification — additional coverage ──────────────
+// ── sendSlackNotification - additional coverage ──────────────
 
-describe('sendSlackNotification — unknown severity', () => {
+describe('sendSlackNotification - unknown severity', () => {
   it('uses 📢 emoji and gray color for unknown severity', async () => {
     mockSend.mockResolvedValueOnce({ Item: makeConfig({ orgId: 'org-sev-1' }) });
     mockFetch.mockResolvedValueOnce({
@@ -710,9 +710,9 @@ describe('sendSlackNotification — unknown severity', () => {
   });
 });
 
-// ── resolveChannel — enabled config with empty env default ───
+// ── resolveChannel - enabled config with empty env default ───
 
-describe('resolveChannel — enabled config, empty SLACK_DEFAULT_CHANNEL', () => {
+describe('resolveChannel - enabled config, empty SLACK_DEFAULT_CHANNEL', () => {
   it('returns null when config.enabled but routing empty and SLACK_DEFAULT_CHANNEL is empty', async () => {
     const envModule = await import('../../env');
     const originalChannel = envModule.default.SLACK_DEFAULT_CHANNEL;
@@ -726,7 +726,7 @@ describe('resolveChannel — enabled config, empty SLACK_DEFAULT_CHANNEL', () =>
   });
 });
 
-// ── sendSlackNotification — integration ─────────────────────
+// ── sendSlackNotification - integration ─────────────────────
 
 describe('sendSlackNotification', () => {
   it('loads config, resolves token/channel, posts message on success', async () => {

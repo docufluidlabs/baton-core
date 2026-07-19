@@ -604,7 +604,7 @@ function FlowBuilderContent() {
                 </button>
                 <p className="text-sm font-medium mb-1">Get started</p>
                 <p className="text-xs text-brand-100">
-                  Click "Add Automation" to create your first automation. Pick a platform event, choose a Maestro workflow, and Baton will connect them automatically.
+                  Click "Add Automation" to create your first automation. Pick a platform event, choose a Docusign workflow, and Baton will connect them automatically.
                 </p>
               </div>
             </Panel>
@@ -651,8 +651,8 @@ function EmptyFlowState({ onAddAutomation, hasPlatforms }: { onAddAutomation: ()
         </h2>
         <p className="text-sm text-gray-500 mb-8">
           {hasPlatforms
-            ? 'Connect platform events to Maestro workflows with a single automation.'
-            : 'Add a platform and create your first automation — all in one step.'}
+            ? 'Connect platform events to Docusign workflows with a single automation.'
+            : 'Add a platform and create your first automation - all in one step.'}
         </p>
         <button
           onClick={onAddAutomation}

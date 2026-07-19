@@ -28,7 +28,7 @@ registry.registerPath({
   method: 'get',
   path: '/api/auth/status',
   tags: [TAG],
-  summary: 'First-run detection — true when no users exist yet',
+  summary: 'First-run detection - true when no users exist yet',
   responses: {
     200: {
       description: 'Setup status',
@@ -41,7 +41,7 @@ registry.registerPath({
   method: 'post',
   path: '/api/auth/setup',
   tags: [TAG],
-  summary: 'First-run setup — create organization + owner (only while needsSetup)',
+  summary: 'First-run setup - create organization + owner (only while needsSetup)',
   request: {
     body: {
       content: {
@@ -67,7 +67,7 @@ registry.registerPath({
   method: 'post',
   path: '/api/auth/login',
   tags: [TAG],
-  summary: 'Email/password login — sets the baton_session cookie',
+  summary: 'Email/password login - sets the baton_session cookie',
   request: {
     body: { content: { 'application/json': { schema: z.object({ email: z.string().email(), password: z.string() }) } } },
   },
@@ -91,7 +91,7 @@ registry.registerPath({
   method: 'post',
   path: '/api/auth/accept-invite',
   tags: [TAG],
-  summary: 'Redeem an invite token — set password, activate account, log in',
+  summary: 'Redeem an invite token - set password, activate account, log in',
   request: {
     body: {
       content: {

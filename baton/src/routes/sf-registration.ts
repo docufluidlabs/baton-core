@@ -136,7 +136,7 @@ export async function handleSfRegistration(req: Request, res: Response, next: Ne
   try {
     const idempotencyKey = req.header('Idempotency-Key') || req.header('idempotency-key');
     if (!idempotencyKey || idempotencyKey.length < 8 || idempotencyKey.length > 256) {
-      throw new ValidationError('Idempotency-Key header is required (8–256 chars)');
+      throw new ValidationError('Idempotency-Key header is required (8-256 chars)');
     }
 
     const payload = registrationSchema.parse(req.body);

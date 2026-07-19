@@ -357,7 +357,7 @@ router.post('/sync', requireAdmin, async (req: Request, res: Response, next: Nex
       logInfo('Orphaned workflows removed after sync', { orgId, connectionId, count: toDelete.length });
     }
 
-    logInfo('Workflows synced from Maestro', { orgId, connectionId, count: synced.length });
+    logInfo('Workflows synced from Workflow Builder', { orgId, connectionId, count: synced.length });
 
     logAudit({
       orgId,
@@ -390,7 +390,7 @@ router.post('/:id/sync', requireMember, async (req: Request, res: Response, next
     const orgId = req.auth!.orgId;
     const workflow = await getWorkflowById(req.params.id as string);
     if (!workflow || workflow.orgId !== orgId) throw new NotFoundError('Workflow');
-    if (!workflow.maestroWorkflowId) throw new ValidationError('Workflow has no Maestro ID');
+    if (!workflow.maestroWorkflowId) throw new ValidationError('Workflow has no Workflow Builder ID');
 
     // Find DocuSign connection
     let dsConnId = workflow.connectionId;
@@ -456,7 +456,7 @@ router.post('/:id/launch', requireMember, async (req: Request, res: Response, ne
 
     const workflow = await getWorkflowById(req.params.id as string);
     if (!workflow || workflow.orgId !== orgId) throw new NotFoundError('Workflow');
-    if (!workflow.maestroWorkflowId) throw new ValidationError('Workflow has no Maestro ID');
+    if (!workflow.maestroWorkflowId) throw new ValidationError('Workflow has no Workflow Builder ID');
 
     // Resolve DocuSign connection: use workflow's connectionId if it's a valid DocuSign connection,
     // otherwise find a healthy DocuSign connection for this org

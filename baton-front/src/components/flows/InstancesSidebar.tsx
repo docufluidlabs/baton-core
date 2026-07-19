@@ -288,7 +288,7 @@ export function InstancesSidebar({ open, workflowId, workflowName, onClose, onAc
                     <ShieldCheck className="w-5 h-5 text-emerald-500" />
                   </div>
                   <p className="text-sm font-medium text-gray-600">All clear!</p>
-                  <p className="text-xs text-gray-400 mt-1">No failed instances — everything is running smoothly</p>
+                  <p className="text-xs text-gray-400 mt-1">No failed instances - everything is running smoothly</p>
                 </>
               ) : activeFilters.size === 1 && activeFilters.has('running') ? (
                 <>

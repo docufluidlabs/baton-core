@@ -5,26 +5,27 @@ export default function Conditions() {
     <>
       <h1>Conditions & field mapping</h1>
       <Lead>
-        Most automations need no setup beyond picking a workflow — Baton matches payload fields to Maestro
-        parameters by name automatically. When you need more control, two optional layers let you filter which
-        webhooks fire and rename payload fields.
+        Most automations need no setup beyond picking a workflow - Baton matches payload fields to Workflow
+        Builder parameters by name automatically. When you need more control, two optional layers let you
+        filter which webhooks fire and rename payload fields.
       </Lead>
 
       <h2>The everyday path: automatic name-matching</h2>
       <p>
         By default, a verified webhook on an active automation simply fires its workflow. Baton reads the
-        target workflow's parameter contract — the parameters its start trigger declares — scans the incoming
+        target workflow's parameter contract - the parameters its start trigger declares - scans the incoming
         payload, and matches whatever fits the parameter names. You don't configure anything: if the payload
         field is called <code>objectId</code> and the workflow declares <code>objectId</code>, Baton matches it
-        and passes it through. The Edit Automation <strong>Parameters preview</strong> shows you this list,
-        read-only.
+        and passes it through. The Edit Automation panel's <strong>Workflow Builder API Parameters</strong>{' '}
+        section shows this list and lets you override where each value comes from.
       </p>
 
-      <Callout type="note" title="These are advanced controls">
-        The everyday in-app experience uses the simpler "match by Maestro parameter name" model described
-        above — no conditions or mapping required. Conditions and field mapping are advanced controls available
-        on request: the Baton team can configure them for you, or they can be set via the API. Read on to
-        understand what they do and when to ask for them.
+      <Callout type="note" title="Conditions are advanced controls">
+        The everyday in-app experience uses the simpler "match by parameter name" model described above - no
+        conditions required. Field mapping lives right in the automation editor (the Workflow Builder API
+        Parameters section), while conditions are advanced controls available on request: the Baton team can
+        configure them for you, or they can be set via the API. Read on to understand what they do and when to
+        ask for them.
       </Callout>
 
       <h2>The per-webhook decision order</h2>
@@ -37,10 +38,10 @@ export default function Conditions() {
         <FlowNode k="Step 1" t="Verify signature" d="Fail = reject the webhook." />
         <FlowNode k="Step 2" t="Match conditions" d={'No match = skip, recorded as a "condition skip".'} />
         <FlowNode k="Step 3" t="Map fields" d="Build the workflow inputs from the payload." />
-        <FlowNode k="Step 4" t="Trigger Maestro" d="Fire the target workflow." />
+        <FlowNode k="Step 4" t="Trigger Workflow Builder" d="Fire the target workflow." />
       </FlowStrip>
 
-      <h2>Conditions — filter which webhooks count</h2>
+      <h2>Conditions - filter which webhooks count</h2>
       <p>
         Conditions let you decide which webhooks should actually fire the workflow. A{' '}
         <strong>condition set</strong> has a top-level operator and a flat list of rules:
@@ -55,7 +56,7 @@ export default function Conditions() {
           <code>data.contact.id</code>), an <strong>operator</strong>, and a <strong>value</strong>.
         </KVRow>
         <KVRow label="Empty set">
-          An empty condition set always matches — so a webhook with no conditions configured always proceeds.
+          An empty condition set always matches - so a webhook with no conditions configured always proceeds.
         </KVRow>
       </KV>
 
@@ -77,7 +78,7 @@ export default function Conditions() {
         </table>
       </TableWrap>
       <p>
-        Comparisons coerce types reasonably — for example, the string <code>"123"</code> equals the number{' '}
+        Comparisons coerce types reasonably - for example, the string <code>"123"</code> equals the number{' '}
         <code>123</code>.
       </p>
 
@@ -94,15 +95,15 @@ export default function Conditions() {
       <h3>Failure messages in the Action log</h3>
       <p>
         When conditions don't match, the webhook is skipped and the reason is recorded. In <code>and</code>{' '}
-        mode, the Action log shows which rule failed — for example{' '}
+        mode, the Action log shows which rule failed - for example{' '}
         <code>{'Condition 2 failed: field "status"'}</code>. In <code>or</code> mode, where no single rule is to
         blame, the reason reads <em>"No conditions matched"</em>.
       </p>
 
-      <h2>Field mapping — rename payload fields to Maestro parameters</h2>
+      <h2>Field mapping - rename payload fields to workflow parameters</h2>
       <p>
-        Use field mapping when the source payload's field names don't match the Maestro parameter names. You
-        map them explicitly: the <strong>keys</strong> are Maestro trigger-input names, and the{' '}
+        Use field mapping when the source payload's field names don't match the workflow's parameter names.
+        You map them explicitly: the <strong>keys</strong> are Workflow Builder trigger-input names, and the{' '}
         <strong>values</strong> are dot-paths into the payload (a leading <code>$.</code> is optional).
       </p>
 
@@ -116,22 +117,22 @@ export default function Conditions() {
       <h3>Resolution rules and limits</h3>
       <ul>
         <li>
-          A source path that resolves to nothing is dropped. Maestro then errors if that input is required, or
-          falls back to its own default.
+          A source path that resolves to nothing is dropped. Workflow Builder then errors if that input is
+          required, or falls back to its own default.
         </li>
         <li>
-          Static constants are not supported — put any constant values inside the Maestro workflow itself.
+          In the automation editor, each mapped field can read a payload <strong>Path</strong>, send a fixed{' '}
+          <strong>Static</strong> value, or interpolate a <strong>Template</strong> like{' '}
+          <code>{'{{field}}'}</code>.
         </li>
         <li>
-          Field mapping is <strong>rename + select only</strong>. It does not compute, concatenate, or
-          transform values.
+          Field mapping does not compute or transform values beyond simple template interpolation.
         </li>
       </ul>
 
-      <Callout type="warning" title="Transformations belong in Maestro">
-        If you need to combine first and last name, do arithmetic, or otherwise transform values, do that work
-        inside the Maestro workflow's first step. Field mapping only renames and selects existing payload
-        values.
+      <Callout type="warning" title="Transformations belong in Workflow Builder">
+        If you need to do arithmetic or otherwise compute values, do that work inside the workflow's first
+        step. Field mapping renames, selects, and templates existing payload values - it does not run logic.
       </Callout>
 
       <h2>When to use which</h2>
@@ -152,7 +153,7 @@ export default function Conditions() {
         <Card to="flow-builder" title="Flow Builder">
           Create automations and see the parameters preview that drives name-matching.
         </Card>
-        <Card to="workflows" title="Maestro Workflows">
+        <Card to="workflows" title="Workflow Checker">
           See the start-trigger parameter contract each workflow declares.
         </Card>
       </Cards>

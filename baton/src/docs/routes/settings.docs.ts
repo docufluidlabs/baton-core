@@ -80,7 +80,7 @@ registry.registerPath({
   method: 'post',
   path: '/api/settings/members/invites',
   tags: [TAG],
-  summary: 'Invite a member — returns a 72h invite link (admin+)',
+  summary: 'Invite a member - returns a 72h invite link (admin+)',
   security: SECURITY,
   request: {
     body: {

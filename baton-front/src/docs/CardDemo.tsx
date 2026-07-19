@@ -30,7 +30,7 @@ export function StatusLegend() {
         <span key={s.key} className={`bd-statkey s-${s.key}`}>
           <span className="bd-statkey__dot" />
           <strong>{s.label}</strong>
-          <span>— {s.note}</span>
+          <span>- {s.note}</span>
         </span>
       ))}
     </div>
@@ -46,7 +46,7 @@ function FailedCard() {
           <span className="bd-card__auto"><Zap /><span>Closed-won → NDA</span></span>
           <span className="bd-card__status s-failed">failed</span>
         </div>
-        <p className="bd-card__sub">Acme Corp — order #4821</p>
+        <p className="bd-card__sub">Acme Corp - order #4821</p>
         <div className="bd-card__meta">
           <span>2h ago</span>
           <span className="sep">|</span>
@@ -60,7 +60,7 @@ function FailedCard() {
         <p className="bd-card__step"><span className="err">Failed at: Send envelope</span></p>
         <div className="bd-card__err">
           <AlertTriangle />
-          <p>Maestro returned 422 — recipient email is missing.</p>
+          <p>Workflow Builder returned 422 - recipient email is missing.</p>
         </div>
         <div className="bd-card__tags">
           <span className="bd-card__tag"><Tag />priority</span>
@@ -86,7 +86,7 @@ function OverdueCard() {
           <span className="bd-card__auto"><Zap /><span>New account → MSA</span></span>
           <span className="bd-card__status s-running">running</span>
         </div>
-        <p className="bd-card__sub">Globex Inc — MSA</p>
+        <p className="bd-card__sub">Globex Inc - MSA</p>
         <div className="bd-card__meta">
           <span className="over">9/7 days passed</span>
           <span className="sep">|</span>
@@ -97,7 +97,7 @@ function OverdueCard() {
           <div className="bd-card__track"><div className="bd-card__fill s-running" style={{ width: '50%' }} /></div>
           <span className="bd-card__count">3/6</span>
         </div>
-        <p className="bd-card__step">Step 3 — Awaiting counter-signature</p>
+        <p className="bd-card__step">Step 3 - Awaiting counter-signature</p>
         <div className="bd-card__tags">
           <span className="bd-card__tagadd"><Plus />Add tag</span>
         </div>
@@ -121,7 +121,7 @@ function InProgressCard() {
           <span className="bd-card__auto"><Zap /><span>Deal won → Order form</span></span>
           <span className="bd-card__status s-running">running</span>
         </div>
-        <p className="bd-card__sub">Initech — order #99</p>
+        <p className="bd-card__sub">Initech - order #99</p>
         <div className="bd-card__meta">
           <span>5m ago</span>
           <span className="sep">|</span>
@@ -137,7 +137,7 @@ function InProgressCard() {
           <div className="bd-card__track"><div className="bd-card__fill s-running" style={{ width: '25%' }} /></div>
           <span className="bd-card__count">1/4</span>
         </div>
-        <p className="bd-card__step">Step 1 — Create envelope</p>
+        <p className="bd-card__step">Step 1 - Create envelope</p>
         <div className="bd-card__tags">
           <span className="bd-card__tagadd"><Plus />Add tag</span>
         </div>

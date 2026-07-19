@@ -36,7 +36,7 @@ export default function Catalog() {
           </thead>
           <tbody>
             <tr><td>HubSpot</td><td>CRM</td><td>HMAC (HubSpot signature using the App Client Secret)</td><td>The reference integration.</td></tr>
-            <tr><td>Salesforce</td><td>CRM</td><td>HMAC</td><td>You build the outbound webhook in your org — see the <DocLink to="salesforce">Salesforce</DocLink> page.</td></tr>
+            <tr><td>Salesforce</td><td>CRM</td><td>HMAC</td><td>You build the outbound webhook in your org - see the <DocLink to="salesforce">Salesforce</DocLink> page.</td></tr>
           </tbody>
         </table>
       </TableWrap>
@@ -67,19 +67,18 @@ export default function Catalog() {
 
       <h2>Two special cases: Docusign and Slack</h2>
       <p>
-        <strong>Docusign</strong> plays two roles. It is the destination Baton triggers — your Maestro
-        workflows — and it can also be an inbound <em>source</em>: Docusign Connect can post envelope and
+        <strong>Docusign</strong> plays two roles. It is the destination Baton triggers - your Docusign
+        workflows - and it can also be an inbound <em>source</em>: Docusign Connect can post envelope and
         recipient events to Baton like any other webhook source.
       </p>
       <p>
-        <strong>Slack</strong> appears in the list above as a source, but it is primarily an{' '}
-        <em>outbound</em> notification channel — the place Baton sends you alerts. For that side of Slack,
-        see the Notifications guide.
+        <strong>Slack</strong> is not a source platform - it is an <em>outbound</em> notification channel,
+        the place Baton sends you alerts. For that side of Slack, see the Notifications guide.
       </p>
 
       <Callout type="note" title="Don't see your platform?">
         For any source system not in this list, use a <DocLink to="custom-webhook">Custom POST webhook</DocLink>{' '}
-        — Baton can receive JSON from anything that can post to a URL. If you need a platform certified or
+        - Baton can receive JSON from anything that can post to a URL. If you need a platform certified or
         added to the catalog, email{' '}
         <a href="mailto:app-support@fluidlabs.com">app-support@fluidlabs.com</a>.
       </Callout>

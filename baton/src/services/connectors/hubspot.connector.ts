@@ -35,15 +35,15 @@ export class HubSpotConnector extends BasePlatformConnector {
   // ─── OAuth (not used — webhook-only) ────────────────────────
 
   async authorize(): Promise<OAuthAuthorizeResult> {
-    throw new Error('HubSpot integration is webhook-only — OAuth not supported');
+    throw new Error('HubSpot integration is webhook-only - OAuth not supported');
   }
 
   async handleCallback(): Promise<OAuthTokens> {
-    throw new Error('HubSpot integration is webhook-only — OAuth not supported');
+    throw new Error('HubSpot integration is webhook-only - OAuth not supported');
   }
 
   async refreshToken(): Promise<OAuthTokens> {
-    throw new Error('HubSpot integration is webhook-only — OAuth not supported');
+    throw new Error('HubSpot integration is webhook-only - OAuth not supported');
   }
 
   // ─── Webhook Verification ──────────────────────────────────
@@ -174,7 +174,7 @@ export class HubSpotConnector extends BasePlatformConnector {
 
   async testConnection(): Promise<ConnectionHealthCheck> {
     // Webhook-only — no API connection to test
-    return { healthy: true, message: 'Webhook-only integration — no API connection to test' };
+    return { healthy: true, message: 'Webhook-only integration - no API connection to test' };
   }
 
   // ─── Supported Events ──────────────────────────────────────

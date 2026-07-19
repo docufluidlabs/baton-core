@@ -94,7 +94,7 @@ export function ActionLogsSidebar({ open, ruleId, ruleName, ruleStatus, initialA
     setReleasingId(itemId);
     try {
       await releaseQueuedWebhook(ruleId, itemId);
-      toast.success('Webhook released — workflow will launch shortly');
+      toast.success('Webhook released - workflow will launch shortly');
       mutateQueue();
       mutateActions();
     } catch {
@@ -253,7 +253,7 @@ export function ActionLogsSidebar({ open, ruleId, ruleName, ruleStatus, initialA
           <div className="mx-3 mt-3 rounded-xl border border-yellow-200 bg-yellow-50 overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-2.5 border-b border-yellow-100">
               <Pause className="w-3.5 h-3.5 text-yellow-600 shrink-0" />
-              <span className="text-[12px] font-semibold text-yellow-800 flex-1">Paused — webhooks in queue</span>
+              <span className="text-[12px] font-semibold text-yellow-800 flex-1">Paused - webhooks in queue</span>
               {queueItems.length > 0 && (
                 <span className="text-[10px] font-medium bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded-full">
                   {queueItems.length}
@@ -421,9 +421,9 @@ function ActionCard({ action, isLast, expanded, onToggle, onRetried }: {
                 onCopy={() => copyId(action.pipelineEntryId, 'Relay ID')}
               />
               <IdRow
-                label="Maestro Instance ID"
+                label="Workflow Builder Instance ID"
                 value={action.instance?.maestroInstanceId ?? null}
-                onCopy={() => action.instance?.maestroInstanceId && copyId(action.instance.maestroInstanceId, 'Maestro Instance ID')}
+                onCopy={() => action.instance?.maestroInstanceId && copyId(action.instance.maestroInstanceId, 'Workflow Builder Instance ID')}
               />
               <div className="border-t border-gray-200/60 mt-1 pt-1.5 flex flex-col gap-y-1">
                 <MetaRow label="Triggered" value={new Date(action.triggeredAt).toLocaleString()} />
@@ -449,7 +449,7 @@ function ActionCard({ action, isLast, expanded, onToggle, onRetried }: {
               errorText="Verification failed"
             />
             <StageIndicator
-              label="Maestro Trigger"
+              label="Workflow Builder Trigger"
               state={maestroTriggerState}
               successText="Completed"
               runningText={isAutoRetrying
@@ -563,7 +563,7 @@ function IdRow({ label, value, onCopy }: { label: string; value: string | null |
       {value ? (
         <span className="text-gray-700 font-mono text-[11px] break-all flex-1">{value}</span>
       ) : (
-        <span className="text-gray-300">—</span>
+        <span className="text-gray-300">-</span>
       )}
       {value && onCopy && (
         <button onClick={onCopy} className="p-0.5 hover:bg-gray-200 rounded transition-colors shrink-0">
@@ -593,7 +593,7 @@ function StageIndicator({ label, state, successText, runningText, errorText }: {
     state === 'success' ? (successText ?? 'Done') :
     state === 'running' ? (runningText ?? 'In progress') :
     state === 'error'   ? (errorText ?? 'Failed') :
-    '—';
+    '-';
 
   const textColor =
     state === 'success' ? 'text-green-700' :

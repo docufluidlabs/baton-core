@@ -5,28 +5,28 @@ export default function Connections() {
   return (
     <>
       <h1>Connect source platforms</h1>
-      <Lead>The Connections page is where you manage your single Docusign link and add the source platforms — like HubSpot — that send webhooks into Baton.</Lead>
+      <Lead>The Connections page is where you manage your single Docusign link and add the source platforms - like HubSpot - that send webhooks into Baton.</Lead>
 
       <Screenshot
         src={connectionsShot}
         alt="The Connections page showing the Docusign connection at the top and source platforms below"
-        caption="The Connections page — your Docusign connection and its health at the top, with source platforms below."
+        caption="The Connections page - your Docusign connection and its health at the top, with source platforms below."
       />
 
-      <Callout type="tip" title="Looking for exact, per-platform steps?">Each supported platform has its own step-by-step walkthrough — including the events you can trigger on and a troubleshooting checklist. See <DocLink to="setup">Setup guides</DocLink>.</Callout>
+      <Callout type="tip" title="Looking for exact, per-platform steps?">Each supported platform has its own step-by-step walkthrough - including the events you can trigger on and a troubleshooting checklist. See <DocLink to="setup">Setup guides</DocLink>.</Callout>
 
       <h2>Two sections on one page</h2>
       <p>The Connections page (<code>/connections</code>) brings together two related but different concerns:</p>
 
       <KV>
-        <KVRow label="Docusign Connection">The one OAuth link Baton holds for your organization. It is what lets Baton read, trigger, and monitor your Maestro workflows.</KVRow>
-        <KVRow label="Connected Platforms">The source platforms that send webhooks into Baton. These are not OAuth logins — they are lightweight "shells" that let you build automations.</KVRow>
+        <KVRow label="Docusign Connection">The one OAuth link Baton holds for your organization. It is what lets Baton read, trigger, and monitor your Docusign workflows.</KVRow>
+        <KVRow label="Connected Platforms">The source platforms that send webhooks into Baton. These are not OAuth logins - they are lightweight "shells" that let you build automations.</KVRow>
       </KV>
 
       <h2>The Docusign Connection summary</h2>
-      <p>At the top of the page, the Docusign Connection card shows your Docusign name, a connection badge, and a status indicator (<Badge color="green">Healthy</Badge>, <Badge color="amber">Warning</Badge>, or <Badge color="red">Error</Badge>), plus buttons to <strong>Check Connection Status</strong> and to <strong>Disconnect</strong>. If no connection exists yet, this section shows a setup prompt — and you must connect Docusign before configuring anything else.</p>
+      <p>At the top of the page, the Docusign Connection card shows your Docusign name, a connection badge, and a status indicator (<Badge color="green">Healthy</Badge>, <Badge color="amber">Warning</Badge>, or <Badge color="red">Error</Badge>), plus buttons to <strong>Check Connection Status</strong> and to <strong>Disconnect</strong>. If no connection exists yet, this section shows a setup prompt - and you must connect Docusign before configuring anything else.</p>
 
-      <Callout type="note" title="Connect Docusign first">If you have not linked Docusign yet, start there — the full walkthrough is on <DocLink to="connect-docusign">Connect Docusign</DocLink>. The rest of this page assumes Docusign is connected.</Callout>
+      <Callout type="note" title="Connect Docusign first">If you have not linked Docusign yet, start there - the full walkthrough is on <DocLink to="connect-docusign">Connect Docusign</DocLink>. The rest of this page assumes Docusign is connected.</Callout>
 
       <h2>Connected Platforms: shells, not logins</h2>
       <p>The <strong>Connected Platforms</strong> section lists the source platforms that send webhooks into Baton. It is important to understand that these are <em>not</em> OAuth connections. Baton does not log into HubSpot or Zendesk on your behalf. Each platform is a "shell" that exists so you can build automations against it. The platform itself posts webhooks to Baton; Baton never reaches into the platform.</p>
@@ -37,7 +37,7 @@ export default function Connections() {
         <li>A category badge, for example <Badge color="blue">CRM</Badge></li>
         <li>An "N automation(s)" count of how many automations use it</li>
         <li>A <strong>Create New Automation</strong> button</li>
-        <li>A delete (trash) icon — available only when no automations depend on the platform</li>
+        <li>A delete (trash) icon - available only when no automations depend on the platform</li>
       </ul>
 
       <Callout type="warning" title="You cannot delete a platform in use">The trash icon is only enabled when no automations depend on the platform. Remove or repoint the automations first, then delete the platform shell.</Callout>
@@ -60,16 +60,16 @@ export default function Connections() {
         </table>
       </TableWrap>
 
-      <p>After you add a platform, you configure its actual webhook using that platform's setup guide. Adding the platform simply creates the shell — the webhook itself is wired up next.</p>
+      <p>After you add a platform, you configure its actual webhook using that platform's setup guide. Adding the platform simply creates the shell - the webhook itself is wired up next.</p>
 
       <h2>Set up a platform's webhook</h2>
-      <p>Every catalog platform — HubSpot, Zoho CRM, Zendesk, Greenhouse, monday.com, BambooHR, and the rest — follows the same data-driven walkthrough, available in-app at Connections &rarr; a platform (<code>/setup/&lt;platform&gt;</code>). Baton receives the platform's events through a webhook you set up once. The general flow is the same everywhere; only the platform-specific screens differ.</p>
+      <p>Every catalog platform - HubSpot, Zoho CRM, Zendesk, Greenhouse, monday.com, BambooHR, and the rest - follows the same data-driven walkthrough, available in-app at Connections &rarr; a platform (<code>/setup/&lt;platform&gt;</code>). Baton receives the platform's events through a webhook you set up once. The general flow is the same everywhere; only the platform-specific screens differ.</p>
 
       <Steps>
-        <Step title="Get your Baton webhook URL"> In Flow Builder, choose <strong>New Automation</strong>, set the Source to the platform, fill in a name and the target Maestro workflow, Save, and copy the generated <strong>Webhook URL</strong>.</Step>
+        <Step title="Get your Baton webhook URL"> In Flow Builder, choose <strong>New Automation</strong>, set the Source to the platform, fill in a name and the target Docusign workflow, Save, and copy the generated <strong>Webhook URL</strong>.</Step>
         <Step title="Configure the webhook in the platform"> Register that URL in the platform and choose which events should fire it. The exact steps are shown in each platform's guide.</Step>
         <Step title="Set the secret model"> Depending on the platform, this is an HMAC signing secret, a Basic Authentication username and password, or no secret at all. See <a href="#secret-models">Three secret models</a> below.</Step>
-        <Step title="Send a test event"> Trigger an event in the platform — for example create or update a record. Within seconds it appears in Baton's event log, and any matching automation runs.</Step>
+        <Step title="Send a test event"> Trigger an event in the platform - for example create or update a record. Within seconds it appears in Baton's event log, and any matching automation runs.</Step>
       </Steps>
 
       <p>Each platform guide also lists the specific events you can trigger on, along with a troubleshooting table.</p>
@@ -83,7 +83,7 @@ export default function Connections() {
           <tbody>
             <tr><td>HMAC signing secret</td><td>The platform signs each webhook with a secret. You copy that secret from the platform into Baton so Baton can verify the signature.</td><td>Copy from platform &rarr; paste into Baton.</td></tr>
             <tr><td>Basic Authentication</td><td>You choose a username and password and enter the <em>same</em> values in both Baton and the platform.</td><td>Enter identical values in both places.</td></tr>
-            <tr><td>No secret</td><td>Some platforms do not sign at all. Baton accepts events on the unguessable webhook URL.</td><td>Nothing to set — keep the URL private.</td></tr>
+            <tr><td>No secret</td><td>Some platforms do not sign at all. Baton accepts events on the unguessable webhook URL.</td><td>Nothing to set - keep the URL private.</td></tr>
           </tbody>
         </table>
       </TableWrap>
@@ -108,7 +108,7 @@ export default function Connections() {
 
       <h2>Related connection types</h2>
       <Cards>
-        <Card to="salesforce" title="Salesforce setup">Salesforce has no native outbound webhook — you build the outbound call in your org.</Card>
+        <Card to="salesforce" title="Salesforce setup">Salesforce has no native outbound webhook - you build the outbound call in your org.</Card>
         <Card to="custom-webhook" title="Custom POST webhooks">Bring in any source that can post JSON but is not in the catalog.</Card>
         <Card to="verification" title="Webhook verification">How Baton checks that an incoming webhook is authentic before it acts on it.</Card>
         <Card to="catalog" title="Platform catalog">Browse the supported source platforms and what each one needs.</Card>

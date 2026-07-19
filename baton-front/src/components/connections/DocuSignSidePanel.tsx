@@ -49,7 +49,7 @@ export function DocuSignSidePanel({
   const accountName =
     (connection.metadata?.accountName as string | undefined) ||
     accountsData?.accounts.find((a) => a.id === activeAccountId)?.name ||
-    '—';
+    '-';
 
   return createPortal(
     <>
@@ -91,12 +91,12 @@ export function DocuSignSidePanel({
               </div>
               <Row
                 label="Connected by"
-                value={isTesting ? null : (testResult?.name || '—')}
+                value={isTesting ? null : (testResult?.name || '-')}
                 loading={isTesting}
               />
               <Row
                 label="Email"
-                value={isTesting ? null : (testResult?.email || '—')}
+                value={isTesting ? null : (testResult?.email || '-')}
                 loading={isTesting}
               />
             </div>

@@ -234,7 +234,7 @@ export class ZohoCRMConnector extends BasePlatformConnector {
       eventType,
       eventLabel,
       recordId: ids[0],
-      summary: `${eventLabel} — ${ids.length} record(s)`,
+      summary: `${eventLabel} - ${ids.length} record(s)`,
       rawEventType: `${module}.${operation}`,
       metadata: {
         module,

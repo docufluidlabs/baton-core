@@ -10,8 +10,10 @@
  * that flips the card to the Connect button once the API restarts with
  * credentials — no full page reload needed.
  */
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { Plug, Loader2, Copy, ExternalLink, RefreshCw, Info, AlertTriangle } from 'lucide-react';
+import { Plug, Loader2, Copy, ExternalLink, RefreshCw, Info, AlertTriangle, ChevronRight } from 'lucide-react';
+import clsx from 'clsx';
 import { PlatformIcon } from '@/components/ui/PlatformIcon';
 import { useDocusignSetupStatus, type DocusignSetupStatus } from '@/hooks/useApi';
 
@@ -93,6 +95,7 @@ function SetupGuide({
 }) {
   const isSandbox = setup.oauthBase.includes('account-d');
   const apiUrlMismatch = isLikelyMisconfiguredApiUrl(setup.redirectUri, window.location.hostname);
+  const [showFillGuide, setShowFillGuide] = useState(false);
 
   async function handleCopy() {
     await navigator.clipboard.writeText(setup.redirectUri);
@@ -148,6 +151,70 @@ function SetupGuide({
                 <Copy className="w-3 h-3" /> Copy
               </button>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setShowFillGuide((v) => !v)}
+              aria-expanded={showFillGuide}
+              className="inline-flex items-center gap-1 mt-2 text-xs font-medium text-brand-600 hover:text-brand-700"
+            >
+              <ChevronRight className={clsx('w-3 h-3 transition-transform duration-150', showFillGuide && 'rotate-90')} />
+              What to fill on that page
+            </button>
+
+            {showFillGuide && (
+              <div className="mt-2 space-y-2.5 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <p className="font-medium text-gray-800">On that page, fill exactly this:</p>
+                <ul className="space-y-1.5 list-disc pl-4">
+                  <li>
+                    <strong className="text-gray-800">App Name:</strong> anything, e.g. &quot;Baton&quot;.
+                  </li>
+                  <li>
+                    <strong className="text-gray-800">Integration Key:</strong> copy it - this is your{' '}
+                    <code className="font-mono bg-gray-100 px-1 py-0.5 rounded">DOCUSIGN_INTEGRATION_KEY</code>{' '}
+                    for step 3.
+                  </li>
+                  <li>
+                    <strong className="text-gray-800">Integration Type:</strong> Private custom integration
+                    (only required for go-live; picking it now avoids the warning).
+                  </li>
+                  <li>
+                    <strong className="text-gray-800">&quot;Able to securely store a client secret?&quot;:</strong>{' '}
+                    Yes (Authorization Code Grant).
+                  </li>
+                  <li>
+                    <strong className="text-gray-800">Secret Keys &rarr; Add Secret Key:</strong> copy it
+                    immediately - DocuSign shows it once, masked forever after. This is your{' '}
+                    <code className="font-mono bg-gray-100 px-1 py-0.5 rounded">DOCUSIGN_SECRET_KEY</code>.
+                  </li>
+                  <li>
+                    <strong className="text-gray-800">Redirect URIs &rarr; Add URI:</strong> paste the URI above.
+                  </li>
+                </ul>
+
+                <div className="flex items-start gap-2 text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span>
+                    Leave <strong>Require Proof Key for Code Exchange (PKCE)</strong> unchecked, despite the
+                    &quot;Recommended&quot; badge. Baton authenticates with the secret key and does not send a
+                    PKCE challenge - enabling it breaks every connect.
+                  </span>
+                </div>
+
+                <p>
+                  Everything else (RSA Keypairs, CORS, policy links): leave untouched. Click{' '}
+                  <strong className="text-gray-800">Save</strong> at the bottom - the page is long and the URI
+                  is not saved until you do.
+                </p>
+
+                <a
+                  href="/docs/connect-docusign"
+                  className="text-brand-600 hover:underline inline-flex items-center gap-1 font-medium"
+                >
+                  Full walkthrough &rarr;
+                </a>
+              </div>
+            )}
           </div>
         </li>
 
@@ -169,7 +236,7 @@ function SetupGuide({
           <span>
             You&apos;re browsing from <strong>{window.location.hostname}</strong>, but the server built this
             redirect URI from a localhost <code className="font-mono">API_URL</code>. Registering it in DocuSign
-            will not work — set <code className="font-mono">APP_URL</code> and{' '}
+            will not work - set <code className="font-mono">APP_URL</code> and{' '}
             <code className="font-mono">API_URL</code> in{' '}
             <code className="font-mono">baton/.env</code> to this install&apos;s public URL and restart, so OAuth
             and webhook URLs are generated correctly.
@@ -180,7 +247,7 @@ function SetupGuide({
       {isSandbox && (
         <div className="flex items-center gap-2 text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
           <Info className="w-3.5 h-3.5 shrink-0" />
-          Defaults point at DocuSign&apos;s developer sandbox — right for trying Baton out.
+          Defaults point at DocuSign&apos;s developer sandbox - right for trying Baton out.
         </div>
       )}
 

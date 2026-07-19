@@ -29,7 +29,7 @@ import {
 import { Platform } from '../../lib/types';
 
 const WEBHOOK_ONLY_MESSAGE =
-  'Power Automate is a webhook-only integration in Baton — install it from the Apps catalog, not via OAuth.';
+  'Power Automate is a webhook-only integration in Baton - install it from the Apps catalog, not via OAuth.';
 
 export class PowerAutomateConnector extends BasePlatformConnector {
   readonly platform: Platform = 'powerautomate';
@@ -118,7 +118,7 @@ export class PowerAutomateConnector extends BasePlatformConnector {
 
     const eventLabel = humanizeEvent(eventType);
     const summary =
-      payload?.summary ?? `${eventLabel}${recordId ? ` — ${recordId}` : ''}`;
+      payload?.summary ?? `${eventLabel}${recordId ? ` - ${recordId}` : ''}`;
 
     return {
       eventType,

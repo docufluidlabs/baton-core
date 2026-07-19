@@ -7,10 +7,10 @@ graph TB
         member["Team Member<br/><i>Views dashboards,<br/>monitors events</i>"]
     end
 
-    baton["🔷 BATON<br/><b>Workflow Orchestration Platform</b><br/><i>Connects business platforms<br/>to DocuSign Maestro workflows<br/>via event-driven automation</i>"]
+    baton["🔷 BATON<br/><b>Workflow Orchestration Platform</b><br/><i>Connects business platforms<br/>to Docusign Workflow Builder workflows<br/>via event-driven automation</i>"]
 
     subgraph external["External Business Platforms"]
-        docusign["📝 DocuSign<br/><b>Maestro + eSignature</b><br/><i>Workflow engine &amp; signing</i>"]
+        docusign["📝 DocuSign<br/><b>Workflow Builder + eSignature</b><br/><i>Workflow engine &amp; signing</i>"]
         procore["🏗️ Procore<br/><b>Construction Mgmt</b>"]
         xero["📊 Xero<br/><b>Accounting</b>"]
         bamboo["👥 BambooHR<br/><b>HR Platform</b>"]
@@ -28,7 +28,7 @@ graph TB
     baton <-->|"OAuth + Webhooks"| bamboo
     baton <-->|"OAuth + Webhooks"| zoho
     baton <-->|"OAuth + Webhooks"| smartsheet
-    baton <-->|"JWT Grant + Maestro API + Connect"| docusign
+    baton <-->|"JWT Grant + Workflow Builder API + Connect"| docusign
     baton <-->|"Session auth + Org webhooks"| clerk
     baton <-->|"Storage + Queues"| aws
 

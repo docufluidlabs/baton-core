@@ -68,7 +68,7 @@ function Guide({ template }: { template: PlatformTemplate }) {
             Flow Builder
           </Link>{' '}
           → <strong>New Automation</strong>, set <strong>Source = {name}</strong>, fill in the name
-          and workflow, then <strong>Save</strong>. Copy the generated <strong>Webhook URL</strong> —
+          and workflow, then <strong>Save</strong>. Copy the generated <strong>Webhook URL</strong> -
           you'll paste it into {name} in the next steps.
         </>
       ),
@@ -155,7 +155,7 @@ function Guide({ template }: { template: PlatformTemplate }) {
           <span className="leading-relaxed">
             {hasNoSecret ? (
               <>
-                {name} doesn't sign its webhook payloads — <strong>no secret to configure</strong>.
+                {name} doesn't sign its webhook payloads - <strong>no secret to configure</strong>.
                 Baton accepts events on the unique, hard-to-guess Webhook URL.
               </>
             ) : isBasicAuth ? (
@@ -248,7 +248,7 @@ function troubleshooting(
   const rows: { symptom: string; fix: string }[] = [
     {
       symptom: `${name} reports the webhook failed (non-2xx response)`,
-      fix: 'The automation may be paused or the Webhook URL has a typo — re-copy the URL from the automation in Baton and make sure the automation is Active.',
+      fix: 'The automation may be paused or the Webhook URL has a typo - re-copy the URL from the automation in Baton and make sure the automation is Active.',
     },
     {
       symptom: `An event happened in ${name} but nothing arrived in Baton`,
@@ -261,11 +261,11 @@ function troubleshooting(
       opts.isBasicAuth
         ? {
             symptom: 'Baton returns 401 Unauthorized',
-            fix: `The Basic Auth username / password in ${name} doesn't match what you entered in Baton — re-enter the same values in both.`,
+            fix: `The Basic Auth username / password in ${name} doesn't match what you entered in Baton - re-enter the same values in both.`,
           }
         : {
             symptom: 'Baton returns 401 Invalid signature',
-            fix: `The ${opts.secretKeyLabel} in Baton doesn't match the one in ${name} — re-copy it and save again.`,
+            fix: `The ${opts.secretKeyLabel} in Baton doesn't match the one in ${name} - re-copy it and save again.`,
           },
     );
   }

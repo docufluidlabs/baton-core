@@ -79,7 +79,7 @@ registry.registerPath({
   method: 'get',
   path: '/api/instances/{id}/live',
   tags: [TAG],
-  summary: 'Get live instance status from Maestro (syncs local state)',
+  summary: 'Get live instance status from Workflow Builder (syncs local state)',
   security: SECURITY,
   request: { params: idParam },
   responses: {
@@ -119,7 +119,7 @@ registry.registerPath({
   method: 'post',
   path: '/api/instances/{id}/cancel',
   tags: [TAG],
-  summary: 'Cancel an instance (best-effort against Maestro; always records local cancel)',
+  summary: 'Cancel an instance (best-effort against Workflow Builder; always records local cancel)',
   security: SECURITY,
   request: { params: idParam },
   responses: {

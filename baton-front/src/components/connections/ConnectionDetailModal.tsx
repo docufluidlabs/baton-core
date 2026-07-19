@@ -109,7 +109,7 @@ export function ConnectionDetailModal({ connection, open, onClose, onRefresh, la
             {activeAccountName && (
               <InfoRow label="Account Name" value={activeAccountName} />
             )}
-            <InfoRow label="Account ID" value={connection.accountId || '—'} />
+            <InfoRow label="Account ID" value={connection.accountId || '-'} />
             <InfoRow label="Has Access Token" value={connection.hasAccessToken ? 'Yes' : 'No'} />
             <InfoRow label="Has Refresh Token" value={connection.hasRefreshToken ? 'Yes' : 'No'} />
             {lastTestResult?.name && (

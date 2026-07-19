@@ -1,8 +1,8 @@
-# Microsoft Power Automate Webhook Integration — Baton
+# Microsoft Power Automate Webhook Integration - Baton
 
 ## Overview
 
-Power Automate is **webhook-only** (no OAuth). A Power Automate cloud flow uses the premium **HTTP** action to `POST` events into Baton whenever something happens in Microsoft 365, Dataverse, SharePoint, Outlook, Teams, Forms, etc. Baton normalizes them into events like `invoice.approved` and runs them through the rule engine, which triggers the target Maestro workflows.
+Power Automate is **webhook-only** (no OAuth). A Power Automate cloud flow uses the premium **HTTP** action to `POST` events into Baton whenever something happens in Microsoft 365, Dataverse, SharePoint, Outlook, Teams, Forms, etc. Baton normalizes them into events like `invoice.approved` and runs them through the rule engine, which triggers the target Docusign Workflow Builder workflows.
 
 Webhooks are received via the **App Webhook**:
 
@@ -10,21 +10,21 @@ Webhooks are received via the **App Webhook**:
 |-----|----------------|-------|
 | `/api/webhooks/app/:webhookKey` | **Basic Auth** (username + password) | "out of the box" via the app install wizard in the UI |
 
-This is the same path used by Zoho CRM — see [zohocrm-webhooks.md](zohocrm-webhooks.md) for the shared App Webhook mechanics.
+This is the same path used by Zoho CRM - see [zohocrm-webhooks.md](zohocrm-webhooks.md) for the shared App Webhook mechanics.
 
 ---
 
 ## ⭐ Most important: where to get the username and password
 
-**You don't "get" them — you make them up yourself.**
+**You don't "get" them - you make them up yourself.**
 
 The **Basic Auth Username / Password** fields in the Baton form are **not** your Microsoft login. They are an arbitrary credential pair that you:
 
-1. **make up yourself** (any values — e.g. `baton-pa` / a long random string as the password),
+1. **make up yourself** (any values - e.g. `baton-pa` / a long random string as the password),
 2. enter into the Baton form while installing the app,
 3. and then enter **the same values** on the HTTP action of your flow (Authentication → Basic).
 
-The point: Basic Auth on an **inbound** webhook means "whoever knocks on this URL (your flow) must prove it's really them" — via a username/password pair known only to you and Baton.
+The point: Basic Auth on an **inbound** webhook means "whoever knocks on this URL (your flow) must prove it's really them" - via a username/password pair known only to you and Baton.
 
 ---
 
@@ -71,7 +71,7 @@ The point: Basic Auth on an **inbound** webhook means "whoever knocks on this UR
 ### Step 4. Testing
 
 ```bash
-# username:password in the header — this is base64("baton-pa:your-password")
+# username:password in the header - this is base64("baton-pa:your-password")
 curl -X POST https://your-domain.com/api/webhooks/app/YOUR_WEBHOOK_KEY \
   -H "Content-Type: application/json" \
   -H "Authorization: Basic $(printf 'baton-pa:your-password' | base64)" \
@@ -106,7 +106,7 @@ The connector ([powerautomate.connector.ts](../baton/src/services/connectors/pow
 | `recordId` | source record id | `record_id`, `id`, `data.id` |
 | `summary` | human-readable summary | auto-generated from the event label + record id |
 | `userEmail` | user attribution | `actingUserEmail`, `user.email` |
-| `data` | passed through into event metadata | — |
+| `data` | passed through into event metadata | - |
 
 The event type **is** whatever string you put in `event`. `invoice.approved` becomes event type `invoice.approved` with label "Invoice Approved".
 
@@ -118,21 +118,21 @@ The catalog lists a few illustrative events for rule creation in the UI:
 
 | Event Type | Description |
 |------------|-------------|
-| `flow.triggered` | Generic — a flow sent an event |
+| `flow.triggered` | Generic - a flow sent an event |
 | `item.created` / `item.updated` | SharePoint / Dataverse / list item |
 | `approval.completed` | A Power Automate approval finished |
 | `form.submitted` | A Microsoft Forms response |
 | `email.received` | An Outlook email arrived |
 | `*` | Match any event string |
 
-This is just the list for UI selection — **any** `event` string works.
+This is just the list for UI selection - **any** `event` string works.
 
 ---
 
 ## Caveats and gotchas
 
 - **Premium connector.** Both the **HTTP** action (Power Automate → Baton) and the **"When a HTTP request is received"** trigger (Baton → Power Automate, not part of this phase) are premium connectors and require an appropriate Power Platform license.
-- **No HMAC.** Power Automate's HTTP action has no built-in HMAC signing (there is no `hmacSha256` expression in the workflow definition language), so Baton uses **Basic Auth** for inbound verification — exactly like Zoho CRM. Use a long random password.
+- **No HMAC.** Power Automate's HTTP action has no built-in HMAC signing (there is no `hmacSha256` expression in the workflow definition language), so Baton uses **Basic Auth** for inbound verification - exactly like Zoho CRM. Use a long random password.
 - **You make up the credentials.** The Basic Auth username/password is not your Microsoft login; you set them yourself and enter them identically in Baton and on the HTTP action.
 - **Define the body envelope.** Always send at least `event`; otherwise the event type defaults to `flow.triggered` and rules keyed on a specific type won't match.
 - **Idempotency.** Repeated deliveries are dropped in `storeWebhookEvent` (`event.id === 'duplicate'` → post-processing is skipped).

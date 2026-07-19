@@ -50,7 +50,7 @@ export function SetupOverview() {
       </p>
 
       <Callout type="note" title="Salesforce works differently">
-        Salesforce has no native outbound webhook — you build the outbound call in your org with a Flow
+        Salesforce has no native outbound webhook - you build the outbound call in your org with a Flow
         and Apex callout (or an Outbound Message). See the{' '}
         <DocLink to="salesforce">Salesforce setup</DocLink> guide.
       </Callout>
@@ -107,7 +107,7 @@ export function SetupGuide({ template }: { template: PlatformTemplate }) {
       <Callout type="note" title="What you'll need">
         {hasNoSecret ? (
           <>
-            {name} doesn't sign its webhook payloads — <strong>there's no secret to configure</strong>. Baton
+            {name} doesn't sign its webhook payloads - <strong>there's no secret to configure</strong>. Baton
             accepts events on the unique, hard-to-guess Webhook URL, so treat that URL like a password.
           </>
         ) : isBasicAuth ? (
@@ -129,7 +129,7 @@ export function SetupGuide({ template }: { template: PlatformTemplate }) {
         <Step title="Get your Baton webhook URL">
           In Baton open <DocLink to="flow-builder">Flow Builder</DocLink> → <strong>New Automation</strong>,
           set <strong>Source = {name}</strong>, fill in the name and target workflow, then{' '}
-          <strong>Save</strong>. Copy the generated <strong>Webhook URL</strong> — you'll paste it into {name}{' '}
+          <strong>Save</strong>. Copy the generated <strong>Webhook URL</strong> - you'll paste it into {name}{' '}
           next.
         </Step>
         {template.setupInstructions.map((s) => (
@@ -182,7 +182,7 @@ export function SetupGuide({ template }: { template: PlatformTemplate }) {
           <tbody>
             <tr>
               <td>{name} reports the webhook failed (non-2xx response)</td>
-              <td>The automation may be paused or the Webhook URL has a typo — re-copy the URL from the automation in Baton and make sure the automation is Active.</td>
+              <td>The automation may be paused or the Webhook URL has a typo - re-copy the URL from the automation in Baton and make sure the automation is Active.</td>
             </tr>
             <tr>
               <td>An event happened in {name} but nothing arrived in Baton</td>
@@ -193,8 +193,8 @@ export function SetupGuide({ template }: { template: PlatformTemplate }) {
                 <td>Baton returns 401 ({isBasicAuth ? 'Unauthorized' : 'Invalid signature'})</td>
                 <td>
                   {isBasicAuth
-                    ? `The Basic Auth username / password in ${name} doesn't match what you entered in Baton — re-enter the same values in both.`
-                    : `The ${template.secretKeyLabel} in Baton doesn't match the one in ${name} — re-copy it and save again.`}
+                    ? `The Basic Auth username / password in ${name} doesn't match what you entered in Baton - re-enter the same values in both.`
+                    : `The ${template.secretKeyLabel} in Baton doesn't match the one in ${name} - re-copy it and save again.`}
                 </td>
               </tr>
             )}

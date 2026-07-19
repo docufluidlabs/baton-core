@@ -318,7 +318,7 @@ export function workflowFailedNotification(
   extra?: { errorStep?: string; retryCount?: number; instanceName?: string; maestroInstanceUrl?: string; platform?: string; automationName?: string; actionNumber?: number },
 ): NotificationPayload {
   const title = extra?.actionNumber && extra?.automationName && extra?.platform
-    ? `${extra.platform} — ${extra.automationName} — Action ${extra.actionNumber}`
+    ? `${extra.platform} - ${extra.automationName} - Action ${extra.actionNumber}`
     : `Workflow "${workflowName}" failed`;
   return {
     orgId,
@@ -361,7 +361,7 @@ export function retryExhaustedNotification(
   extra?: { instanceName?: string; maestroInstanceUrl?: string; platform?: string; automationName?: string; actionNumber?: number },
 ): NotificationPayload {
   const title = extra?.actionNumber && extra?.automationName && extra?.platform
-    ? `${extra.platform} — ${extra.automationName} — Action ${extra.actionNumber}`
+    ? `${extra.platform} - ${extra.automationName} - Action ${extra.actionNumber}`
     : `Automation failed: "${workflowName}"`;
   return {
     orgId,
@@ -426,8 +426,8 @@ export function workflowSyncedNotification(
     recipientId,
     title: `${syncedCount} workflow${syncedCount === 1 ? '' : 's'} synced`,
     body: newCount
-      ? `${newCount} new and ${syncedCount - newCount} updated workflows synced from Docusign Maestro.`
-      : `${syncedCount} workflows synced from Docusign Maestro.`,
+      ? `${newCount} new and ${syncedCount - newCount} updated workflows synced from Docusign Workflow Builder.`
+      : `${syncedCount} workflows synced from Docusign Workflow Builder.`,
     severity: 'info',
     category: 'workflow_synced',
     actionUrl: `${env.FRONTEND_URL}/workflows`,

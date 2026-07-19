@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please report security vulnerabilities privately — do **not** open a public GitHub issue.
+Please report security vulnerabilities privately - do **not** open a public GitHub issue.
 
 Email **app-support@fluidlabs.com** with:
 
@@ -10,14 +10,14 @@ Email **app-support@fluidlabs.com** with:
 - Steps to reproduce (a proof of concept helps enormously)
 - The commit or version you tested against
 
-We aim to acknowledge reports within 3 business days. Please give us a reasonable window to ship a fix before any public disclosure — we will credit you in the release notes unless you prefer otherwise.
+We aim to acknowledge reports within 3 business days. Please give us a reasonable window to ship a fix before any public disclosure - we will credit you in the release notes unless you prefer otherwise.
 
 ## Scope
 
 - The `baton/` API server and `baton-front/` web app in this repository
 - The default `docker-compose.yml` deployment path
 
-Out of scope: FluidLabs' hosted Baton service (report those to the same address, but they are handled under the hosted service's own process), third-party platforms Baton connects to, and vulnerabilities requiring a already-compromised host.
+Out of scope: FluidLabs' hosted Baton service (report those to the same address, but they are handled under the hosted service's own process), third-party platforms Baton connects to, and vulnerabilities requiring an already-compromised host.
 
 ## Hardening notes for self-hosters
 

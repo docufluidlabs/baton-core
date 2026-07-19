@@ -18,12 +18,12 @@ async function deleteTables() {
     try {
       await client.send(new DescribeTableCommand({ TableName: tableName }));
       await client.send(new DeleteTableCommand({ TableName: tableName }));
-      console.log(`  🗑️  ${tableName} — deleted`);
+      console.log(`  🗑️  ${tableName} - deleted`);
     } catch (error: any) {
       if (error.name === 'ResourceNotFoundException') {
-        console.log(`  ⏭️  ${tableName} — not found, skipping`);
+        console.log(`  ⏭️  ${tableName} - not found, skipping`);
       } else {
-        console.error(`  ❌ ${tableName} — error: ${error.message}`);
+        console.error(`  ❌ ${tableName} - error: ${error.message}`);
       }
     }
   }

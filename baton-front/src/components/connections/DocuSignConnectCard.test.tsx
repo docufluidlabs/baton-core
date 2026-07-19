@@ -111,6 +111,37 @@ describe('unconfigured — guided setup', () => {
     fireEvent.click(screen.getByRole('button', { name: /check again/i }));
     expect(mutate).toHaveBeenCalled();
   });
+
+  it('reveals the fill checklist with the PKCE warning behind the disclosure', () => {
+    setupHook(makeStatus());
+    render(<DocuSignConnectCard connecting={false} onConnect={vi.fn()} />);
+
+    // Collapsed by default - the happy path stays three steps
+    expect(screen.queryByText('Require Proof Key for Code Exchange (PKCE)')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /what to fill on that page/i }));
+
+    // The PKCE warning is the single most important line
+    expect(screen.getByText('Require Proof Key for Code Exchange (PKCE)')).toBeInTheDocument();
+    expect(
+      screen.getByText((_, el) => el?.tagName === 'SPAN' && /enabling it breaks every connect/i.test(el.textContent ?? '')),
+    ).toBeInTheDocument();
+
+    // Save-at-the-bottom note and the ignore-everything-else line
+    expect(
+      screen.getByText((_, el) => el?.tagName === 'P' && /not saved until you do/i.test(el.textContent ?? '')),
+    ).toBeInTheDocument();
+  });
+
+  it('links to the full connect-docusign walkthrough in the docs', () => {
+    setupHook(makeStatus());
+    render(<DocuSignConnectCard connecting={false} onConnect={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /what to fill on that page/i }));
+
+    const link = screen.getByRole('link', { name: /full walkthrough/i });
+    expect(link).toHaveAttribute('href', '/docs/connect-docusign');
+  });
 });
 
 // ── Configured: today's Connect button ──────────────────────

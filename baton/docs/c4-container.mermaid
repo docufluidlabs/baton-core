@@ -23,7 +23,7 @@ graph TB
     end
 
     subgraph platforms["External Platforms"]
-        ds["📝 DocuSign Maestro"]
+        ds["📝 Docusign Workflow Builder"]
         pc["🏗️ Procore"]
         xr["📊 Xero"]
         bh["👥 BambooHR"]
@@ -52,7 +52,7 @@ graph TB
     api <-->|"OAuth flows"| zh
     api <-->|"OAuth flows"| ss
 
-    workers -->|"Launch workflow<br/>Maestro API"| ds
+    workers -->|"Launch workflow<br/>Workflow Builder API"| ds
     ds -->|"Connect webhook"| api
     pc -->|"Webhook"| api
     xr -->|"Webhook"| api

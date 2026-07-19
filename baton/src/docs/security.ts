@@ -6,7 +6,7 @@ registry.registerComponent('securitySchemes', 'bearerAuth', {
   bearerFormat: 'JWT',
   description:
     'Session JWT issued by POST /api/auth/login (or /setup, /accept-invite). ' +
-    'Sent automatically as the httpOnly `baton_session` cookie — no header needed from browsers.',
+    'Sent automatically as the httpOnly `baton_session` cookie - no header needed from browsers.',
 });
 
 registry.registerComponent('securitySchemes', 'devBypass', {

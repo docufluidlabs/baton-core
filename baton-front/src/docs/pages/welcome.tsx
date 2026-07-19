@@ -15,9 +15,10 @@ const QUICK_PATHS: { slug: string; task: string; icon: React.ReactNode }[] = [
 export default function Welcome() {
   return (
     <>
-      <Hero pill="User Guide" title="Run your Docusign Maestro workflows on autopilot">
+      <Hero pill="User Guide" title="Run your Docusign workflows on autopilot">
         Baton listens for events from the business platforms you already use, then launches the right
-        Docusign&nbsp;Maestro workflow automatically — and gives you one screen to watch it all run.
+        workflow in Docusign&nbsp;Workflow&nbsp;Builder automatically - and gives you one screen to watch
+        it all run.
       </Hero>
 
       <Lead>
@@ -43,32 +44,33 @@ export default function Welcome() {
 
       <h2>What is Baton?</h2>
       <p>
-        <strong>Baton is a webhook-focused command center for Docusign Maestro workflows.</strong> It sits
-        between your business platforms (Salesforce, HubSpot, Zendesk, and more) and Docusign Maestro:
+        <strong>Baton is a webhook-focused command center for your Docusign workflows.</strong> It sits
+        between your business platforms (Salesforce, HubSpot, Zendesk, and more) and Docusign Workflow
+        Builder:
       </p>
       <ol>
-        <li>A platform you use fires an <strong>event</strong> — a deal closes, a record is created, a project reaches a stage.</li>
+        <li>A platform you use fires an <strong>event</strong> - a deal closes, a record is created, a project reaches a stage.</li>
         <li>That event reaches Baton as a <strong>webhook</strong>.</li>
-        <li>Baton verifies it, finds the value Maestro needs, and <strong>launches the matching Maestro workflow</strong>.</li>
-        <li>Baton keeps watching the workflow and shows you its status — completed, running, or failed — without you ever opening Docusign.</li>
+        <li>Baton verifies it, finds the value Workflow Builder needs, and <strong>launches the matching Docusign workflow</strong>.</li>
+        <li>Baton keeps watching the workflow and shows you its status - completed, running, or failed - without you ever opening Docusign.</li>
       </ol>
 
       <FlowStrip>
         <FlowNode k="Source" t="Your platform" d="Salesforce, HubSpot, Zendesk…" />
         <FlowNode k="Webhook" t="Baton" d="Verifies & routes the event" />
-        <FlowNode k="Launch" t="Maestro" d="Runs your signing workflow" />
+        <FlowNode k="Launch" t="Workflow Builder" d="Runs your signing workflow" />
         <FlowNode k="Watch" t="Flow Builder" d="Live status & error fixing" />
       </FlowStrip>
 
-      <Callout type="note" title="Baton doesn't replace Maestro — it feeds it">
+      <Callout type="note" title="Baton doesn't replace Workflow Builder - it feeds it">
         Baton's job is the first link in the chain: receive an event and trigger the correct workflow. Once a
-        workflow launches, <strong>Maestro runs its own steps</strong> (sending envelopes, calling extension
-        apps, collecting signatures). Baton then monitors the result.
+        workflow launches, <strong>Workflow Builder runs its own steps</strong> (sending envelopes, calling
+        extension apps, collecting signatures). Baton then monitors the result.
       </Callout>
 
       <h2>Who Baton is for</h2>
       <p>
-        Baton is built for the team that owns an organization's agreement automation — operations,
+        Baton is built for the team that owns an organization's agreement automation - operations,
         revenue ops, or IT. In one place you connect your tools, wire up automations, and keep them
         healthy. The user who sets up Baton becomes the <strong>owner</strong> and can invite
         teammates as <strong>admins</strong>, <strong>members</strong>, or read-only{' '}
@@ -83,9 +85,9 @@ export default function Welcome() {
             <tr><th>Screen</th><th>What it's for</th></tr>
           </thead>
           <tbody>
-            <tr><td><DocLink to="flow-builder"><strong>Flow Builder</strong></DocLink></td><td>Your home page — a visual map of every automation with live counts. Default landing screen.</td></tr>
+            <tr><td><DocLink to="flow-builder"><strong>Flow Builder</strong></DocLink></td><td>Your home page - a visual map of every automation with live counts. Default landing screen.</td></tr>
             <tr><td><DocLink to="control-center"><strong>Resolution Center</strong></DocLink></td><td>The fix-it queue. Retry, cancel, or report failed workflow runs.</td></tr>
-            <tr><td><DocLink to="workflows"><strong>Workflow Checker</strong></DocLink></td><td>Every Maestro workflow you have, with a button to launch any of them for testing.</td></tr>
+            <tr><td><DocLink to="workflows"><strong>Workflow Checker</strong></DocLink></td><td>Every Docusign workflow you have, with a button to launch any of them for testing.</td></tr>
             <tr><td><DocLink to="connections"><strong>Connections</strong></DocLink></td><td>Manage your Docusign connection and the platforms sending webhooks to Baton.</td></tr>
             <tr><td><DocLink to="notifications"><strong>Notifications</strong></DocLink></td><td>Choose how you're alerted and read the in-app feed of everything that happened.</td></tr>
             <tr><td><DocLink to="settings"><strong>Settings</strong></DocLink></td><td>Organization details and member management.</td></tr>

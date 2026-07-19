@@ -42,7 +42,7 @@ export default function SalesforceSetupPage() {
         <h2 className="text-sm font-semibold text-gray-900">How Baton connects to Salesforce</h2>
         <p className="text-xs text-gray-500 max-w-2xl leading-relaxed">
           Baton receives Salesforce events through a <strong>webhook</strong>. Salesforce has no
-          built-in &ldquo;send webhook&rdquo; switch, so you build the outbound call in your org — a
+          built-in &ldquo;send webhook&rdquo; switch, so you build the outbound call in your org - a
           record-triggered <strong>Flow with an Apex callout</strong> (or an Outbound Message) that
           POSTs the record to your automation's unique Webhook URL. Each request is signed with a
           shared secret so Baton can verify it is genuine.
@@ -89,13 +89,13 @@ export default function SalesforceSetupPage() {
             </Link>{' '}
             → <strong>New Automation</strong>, set <strong>Source = Salesforce</strong>, fill in the
             name and target workflow, then <strong>Save</strong>. Copy the generated{' '}
-            <strong>Webhook URL</strong> — your Salesforce callout will POST to it.
+            <strong>Webhook URL</strong> - your Salesforce callout will POST to it.
           </Step>
 
           <Step n={2} icon={KeyRound} title="Save the webhook secret in Baton">
             Generate a strong random string (for example 32+ characters) and paste it into the{' '}
             <strong>Webhook Secret</strong> field on the same automation panel, then{' '}
-            <strong>Save</strong>. Keep it handy — Salesforce signs each request with this exact
+            <strong>Save</strong>. Keep it handy - Salesforce signs each request with this exact
             value, and Baton rejects anything it can't verify.
           </Step>
 
@@ -157,7 +157,7 @@ export default function SalesforceSetupPage() {
 const TROUBLESHOOTING = [
   {
     symptom: 'Apex callout fails with “Unauthorized endpoint”',
-    fix: 'Your Baton host isn’t allow-listed — add it under Setup → Security → Remote Site Settings.',
+    fix: 'Your Baton host isn’t allow-listed - add it under Setup → Security → Remote Site Settings.',
   },
   {
     symptom: 'Baton returns 401 Invalid signature',
@@ -165,7 +165,7 @@ const TROUBLESHOOTING = [
   },
   {
     symptom: 'Nothing arrives in Baton',
-    fix: 'The Flow isn’t Active, the callout is failing (check Apex Jobs and debug logs), or the Webhook URL has a typo — re-copy it from the automation in Baton.',
+    fix: 'The Flow isn’t Active, the callout is failing (check Apex Jobs and debug logs), or the Webhook URL has a typo - re-copy it from the automation in Baton.',
   },
   {
     symptom: 'Events arrive but the automation doesn’t run',

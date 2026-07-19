@@ -4,16 +4,16 @@ export default function ConnectDocusign() {
   return (
     <>
       <h1>Connect Docusign</h1>
-      <Lead>Connecting Docusign is the very first thing you do in Baton — it is the engine Baton triggers and reads, so nothing else works until this link is in place.</Lead>
+      <Lead>Connecting Docusign is the very first thing you do in Baton - it is the engine Baton triggers and reads, so nothing else works until this link is in place.</Lead>
 
       <h2>Why Docusign comes first</h2>
-      <p>Baton's whole job is to launch and watch Docusign Maestro workflows. To do that, Baton needs permission to talk to Docusign on your organization's behalf: to read your Maestro workflows, to trigger workflow launches, and to check the status of the runs it starts. That permission is the single Docusign connection your organization holds.</p>
+      <p>Baton's whole job is to launch and watch Docusign Workflow Builder workflows. To do that, Baton needs permission to talk to Docusign on your organization's behalf: to read your workflows, to trigger workflow launches, and to check the status of the runs it starts. That permission is the single Docusign connection your organization holds.</p>
       <p>Until Docusign is connected, Baton has no workflows to point your automations at and no way to launch anything. So the Connections page asks you to connect Docusign before you configure any source platforms.</p>
 
-      <Callout type="note" title="This unlocks the rest of Baton">Once Docusign is connected, Baton can sync your Maestro workflows and the rest of the product opens up: Flow Builder, the Workflow Checker, and Resolution Center all rely on this connection being healthy.</Callout>
+      <Callout type="note" title="This unlocks the rest of Baton">Once Docusign is connected, Baton can sync your workflows and the rest of the product opens up: Flow Builder, the Workflow Checker, and Resolution Center all rely on this connection being healthy.</Callout>
 
       <h2>Connect with one OAuth link</h2>
-      <p>Baton uses Docusign's standard OAuth sign-in, so you never paste credentials into Baton — you authorize Baton inside Docusign's own login screen. Here is the full flow:</p>
+      <p>Baton uses Docusign's standard OAuth sign-in, so you never paste credentials into Baton - you authorize Baton inside Docusign's own login screen. Here is the full flow:</p>
 
       <Steps>
         <Step title="Open the Connections page"> Go to <code>/connections</code>. The <strong>Docusign Connection</strong> section is at the top. If no connection exists yet, you will see a setup prompt instead of a connection card. On self-hosted installs where the Docusign OAuth app is not configured yet, this prompt shows the exact Redirect URI to copy into your Docusign app, along with the environment keys to set.</Step>
@@ -21,12 +21,38 @@ export default function ConnectDocusign() {
         <Step title="Sign in and authorize"> Log in with your Docusign credentials and approve the access Baton requests.</Step>
         <Step title="Get redirected back to Baton"> Docusign sends you back to Baton, which securely stores the access tokens (encrypted). You do not see or handle any token material.</Step>
         <Step title="Pick your active account"> If your Docusign user can reach more than one Docusign account, Baton lists every account you can access and asks which one to use. See <a href="#multi-account">Choosing the right account</a> below.</Step>
-        <Step title="You are connected"> The Docusign Connection card now shows your Docusign name, a connection badge, and a status indicator. Every Maestro API call Baton makes from now on uses this connection.</Step>
+        <Step title="You are connected"> The Docusign Connection card now shows your Docusign name, a connection badge, and a status indicator. Every Workflow Builder API call Baton makes from now on uses this connection.</Step>
       </Steps>
 
+      <h2>The Apps &amp; Keys page, field by field</h2>
+      <p>On a self-hosted install you register Baton as a Docusign OAuth app once, on Docusign's <strong>Apps &amp; Keys</strong> page (the setup prompt on Baton's Connections page gives you the exact redirect URI and the two <code>baton/.env</code> keys). The Docusign app-edit page is one long form. Here is every section in the order Docusign renders it, and what to do with each:</p>
+
+      <TableWrap>
+        <table>
+          <thead><tr><th>Section</th><th>What you do</th></tr></thead>
+          <tbody>
+            <tr><td>General Info &rarr; App Name</td><td>Anything, e.g. "Baton".</td></tr>
+            <tr><td>General Info &rarr; Integration Key</td><td>A read-only GUID with a copy button. Copy it - it becomes <code>DOCUSIGN_INTEGRATION_KEY</code> in <code>baton/.env</code>.</td></tr>
+            <tr><td>General Info &rarr; Integration Type</td><td>Pick <strong>Private custom integration</strong>. Docusign notes the type is only required for go-live, but picking it now avoids the warning.</td></tr>
+            <tr><td>Authentication &rarr; "Is your application able to securely store a client secret?"</td><td>Choose <strong>Yes</strong>. "Authorization Code Grant" appears - that is the flow Baton uses.</td></tr>
+            <tr><td>Authentication &rarr; Require Proof Key for Code Exchange (PKCE)</td><td><strong>Leave unchecked</strong> - see the warning below.</td></tr>
+            <tr><td>Authentication &rarr; Secret Keys</td><td>Click <strong>+ Add Secret Key</strong> and copy the value <em>immediately</em> - Docusign shows it once and masks it forever after. It becomes <code>DOCUSIGN_SECRET_KEY</code>.</td></tr>
+            <tr><td>Service Integration &rarr; RSA Keypairs</td><td>Ignore entirely. Generate RSA / Upload RSA belong to the JWT grant, which Baton does not use.</td></tr>
+            <tr><td>Additional settings &rarr; Redirect URIs</td><td>Click <strong>+ Add URI</strong> and paste the redirect URI from Baton's setup card.</td></tr>
+            <tr><td>Additional settings &rarr; Privacy Policy / Terms of Use links</td><td>Leave empty.</td></tr>
+            <tr><td>Additional settings &rarr; CORS Configuration</td><td>Ignore entirely - Origin URLs and the Allowed HTTP Methods checkboxes stay untouched.</td></tr>
+            <tr><td>Save / Cancel</td><td>Click <strong>Save</strong> at the very bottom. The page is long - nothing, including the redirect URI, is saved until you click Save.</td></tr>
+          </tbody>
+        </table>
+      </TableWrap>
+
+      <Callout type="warning" title="Leave the PKCE checkbox unchecked">Docusign marks "Require Proof Key for Code Exchange (PKCE)" with a "Recommended" badge, but Baton authenticates with the secret key over Authorization Code Grant and does not send a PKCE code challenge. Enabling it makes every connect fail - leave it unchecked.</Callout>
+
+      <Callout type="note" title="Two easy mistakes">The secret key is shown only once - copy it the moment you create it, or you will have to add a new one. And because the page is long, remember to scroll down and click <strong>Save</strong>; the redirect URI is not stored until you do.</Callout>
+
       <h2 id="multi-account">Choosing the right account when you have several</h2>
-      <p>A single Docusign user can have access to multiple Docusign accounts — for example a sandbox and a production account, or accounts for different business units. After you authorize, Baton lists every account your login can reach and asks you to pick the active one.</p>
-      <p>The account you choose is the account Baton uses for <em>every</em> Maestro API call: reading workflows, launching them, and checking status. Make sure you select the account whose Maestro workflows you actually want Baton to drive.</p>
+      <p>A single Docusign user can have access to multiple Docusign accounts - for example a sandbox and a production account, or accounts for different business units. After you authorize, Baton lists every account your login can reach and asks you to pick the active one.</p>
+      <p>The account you choose is the account Baton uses for <em>every</em> Workflow Builder API call: reading workflows, launching them, and checking status. Make sure you select the account whose workflows you actually want Baton to drive.</p>
 
       <Callout type="warning" title="Pick the matching environment">If you work with both sandbox and production Docusign accounts, choose the one that matches the environment you are configuring. The workflows Baton can see and trigger come from the account you select here.</Callout>
 
@@ -37,7 +63,7 @@ export default function ConnectDocusign() {
         <table>
           <thead><tr><th>Status</th><th>What it means</th><th>What to do</th></tr></thead>
           <tbody>
-            <tr><td><Badge color="green">Healthy</Badge></td><td>Baton's Docusign token works and Maestro calls succeed.</td><td>Nothing — you are good to go.</td></tr>
+            <tr><td><Badge color="green">Healthy</Badge></td><td>Baton's Docusign token works and Workflow Builder calls succeed.</td><td>Nothing - you are good to go.</td></tr>
             <tr><td><Badge color="amber">Warning</Badge></td><td>The connection is working but Baton has noticed something worth attention.</td><td>Run <strong>Check Connection Status</strong> to re-verify.</td></tr>
             <tr><td><Badge color="red">Error</Badge></td><td>Baton cannot reach Docusign with the stored token.</td><td>Run <strong>Check Connection Status</strong>; if it stays in error, reconnect Docusign.</td></tr>
           </tbody>
@@ -48,15 +74,15 @@ export default function ConnectDocusign() {
       <p>The <strong>Check Connection Status</strong> button re-checks the OAuth token on demand. When the token still works, Baton reports <code>Connected as &lt;Name&gt;</code> and the indicator turns green. This is the quickest way to confirm a healthy connection or to clear a transient warning.</p>
 
       <h2>Token refresh is automatic</h2>
-      <p>You do not have to reconnect Docusign on a routine basis. Baton refreshes the Docusign access token for you in the background — roughly every five minutes and before the token would expire — so the connection stays alive without any action from you. The <strong>Check Connection Status</strong> button is there for confirmation, not for routine maintenance.</p>
+      <p>You do not have to reconnect Docusign on a routine basis. Baton refreshes the Docusign access token for you in the background - roughly every five minutes and before the token would expire - so the connection stays alive without any action from you. The <strong>Check Connection Status</strong> button is there for confirmation, not for routine maintenance.</p>
 
       <h2>Disconnecting</h2>
-      <p>The <strong>Disconnect</strong> button (shown in red because it is destructive) removes Baton's access to Docusign. Once disconnected, Baton can no longer read or trigger your Maestro workflows, so any automations that rely on Maestro stop working until you reconnect.</p>
+      <p>The <strong>Disconnect</strong> button (shown in red because it is destructive) removes Baton's access to Docusign. Once disconnected, Baton can no longer read or trigger your Docusign workflows, so any automations that rely on them stop working until you reconnect.</p>
 
-      <Callout type="danger" title="Disconnect stops everything Maestro">Disconnecting removes Baton's ability to read and trigger Maestro. Only disconnect if you intend to stop Baton from driving Docusign, or before reconnecting to a different account.</Callout>
+      <Callout type="danger" title="Disconnect stops all workflow launches">Disconnecting removes Baton's ability to read and trigger Workflow Builder. Only disconnect if you intend to stop Baton from driving Docusign, or before reconnecting to a different account.</Callout>
 
       <h2>Docusign as both a destination and a source</h2>
-      <p>Docusign is special. It is Baton's outbound destination — the place Baton triggers Maestro workflows — and it can also be an inbound source. Through Docusign Connect, Docusign can post envelope and recipient events back to Baton just like any other webhook source. One Docusign connection covers both directions.</p>
+      <p>Docusign is special. It is Baton's outbound destination - the place Baton triggers Docusign workflows - and it can also be an inbound source. Through Docusign Connect, Docusign can post envelope and recipient events back to Baton just like any other webhook source. One Docusign connection covers both directions.</p>
       <p>The envelope and recipient events Baton can react to include:</p>
 
       <TableWrap>
@@ -77,17 +103,17 @@ export default function ConnectDocusign() {
       <p>This is what makes chained workflows possible. A common pattern:</p>
 
       <FlowStrip>
-        <FlowNode k="Maestro" t="Workflow A finishes" d="A workflow Baton launched completes its run." />
+        <FlowNode k="Workflow Builder" t="Workflow A finishes" d="A workflow Baton launched completes its run." />
         <FlowNode k="Docusign Connect" t="envelope.completed" d="Docusign fires the event back to Baton." />
         <FlowNode k="Baton" t="Automation matches" d="A Baton automation recognizes the event." />
-        <FlowNode k="Maestro" t="Workflow B launches" d="Baton triggers the next workflow in the chain." />
+        <FlowNode k="Workflow Builder" t="Workflow B launches" d="Baton triggers the next workflow in the chain." />
       </FlowStrip>
 
-      <Callout type="tip" title="One connection, two directions">You do not set up a separate Docusign source. The same OAuth connection that lets Baton trigger Maestro also lets Docusign Connect events flow back in.</Callout>
+      <Callout type="tip" title="One connection, two directions">You do not set up a separate Docusign source. The same OAuth connection that lets Baton trigger Workflow Builder also lets Docusign Connect events flow back in.</Callout>
 
       <h2>Where to go next</h2>
       <Cards>
-        <Card to="workflows" title="Sync your Maestro workflows">With Docusign connected, pull in your Maestro workflows and check they are ready to trigger.</Card>
+        <Card to="workflows" title="Sync your workflows">With Docusign connected, pull in your Docusign workflows and check they are ready to trigger.</Card>
         <Card to="connections" title="Connect source platforms">Add the platforms that will send webhooks into Baton, such as HubSpot and others.</Card>
       </Cards>
     </>

@@ -1,14 +1,14 @@
-# Baton — Setup & Run Guide
+# Baton - Setup & Run Guide
 
 ## Prerequisites
 
 - **Node.js** ≥ 20.x
 - **npm** ≥ 9.x
-- **Docker** — for [LocalStack](https://localstack.cloud/) (local DynamoDB + SQS), or a real **AWS account**
-- **AWS CLI** v2 — optional, for inspecting tables/queues and enabling TTL
-- **Docusign Developer Account** — https://developers.docusign.com (only needed to sync/launch real Maestro workflows)
+- **Docker** - for [LocalStack](https://localstack.cloud/) (local DynamoDB + SQS), or a real **AWS account**
+- **AWS CLI** v2 - optional, for inspecting tables/queues and enabling TTL
+- **Docusign Developer Account** - https://developers.docusign.com (only needed to sync/launch real Workflow Builder workflows)
 
-No external auth provider is required — Baton ships with self-contained email/password auth.
+No external auth provider is required - Baton ships with self-contained email/password auth.
 
 ---
 
@@ -40,7 +40,7 @@ Minimal set for a local run:
 # App
 NODE_ENV=development
 PORT=3001
-APP_URL=http://localhost:3001        # public URL — use your tunnel domain for inbound webhooks
+APP_URL=http://localhost:3001        # public URL - use your tunnel domain for inbound webhooks
 API_URL=http://localhost:3001
 FRONTEND_URL=http://localhost:3002
 RATE_LIMIT_PER_MINUTE=300
@@ -52,12 +52,12 @@ AWS_SECRET_ACCESS_KEY=test
 
 # DynamoDB
 DYNAMODB_REGION=us-east-1
-DYNAMODB_ENDPOINT=http://localhost:4566   # LocalStack — leave empty for real AWS
+DYNAMODB_ENDPOINT=http://localhost:4566   # LocalStack - leave empty for real AWS
 DYNAMODB_TABLE_PREFIX=baton-
 
 # SQS
 SQS_REGION=us-east-1
-SQS_ENDPOINT=http://localhost:4566        # LocalStack — leave empty for real AWS
+SQS_ENDPOINT=http://localhost:4566        # LocalStack - leave empty for real AWS
 SQS_QUEUE_PREFIX=baton-
 
 # Encryption (generate: openssl rand -hex 32)
@@ -72,14 +72,14 @@ DOCUSIGN_INTEGRATION_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 DOCUSIGN_SECRET_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 DOCUSIGN_ACCOUNT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 DOCUSIGN_OAUTH_BASE=https://account-d.docusign.com
-DOCUSIGN_MAESTRO_API_BASE=https://api-d.docusign.com
+DOCUSIGN_MAESTRO_API_BASE=https://api-d.docusign.com   # Workflow Builder (Maestro) API
 ```
 
-Add the remaining OAuth credentials (BambooHR, Zoho CRM) as you connect those platforms — the backend starts without them, those connectors just won't work. Other variables of note:
+Add the remaining OAuth credentials (BambooHR, Zoho CRM) as you connect those platforms - the backend starts without them, those connectors just won't work. Other variables of note:
 
 | Variable | Purpose |
 |----------|---------|
-| `AUTH_JWT_SECRET` | Signs the `baton_session` JWT cookie — required in production |
+| `AUTH_JWT_SECRET` | Signs the `baton_session` JWT cookie - required in production |
 | `BATON_ORG_ID` | Single-org install: every user belongs to this org (default `default-org`) |
 | `BATON_OWNER_EMAIL` / `BATON_OWNER_PASSWORD` / `BATON_OWNER_NAME` / `BATON_ORG_NAME` | Only for headless `npm run seed` (see step 5) |
 | `RATE_LIMIT_PER_MINUTE` | Max authenticated API requests per minute per client IP (default 300) |
@@ -91,7 +91,7 @@ Add the remaining OAuth credentials (BambooHR, Zoho CRM) as you connect those pl
 
 ### Frontend (`baton-front/.env`)
 
-No `.env` is required for local development — the Vite proxy handles API routing and auth uses cookies. Optional variables (see `baton-front/.env.example`):
+No `.env` is required for local development - the Vite proxy handles API routing and auth uses cookies. Optional variables (see `baton-front/.env.example`):
 
 ```env
 # VITE_API_URL=http://localhost:3001   # only if not using the Vite proxy
@@ -124,7 +124,7 @@ docker run -d --name localstack \
 aws --endpoint-url=http://localhost:4566 dynamodb list-tables
 ```
 
-Both DynamoDB and SQS are served from the single LocalStack endpoint `http://localhost:4566` — the `.env.example` defaults already point there.
+Both DynamoDB and SQS are served from the single LocalStack endpoint `http://localhost:4566` - the `.env.example` defaults already point there.
 
 ### Option B: AWS (dev account)
 
@@ -157,29 +157,29 @@ Expected output:
 ```
 🗄️  Creating 18 DynamoDB tables...
 
-  🆕 baton-organizations — created
-  🆕 baton-users — created
-  🆕 baton-platform-connections — created
-  🆕 baton-workflows — created
-  🆕 baton-workflow-instances — created
-  🆕 baton-automation-rules — created
-  🆕 baton-trigger-pipeline — created
-  🆕 baton-audit-log — created
-  🆕 baton-webhook-events — created
-  🆕 baton-user-platform-identities — created
-  🆕 baton-notification-preferences — created
-  🆕 baton-notifications — created
-  🆕 baton-org-apps — created
-  🆕 baton-oauth-states — created
-  🆕 baton-bootstrap-tokens — created
-  🆕 baton-slack-configs — created
-  🆕 baton-queued-webhooks — created
-  🆕 baton-webhook-endpoints — created
+  🆕 baton-organizations - created
+  🆕 baton-users - created
+  🆕 baton-platform-connections - created
+  🆕 baton-workflows - created
+  🆕 baton-workflow-instances - created
+  🆕 baton-automation-rules - created
+  🆕 baton-trigger-pipeline - created
+  🆕 baton-audit-log - created
+  🆕 baton-webhook-events - created
+  🆕 baton-user-platform-identities - created
+  🆕 baton-notification-preferences - created
+  🆕 baton-notifications - created
+  🆕 baton-org-apps - created
+  🆕 baton-oauth-states - created
+  🆕 baton-bootstrap-tokens - created
+  🆕 baton-slack-configs - created
+  🆕 baton-queued-webhooks - created
+  🆕 baton-webhook-endpoints - created
 
 ✨ Done!
 ```
 
-Both scripts are idempotent — existing tables/queues are skipped.
+Both scripts are idempotent - existing tables/queues are skipped.
 
 ### Enable TTL on the TTL-based tables
 
@@ -199,7 +199,7 @@ aws dynamodb update-time-to-live \
 
 ## 4. Start Development Servers
 
-### Terminal 1 — Backend
+### Terminal 1 - Backend
 
 ```bash
 cd baton
@@ -212,11 +212,11 @@ Startup log:
 
 ```
 🚀 Baton API running on port 3001
-📡 ngrok domain: http://localhost:3001
+📡 Public URL: http://localhost:3001
 🌍 Environment: development
 ```
 
-### Terminal 2 — Frontend
+### Terminal 2 - Frontend
 
 ```bash
 cd baton-front
@@ -236,7 +236,7 @@ Baton's auth is self-contained (email/password + JWT session cookie). On a fresh
 
 ### Option A: Setup screen (UI)
 
-Open the app — the first visit walks you through **/setup**: it creates the organization and the **owner** account in one step. After that, the setup route locks itself (returns "already completed").
+Open the app - the first visit walks you through **/setup**: it creates the organization and the **owner** account in one step. After that, the setup route locks itself (returns "already completed").
 
 ### Option B: Headless seed
 
@@ -247,7 +247,7 @@ BATON_ORG_NAME="My Company" \
 npm run seed
 ```
 
-Uses the exact same code path as the setup screen. Idempotent — exits cleanly when any user already exists.
+Uses the exact same code path as the setup screen. Idempotent - exits cleanly when any user already exists.
 
 ### Inviting members
 
@@ -267,7 +267,7 @@ X-Dev-Role: admin
 
 The frontend adds these headers automatically via `api.ts` when `import.meta.env.DEV === true`.
 
-This means real login is **not required for local development** — you can hit the API without a session. Note that `X-Dev-Role` defaults to `viewer` when omitted, so pass it explicitly for admin-level testing.
+This means real login is **not required for local development** - you can hit the API without a session. Note that `X-Dev-Role` defaults to `viewer` when omitted, so pass it explicitly for admin-level testing.
 
 ### Test:
 
@@ -346,18 +346,18 @@ Catalog apps installed from the UI (Zoho CRM, Power Automate, Zendesk, Greenhous
 
 1. Go to http://localhost:3002/workflows
 2. Click "Sync from DocuSign"
-3. Verify Maestro workflows appear
+3. Verify your Workflow Builder workflows appear
 
 ### Step 3: Create an Automation Rule
 
 1. Go to http://localhost:3002/flows
 2. Click "Add Rule"
 3. Select: source platform → event type → target workflow
-4. Save — the automation panel shows its **Permanent Webhook URL**
+4. Save - the automation panel shows its **Permanent Webhook URL**
 
 ### Step 4: Trigger a Webhook
 
-Send a test webhook to the automation's permanent URL. The request is verified with the credentials of the app the automation belongs to — for a Basic Auth app (e.g., Zoho CRM, Power Automate) send the username/password you chose during install:
+Send a test webhook to the automation's permanent URL. The request is verified with the credentials of the app the automation belongs to - for a Basic Auth app (e.g., Zoho CRM, Power Automate) send the username/password you chose during install:
 
 ```bash
 curl -X POST http://localhost:3001/api/webhooks/rule/YOUR_WEBHOOK_KEY \
@@ -366,12 +366,12 @@ curl -X POST http://localhost:3001/api/webhooks/rule/YOUR_WEBHOOK_KEY \
   -d '{"event":"deal.created","recordId":"12345"}'
 ```
 
-(HMAC-verified apps require the platform's signature header instead — see the per-platform guides in [../../docs/](../../docs/).)
+(HMAC-verified apps require the platform's signature header instead - see the per-platform guides in [../../docs/](../../docs/).)
 
 ### Step 5: Verify the Pipeline
 
-1. Check http://localhost:3002/events — inbound event + rule match should appear
-2. Check http://localhost:3002/workflows — a new instance should be launched
+1. Check http://localhost:3002/events - inbound event + rule match should appear
+2. Check http://localhost:3002/workflows - a new instance should be launched
 3. Check the SQS queues processed (backend logs)
 
 ---
@@ -382,17 +382,17 @@ curl -X POST http://localhost:3001/api/webhooks/rule/YOUR_WEBHOOK_KEY \
 
 - Check that LocalStack is running: `docker ps | grep localstack`
 - Check `DYNAMODB_ENDPOINT` in `.env` (LocalStack default: `http://localhost:4566`)
-- For AWS — check `aws sts get-caller-identity`
+- For AWS - check `aws sts get-caller-identity`
 
 ### "No healthy DocuSign connection"
 
 - Connect DocuSign on the Connections page
-- Workflow sync requires a live DocuSign account with Maestro workflows
+- Workflow sync requires a live DocuSign account with Workflow Builder workflows
 
 ### 401 "No valid session found"
 
 - In dev mode, send the `X-Dev-*` headers (see section 6)
-- In production, check that `AUTH_JWT_SECRET` is set (min 32 chars) and hasn't changed since login — rotating it invalidates all sessions
+- In production, check that `AUTH_JWT_SECRET` is set (min 32 chars) and hasn't changed since login - rotating it invalidates all sessions
 - Sessions live in the `baton_session` cookie: the frontend and API must share an origin (or the proxy must forward cookies)
 
 ### Frontend shows 502/504
@@ -434,7 +434,7 @@ Request Flow:
        ▼
   Workflow Launcher Worker
        │
-       ├── 10. Call Maestro API to launch workflow
+       ├── 10. Call the Workflow Builder API to launch workflow
        ├── 11. Track instance in workflow-instances
        ├── 12. Update pipeline entry status
        │

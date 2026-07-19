@@ -165,7 +165,7 @@ router.get('/:id/live', requireViewer, async (req: Request, res: Response, next:
     const stepChanged = maestroInstance.lastCompletedStep !== instance.lastCompletedStep;
 
     if (statusChanged || stepChanged) {
-      logInfo('Instance status synced from Maestro', {
+      logInfo('Instance status synced from Workflow Builder', {
         instanceId: instance.id,
         oldStatus: instance.status,
         newStatus: maestroInstance.status,
@@ -236,7 +236,7 @@ router.post('/:id/retry', requireMember, async (req: Request, res: Response, nex
     }));
     const workflow = wfResult.Item as Workflow | undefined;
     if (!workflow?.maestroWorkflowId) {
-      res.status(400).json({ error: 'Workflow has no Maestro ID' });
+      res.status(400).json({ error: 'Workflow has no Workflow Builder ID' });
       return;
     }
 
@@ -420,7 +420,7 @@ router.post('/:id/cancel', requireMember, async (req: Request, res: Response, ne
           try {
             await maestroService.cancelInstance(dsConnId, wf.maestroWorkflowId, instance.maestroInstanceId);
           } catch (err) {
-            logInfo('Maestro cancel rejected — proceeding with local cancel', {
+            logInfo('Workflow Builder cancel rejected - proceeding with local cancel', {
               instanceId: instance.id,
               error: (err as Error)?.message,
             });

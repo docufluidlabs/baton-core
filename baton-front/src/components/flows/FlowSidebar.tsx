@@ -832,7 +832,7 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
           {/* Target Workflow */}
           {sourcePlatform && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Target Maestro Workflow</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Target Docusign Workflow</label>
               <div className="flex gap-2">
                 <PortalSelect
                   value={workflowId}
@@ -846,7 +846,7 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
                   onClick={handleSyncWorkflow}
                   disabled={syncing}
                   className="px-2.5 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500 disabled:opacity-50 shrink-0"
-                  title={workflowId ? 'Sync selected workflow from Maestro' : 'Sync all workflows from Maestro'}
+                  title={workflowId ? 'Sync selected workflow from Workflow Builder' : 'Sync all workflows from Workflow Builder'}
                 >
                   <RefreshCw className={clsx('w-4 h-4', syncing && 'animate-spin')} />
                 </button>
@@ -888,7 +888,7 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
               <div className="text-xs text-amber-700">
                 <p className="font-medium mb-0.5">This workflow does not have an API trigger</p>
                 <p>
-                  Please update it in Maestro to use HTTP trigger for automations.{' '}
+                  Please update it in Workflow Builder to use HTTP trigger for automations.{' '}
                   {selectedWorkflow.maestroUrl && (
                     <a
                       href={selectedWorkflow.maestroUrl}
@@ -896,7 +896,7 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-0.5 text-amber-800 underline hover:text-amber-900"
                     >
-                      Edit in Maestro <ExternalLink className="w-3 h-3" />
+                      Edit in Workflow Builder <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
                 </p>
@@ -910,7 +910,7 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
           {sourcePlatform && workflowId && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-medium text-gray-700">Maestro API Parameters</label>
+                <label className="block text-sm font-medium text-gray-700">Workflow Builder API Parameters</label>
                 <button
                   type="button"
                   onClick={addCustomMapping}
@@ -926,7 +926,7 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
                   <div className="text-xs text-amber-700">
                     <p className="font-medium mb-0.5">No API parameters found</p>
                     <p>
-                      This workflow has no published trigger inputs. Add them in Maestro, or use{' '}
+                      This workflow has no published trigger inputs. Add them in Workflow Builder, or use{' '}
                       <span className="font-medium">Add field</span> to map values manually.{' '}
                       {selectedWorkflow?.maestroUrl && (
                         <a
@@ -935,7 +935,7 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-0.5 text-amber-800 underline hover:text-amber-900"
                         >
-                          Edit in Maestro <ExternalLink className="w-3 h-3" />
+                          Edit in Workflow Builder <ExternalLink className="w-3 h-3" />
                         </a>
                       )}
                     </p>
@@ -1038,8 +1038,8 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
 
                   {targetFields.length === 0 && (
                     <p className="text-[11px] text-amber-600 mt-1.5 leading-snug">
-                      No published trigger inputs detected — make sure each target name matches an input your
-                      Maestro workflow expects.
+                      No published trigger inputs detected - make sure each target name matches an input your
+                      Docusign workflow expects.
                     </p>
                   )}
 
@@ -1061,7 +1061,7 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
 
                   <p className="text-[11px] text-gray-500 mt-1.5 leading-snug">
                     Leave a field empty to skip it. <span className="font-medium">Path</span> reads from the webhook
-                    payload — e.g. <code className="bg-gray-100 px-1 rounded">$.data.project_id</code>.{' '}
+                    payload - e.g. <code className="bg-gray-100 px-1 rounded">$.data.project_id</code>.{' '}
                     <span className="font-medium">Static</span> sends a fixed value.{' '}
                     <span className="font-medium">Template</span> interpolates{' '}
                     <code className="bg-gray-100 px-1 rounded">{'{{field}}'}</code>.
@@ -1238,7 +1238,7 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
           {editingAutomation && confirmingDelete && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-3">
               <p className="text-sm text-red-800 font-medium mb-2">Delete this automation?</p>
-              <p className="text-xs text-red-600 mb-3">This cannot be undone. Logs of the launched Maestro Workflows will be available only in Workflow Checker.</p>
+              <p className="text-xs text-red-600 mb-3">This cannot be undone. Logs of the launched Docusign workflows will be available only in Workflow Checker.</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setConfirmingDelete(false)}

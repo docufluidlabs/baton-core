@@ -13,21 +13,21 @@ interface Subprocessor {
 const SUBPROCESSORS: Subprocessor[] = [
   {
     name: 'Amazon Web Services (AWS)',
-    purpose: 'Cloud infrastructure — compute (EC2/Lambda), storage (S3, DynamoDB), key management (KMS), networking',
+    purpose: 'Cloud infrastructure - compute (EC2/Lambda), storage (S3, DynamoDB), key management (KMS), networking',
     data: 'All Baton service data and customer content at rest',
     location: 'United States (us-east-1, us-east-2)',
     url: 'https://aws.amazon.com/compliance/data-privacy/',
   },
   {
     name: 'Microsoft Clarity',
-    purpose: 'In-app product analytics — heatmaps and session replays for UX improvement',
+    purpose: 'In-app product analytics - heatmaps and session replays for UX improvement',
     data: 'Page views, clicks, anonymized user ID, browser/device metadata',
     location: 'United States',
     url: 'https://privacy.microsoft.com/en-us/privacystatement',
   },
   {
     name: 'Datadog, Inc.',
-    purpose: 'Application observability — logs, metrics, distributed tracing, and uptime monitoring',
+    purpose: 'Application observability - logs, metrics, distributed tracing, and uptime monitoring',
     data: 'Server-side application logs (request URLs with PII fields scrubbed, user ID for correlation, error stack traces), performance metrics, HTTP request traces',
     location: 'United States',
     url: 'https://www.datadoghq.com/legal/privacy/',
@@ -40,7 +40,7 @@ export default function SubprocessorsPage() {
       <div className="mb-8 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
         <strong>Hosted service only.</strong> This page describes the sub-processors used by
         FluidLabs' hosted Baton service. If you run a self-hosted Baton installation, none of
-        these providers are involved — your installation has its own infrastructure and
+        these providers are involved - your installation has its own infrastructure and
         sub-processor relationships, which you manage.
       </div>
 

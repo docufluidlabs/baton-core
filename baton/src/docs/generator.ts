@@ -10,11 +10,11 @@ export function buildOpenApiDocument() {
       title: 'Baton API',
       version: '1.0.0',
       description:
-        'Workflow orchestration platform — internal API.\n\n' +
+        'Workflow orchestration platform - internal API.\n\n' +
         'Authentication is self-contained: log in via POST /api/auth/login and rely on the ' +
         'httpOnly `baton_session` cookie set by the server.\n\n' +
         'Webhook endpoints (`/api/webhooks/*`, `/api/postwebhook`, `/api/slack/events`, ' +
-        '`/api/salesforce/webhook-registrations`) are intentionally excluded — they accept raw bodies ' +
+        '`/api/salesforce/webhook-registrations`) are intentionally excluded - they accept raw bodies ' +
         'and are authenticated via provider-specific signature schemes, not sessions.',
     },
     servers: [
@@ -24,7 +24,7 @@ export function buildOpenApiDocument() {
     tags: [
       { name: 'Health', description: 'Liveness probes (no auth)' },
       { name: 'Auth', description: 'Session info, role checks' },
-      { name: 'Workflows', description: 'Maestro workflow definitions — sync, CRUD, manual launch' },
+      { name: 'Workflows', description: 'Workflow Builder workflow definitions - sync, CRUD, manual launch' },
       { name: 'Instances', description: 'Workflow execution instances and history' },
       { name: 'Automations', description: 'Automation rules (CRUD + analytics)' },
       { name: 'Events', description: 'Inbound event log and filters' },
@@ -42,7 +42,7 @@ export function buildOpenApiDocument() {
         name: 'Inbound Webhooks',
         description:
           'Provider-fired webhooks (Salesforce, HubSpot, Slack, etc.) and bootstrap registration. ' +
-          'Documented for reference only — Try-It-Out is disabled because these endpoints require ' +
+          'Documented for reference only - Try-It-Out is disabled because these endpoints require ' +
           'provider-specific signatures over the exact raw request body.',
       },
     ],

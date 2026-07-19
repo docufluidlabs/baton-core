@@ -23,7 +23,7 @@ npm install
 npm run dev                   # UI on :3002, /api proxied to :3001
 ```
 
-Open http://localhost:3002 — the first visit walks you through creating the owner account.
+Open http://localhost:3002 - the first visit walks you through creating the owner account.
 
 ## Checks
 
@@ -41,18 +41,18 @@ cd baton-front && npx tsc -b && npm test && npm run build
 
 The connector interface is Baton's main extension surface:
 
-1. Implement `PlatformConnector` (`baton/src/services/connectors/platform-connector.interface.ts`) — webhook signature verification is the part that matters most; OAuth methods can throw for webhook-only platforms.
+1. Implement `PlatformConnector` (`baton/src/services/connectors/platform-connector.interface.ts`) - webhook signature verification is the part that matters most; OAuth methods can throw for webhook-only platforms.
 2. Register it in `baton/src/services/connectors/index.ts`.
 3. Add a catalog template in `baton/src/lib/app-catalog.ts` (wizard copy, setup steps, event types).
 4. Add the platform to the `Platform`/`AppSlug` unions in `baton/src/lib/types.ts` and the docs enum in `baton/src/docs/schemas/common.ts`.
-5. Write a connector unit test (see `baton/src/tests/connectors/` for the pattern) — connectors without signature-verification tests are not merged.
+5. Write a connector unit test (see `baton/src/tests/connectors/` for the pattern) - connectors without signature-verification tests are not merged.
 6. Frontend: icon in `PlatformIcon.tsx`, label in `lib/utils.ts`, and a row in the docs catalog page.
 
 ## Ground rules
 
 - TypeScript strict; match the style of neighboring code.
 - Every behavioral change needs a test.
-- Webhook verification must fail closed — never merge a connector that accepts unverified payloads (platforms that genuinely cannot sign use the documented URL-secrecy model).
+- Webhook verification must fail closed - never merge a connector that accepts unverified payloads (platforms that genuinely cannot sign use the documented URL-secrecy model).
 - Do not copy code from other projects with incompatible licenses.
 - By contributing, you agree that your contributions are licensed under this repository's [Sustainable Use License](LICENSE.md).
 

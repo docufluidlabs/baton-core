@@ -40,7 +40,7 @@ export function FilterTabsDemo() {
   const [active, setActive] = useState<string>('failed');
   return (
     <div className="bd-demo" data-demo="filter-tabs">
-      <span className="bd-demo__label">Live — click a tab</span>
+      <span className="bd-demo__label">Live - click a tab</span>
       <div className="bd-tabs">
         {DEMO_TABS.map((t) => {
           const isActive = t.key === active;
@@ -79,7 +79,7 @@ export function InProgressOriginDemo() {
   const [active, setActive] = useState('all');
   return (
     <div className="bd-demo" data-demo="inprogress-origin">
-      <span className="bd-demo__label">Live — In Progress origin</span>
+      <span className="bd-demo__label">Live - In Progress origin</span>
       <div className="bd-demo__row">
         {ORIGINS.map((o) => {
           const isActive = o.key === active;
@@ -126,7 +126,7 @@ export function PlatformAutomationDemo() {
 
   return (
     <div className="bd-demo" data-demo="platform-automation">
-      <span className="bd-demo__label">Live — pick a platform, then an automation</span>
+      <span className="bd-demo__label">Live - pick a platform, then an automation</span>
 
       {/* Platform row */}
       <div className="bd-demo__row">
@@ -176,7 +176,7 @@ export function PlatformAutomationDemo() {
 
       <p className="bd-demo__hint">
         {platform
-          ? `Showing the ${platform} automations. A second row appeared so you can narrow to one automation — pick "All" above to clear it.`
+          ? `Showing the ${platform} automations. A second row appeared so you can narrow to one automation - pick "All" above to clear it.`
           : 'Pick a platform to narrow the list. A second row of its automations appears so you can drill down further.'}
       </p>
     </div>
@@ -197,7 +197,7 @@ export function ChipStatesDemo() {
       </div>
       <p className="bd-demo__hint">
         Every filter chip is one of these: <strong>Default</strong> (white, grey text), <strong>Active</strong>{' '}
-        (violet — or red/amber for an origin chip), or <strong>Dimmed</strong> for the secondary automation row.
+        (violet - or red/amber for an origin chip), or <strong>Dimmed</strong> for the secondary automation row.
       </p>
     </div>
   );

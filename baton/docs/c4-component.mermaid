@@ -34,7 +34,7 @@ graph TB
 
     subgraph service_layer["Services"]
         conn_svc["🔌 ConnectionService<br/><i>Token storage (AES-256-GCM)<br/>Status management</i>"]
-        wf_svc["📋 WorkflowService<br/><i>Maestro sync &amp; launch</i>"]
+        wf_svc["📋 WorkflowService<br/><i>Workflow Builder sync &amp; launch</i>"]
         rule_eng["⚡ RuleEngine<br/><i>Rule CRUD, matching,<br/>condition evaluation</i>"]
         encrypt["🔒 EncryptionService<br/><i>AES-256-GCM encrypt/decrypt<br/>HMAC verification</i>"]
         notif_svc["🔔 NotificationService<br/><i>Resend email, Slack,<br/>in-app notifications</i>"]
@@ -52,7 +52,7 @@ graph TB
 
     subgraph worker_layer["SQS Workers"]
         w_wh["🔄 WebhookWorker<br/><i>Parse → match rules<br/>→ enqueue launches</i>"]
-        w_launch["🚀 LauncherWorker<br/><i>Call Maestro API<br/>→ track instance</i>"]
+        w_launch["🚀 LauncherWorker<br/><i>Call Workflow Builder API<br/>→ track instance</i>"]
         w_token["🔑 TokenRefreshWorker<br/><i>Decrypt → refresh<br/>→ re-encrypt</i>"]
         w_notif["📧 NotifSenderWorker<br/><i>Email, Slack,<br/>in-app delivery</i>"]
     end

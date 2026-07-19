@@ -37,13 +37,13 @@ docker compose up -d --build
 cd baton && npm install && npm run setup
 ```
 
-This runs `db:create-tables` + `sqs:create-queues` — creates all 18 DynamoDB tables and 6 SQS queues in LocalStack.
+This runs `db:create-tables` + `sqs:create-queues` - creates all 18 DynamoDB tables and 6 SQS queues in LocalStack.
 
-That's it. The app is now running at `http://localhost` — the first visit walks you through the `/setup` screen, which creates your organization and owner account (no external auth service involved). Alternatively, seed the owner headlessly with `npm run seed` (set `BATON_OWNER_EMAIL` / `BATON_OWNER_PASSWORD`).
+That's it. The app is now running at `http://localhost` - the first visit walks you through the `/setup` screen, which creates your organization and owner account (no external auth service involved). Alternatively, seed the owner headlessly with `npm run seed` (set `BATON_OWNER_EMAIL` / `BATON_OWNER_PASSWORD`).
 
 ## Subsequent Starts
 
-On the next run, data is already persisted in the volume — no need to run `setup` again:
+On the next run, data is already persisted in the volume - no need to run `setup` again:
 
 ```bash
 docker compose up -d
@@ -95,4 +95,4 @@ Data is only lost when you explicitly run `docker compose down -v` (the `-v` fla
 ## Notes
 
 - The `baton-api` container overrides `DYNAMODB_ENDPOINT` and `SQS_ENDPOINT` to `http://localstack:4566` (internal Docker network). The `baton/.env` file retains `localhost:4566` for running the API outside Docker.
-- The `baton-front` container does **not** expose the API directly — Nginx proxies `/api` requests to `baton-api`.
+- The `baton-front` container does **not** expose the API directly - Nginx proxies `/api` requests to `baton-api`.

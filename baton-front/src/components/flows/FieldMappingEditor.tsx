@@ -86,7 +86,7 @@ export function FieldMappingEditor({ mappings, onChange, sourceFields = [], targ
             <ArrowRight className="w-4 h-4 text-gray-400 mb-1.5 shrink-0" />
 
             <div className="flex-1 min-w-0">
-              <label className="text-[10px] text-gray-500 mb-1 block">Target (Maestro input)</label>
+              <label className="text-[10px] text-gray-500 mb-1 block">Target (Workflow Builder input)</label>
               {targetFields.length > 0 ? (
                 <select
                   value={mapping.targetField}

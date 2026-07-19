@@ -25,8 +25,8 @@ export const WorkflowSchema = registry.register(
     updatedAt: IsoDate,
     maestroUpdatedAt: IsoDate.optional(),
     createdBy: z.string().optional(),
-    maestroUrl: z.string().url().optional().openapi({ description: 'Deep link to the Maestro editor for this workflow' }),
-    maestroInstancesUrl: z.string().url().optional().openapi({ description: 'Deep link to the Maestro instances list for this workflow' }),
+    maestroUrl: z.string().url().optional().openapi({ description: 'Deep link to the Workflow Builder editor for this workflow' }),
+    maestroInstancesUrl: z.string().url().optional().openapi({ description: 'Deep link to the Workflow Builder instances list for this workflow' }),
   }),
 );
 
@@ -75,7 +75,7 @@ export const LaunchWorkflowInput = registry.register(
     triggerInputs: z.record(z.any()).optional().default({}),
   }).openapi({
     example: {
-      instanceName: 'Manual run — Acme Corp',
+      instanceName: 'Manual run - Acme Corp',
       triggerInputs: { customerEmail: 'jane@acme.com', amount: 5000 },
     },
   }),

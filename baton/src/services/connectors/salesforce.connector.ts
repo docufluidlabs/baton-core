@@ -31,15 +31,15 @@ export class SalesforceConnector extends BasePlatformConnector {
   // ─── OAuth (not used — webhook-only for demo) ─────────────
 
   async authorize(): Promise<OAuthAuthorizeResult> {
-    throw new Error('Salesforce integration is webhook-only — OAuth not supported in demo');
+    throw new Error('Salesforce integration is webhook-only - OAuth not supported in demo');
   }
 
   async handleCallback(): Promise<OAuthTokens> {
-    throw new Error('Salesforce integration is webhook-only — OAuth not supported in demo');
+    throw new Error('Salesforce integration is webhook-only - OAuth not supported in demo');
   }
 
   async refreshToken(): Promise<OAuthTokens> {
-    throw new Error('Salesforce integration is webhook-only — OAuth not supported in demo');
+    throw new Error('Salesforce integration is webhook-only - OAuth not supported in demo');
   }
 
   // ─── Webhook Verification ──────────────────────────────────
@@ -103,7 +103,7 @@ export class SalesforceConnector extends BasePlatformConnector {
   // ─── Health Check ──────────────────────────────────────────
 
   async testConnection(): Promise<ConnectionHealthCheck> {
-    return { healthy: true, message: 'Webhook-only integration — no API connection to test' };
+    return { healthy: true, message: 'Webhook-only integration - no API connection to test' };
   }
 
   // ─── Supported Events ──────────────────────────────────────

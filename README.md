@@ -1,6 +1,6 @@
 # Baton
 
-**Baton is a self-hostable webhook → Docusign Maestro automation platform.** It listens for events from the business platforms you already use — Salesforce, HubSpot, Zendesk, BambooHR, and more — verifies them, and launches the matching **Docusign Maestro** workflow automatically, with a visual flow builder to create, watch, and troubleshoot every automation.
+**Baton is a self-hostable webhook → Docusign Workflow Builder automation platform.** It listens for events from the business platforms you already use - Salesforce, HubSpot, Zendesk, BambooHR, and more - verifies them, and launches the matching **Docusign Workflow Builder** workflow automatically, with a visual flow builder to create, watch, and troubleshoot every automation.
 
 Maintained by [FluidLabs](https://fluidlabs.com) under the fair-code [Sustainable Use License](LICENSE.md): free to self-host, modify, and use for your own business.
 
@@ -22,18 +22,18 @@ docker compose up -d --build
 cd baton && npm install && npm run setup   # creates DynamoDB tables + SQS queues (LocalStack)
 ```
 
-Open **http://localhost** — the first visit walks you through creating your organization and owner account. No external auth or billing service is required.
+Open **http://localhost** - the first visit walks you through creating your organization and owner account. No external auth or billing service is required.
 
-To receive real webhooks from external platforms, expose the app on a public URL (reverse proxy or tunnel) and set `APP_URL`/`API_URL` accordingly. To launch real workflows, add your Docusign developer app credentials (`DOCUSIGN_*` in `baton/.env` — the defaults point at Docusign's free developer sandbox).
+To receive real webhooks from external platforms, expose the app on a public URL (reverse proxy or tunnel) and set `APP_URL`/`API_URL` accordingly. To launch real workflows, add your Docusign developer app credentials (`DOCUSIGN_*` in `baton/.env` - the defaults point at Docusign's free developer sandbox).
 
 ## How it works
 
 ```
 ┌──────────────────┐        ┌───────────────────────┐        ┌─────────────────┐
 │  Your platforms  │──────▶ │  Baton                │──────▶ │  Docusign       │
-│  Salesforce,     │webhooks│  verify (HMAC/Basic)  │ launch │  Maestro        │
-│  HubSpot, Zendesk│        │  → rules → SQS queue  │        │  workflows      │
-└──────────────────┘        │  → Maestro launcher   │        └─────────────────┘
+│  Salesforce,     │webhooks│  verify (HMAC/Basic)  │ launch │  Workflow       │
+│  HubSpot, Zendesk│        │  → rules → SQS queue  │        │  Builder        │
+└──────────────────┘        │  → workflow launcher  │        └─────────────────┘
                             └──────────┬────────────┘
                                        │
                             ┌──────────┴───────────┐
@@ -49,20 +49,20 @@ To receive real webhooks from external platforms, expose the app on a public URL
 
 ## Supported platforms
 
-**Destination:** Docusign Maestro (OAuth).
+**Destination:** Docusign Workflow Builder (OAuth).
 
-**Sources:** Salesforce, HubSpot, Zoho CRM, Zendesk, BambooHR, Microsoft Power Automate, Greenhouse, monday.com — plus **custom POST webhooks** for any system that can send JSON. Every source is verified with HMAC signatures or Basic Auth; secrets are stored encrypted (AES-256-GCM).
+**Sources:** Salesforce, HubSpot, Zoho CRM, Zendesk, BambooHR, Microsoft Power Automate, Greenhouse, monday.com - plus **custom POST webhooks** for any system that can send JSON. Every source is verified with HMAC signatures or Basic Auth; secrets are stored encrypted (AES-256-GCM).
 
-Adding a platform is one connector class + one catalog entry — see [CONTRIBUTING.md](CONTRIBUTING.md).
+Adding a platform is one connector class + one catalog entry - see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Features
 
-- **Visual Flow Builder** — a live canvas of platform → automation → workflow with per-automation relay counts, logs, and inline editing
-- **Resolution Center** — every failed workflow run in one queue: retry, cancel, postpone
-- **Async pipeline** — webhooks are verified, stored idempotently, queued to SQS, and processed by background workers with retries
-- **Self-contained auth** — first-run owner setup, email/password sessions, member invites via copyable links (no SMTP required), owner/admin/member/viewer roles
-- **Notifications** — in-app, email (Resend), and Slack, with per-user preferences
-- **Auto-pause** — automations pause automatically when their failure rate spikes
+- **Visual Flow Builder** - a live canvas of platform → automation → workflow with per-automation relay counts, logs, and inline editing
+- **Resolution Center** - every failed workflow run in one queue: retry, cancel, postpone
+- **Async pipeline** - webhooks are verified, stored idempotently, queued to SQS, and processed by background workers with retries
+- **Self-contained auth** - first-run owner setup, email/password sessions, member invites via copyable links (no SMTP required), owner/admin/member/viewer roles
+- **Notifications** - in-app, email (Resend), and Slack, with per-user preferences
+- **Auto-pause** - automations pause automatically when their failure rate spikes
 
 ## Tech stack
 
@@ -78,6 +78,6 @@ The compose file uses LocalStack for local infrastructure. For a real AWS deploy
 
 ## License & hosted edition
 
-This repository is licensed under the [Sustainable Use License](LICENSE.md) (fair-code): use it freely inside your business; don't resell it as a hosted service. FluidLabs offers a managed cloud edition with multi-org management, SSO, and the Salesforce AppExchange package — the core you see here is the same engine.
+This repository is licensed under the [Sustainable Use License](LICENSE.md) (fair-code): use it freely inside your business; don't resell it as a hosted service. FluidLabs offers a managed cloud edition with multi-org management, SSO, and the Salesforce AppExchange package - the core you see here is the same engine.
 
 Security reports: see [SECURITY.md](SECURITY.md).

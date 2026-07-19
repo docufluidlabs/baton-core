@@ -31,7 +31,7 @@ function handleRateLimitError(err: any): boolean {
   if (msg.includes('HOURLY_APIINVOCATION_LIMIT_EXCEEDED')) {
     // Back off for 5 minutes when rate-limited
     rateLimitBackoffUntil = Date.now() + 5 * 60 * 1000;
-    logInfo('Maestro API rate limit hit — backing off for 5 minutes');
+    logInfo('Workflow Builder API rate limit hit - backing off for 5 minutes');
     return true;
   }
   return false;
@@ -188,7 +188,7 @@ async function syncRunningInstanceStatuses(): Promise<void> {
         try {
           const maestroInstance = maestroById.get(instance.maestroInstanceId!);
           if (!maestroInstance) {
-            logDebug('Maestro instance not found in list response', {
+            logDebug('Workflow Builder instance not found in list response', {
               instanceId: instance.id,
               maestroInstanceId: instance.maestroInstanceId,
             });

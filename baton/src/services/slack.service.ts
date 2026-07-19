@@ -266,8 +266,8 @@ function buildWorkflowLaunchedBlocks(payload: NotificationPayload): Block[] {
     {
       type: 'section',
       fields: [
-        { type: 'mrkdwn', text: `*Workflow:*\n${meta.workflowName || '—'}` },
-        { type: 'mrkdwn', text: `*Instance:*\n${meta.instanceName || meta.instanceId || '—'}` },
+        { type: 'mrkdwn', text: `*Workflow:*\n${meta.workflowName || '-'}` },
+        { type: 'mrkdwn', text: `*Instance:*\n${meta.instanceName || meta.instanceId || '-'}` },
       ],
     },
     { type: 'divider' },
@@ -276,7 +276,7 @@ function buildWorkflowLaunchedBlocks(payload: NotificationPayload): Block[] {
 
   const buttons: ActionElement[] = [];
   if (payload.actionUrl) buttons.push(actionButton('View in Baton', payload.actionUrl, 'primary'));
-  if (meta.maestroInstanceUrl) buttons.push(actionButton('Open in Maestro ↗', meta.maestroInstanceUrl as string));
+  if (meta.maestroInstanceUrl) buttons.push(actionButton('Open in Workflow Builder ↗', meta.maestroInstanceUrl as string));
   if (buttons.length > 0) blocks.push({ type: 'actions', elements: buttons });
 
   return blocks;
@@ -290,8 +290,8 @@ function buildWorkflowFailedBlocks(payload: NotificationPayload): Block[] {
     {
       type: 'section',
       fields: [
-        { type: 'mrkdwn', text: `*Workflow:*\n${meta.workflowName || '—'}` },
-        { type: 'mrkdwn', text: `*Instance:*\n${meta.instanceName || meta.instanceId || '—'}` },
+        { type: 'mrkdwn', text: `*Workflow:*\n${meta.workflowName || '-'}` },
+        { type: 'mrkdwn', text: `*Instance:*\n${meta.instanceName || meta.instanceId || '-'}` },
       ],
     },
   ];
@@ -317,7 +317,7 @@ function buildWorkflowFailedBlocks(payload: NotificationPayload): Block[] {
 
   const buttons: ActionElement[] = [];
   if (payload.actionUrl) buttons.push(actionButton('View in Baton', payload.actionUrl, 'danger'));
-  if (meta.maestroInstanceUrl) buttons.push(actionButton('Open in Maestro ↗', meta.maestroInstanceUrl as string));
+  if (meta.maestroInstanceUrl) buttons.push(actionButton('Open in Workflow Builder ↗', meta.maestroInstanceUrl as string));
   if (buttons.length > 0) blocks.push({ type: 'actions', elements: buttons });
 
   return blocks;
@@ -331,8 +331,8 @@ function buildWorkflowCompletedBlocks(payload: NotificationPayload): Block[] {
     {
       type: 'section',
       fields: [
-        { type: 'mrkdwn', text: `*Workflow:*\n${meta.workflowName || '—'}` },
-        { type: 'mrkdwn', text: `*Instance:*\n${meta.instanceName || meta.instanceId || '—'}` },
+        { type: 'mrkdwn', text: `*Workflow:*\n${meta.workflowName || '-'}` },
+        { type: 'mrkdwn', text: `*Instance:*\n${meta.instanceName || meta.instanceId || '-'}` },
       ],
     },
   ];
@@ -349,7 +349,7 @@ function buildWorkflowCompletedBlocks(payload: NotificationPayload): Block[] {
 
   const buttons: ActionElement[] = [];
   if (payload.actionUrl) buttons.push(actionButton('View in Baton', payload.actionUrl, 'primary'));
-  if (meta.maestroInstanceUrl) buttons.push(actionButton('Open in Maestro ↗', meta.maestroInstanceUrl as string));
+  if (meta.maestroInstanceUrl) buttons.push(actionButton('Open in Workflow Builder ↗', meta.maestroInstanceUrl as string));
   if (buttons.length > 0) blocks.push({ type: 'actions', elements: buttons });
 
   return blocks;
@@ -363,8 +363,8 @@ function buildConnectionBlocks(payload: NotificationPayload): Block[] {
     {
       type: 'section',
       fields: [
-        { type: 'mrkdwn', text: `*Platform:*\n${meta.platform || '—'}` },
-        { type: 'mrkdwn', text: `*Connection:*\n${meta.connectionId || '—'}` },
+        { type: 'mrkdwn', text: `*Platform:*\n${meta.platform || '-'}` },
+        { type: 'mrkdwn', text: `*Connection:*\n${meta.connectionId || '-'}` },
       ],
     },
     { type: 'section', text: { type: 'mrkdwn', text: payload.body } },
@@ -390,8 +390,8 @@ function buildRuleErrorBlocks(payload: NotificationPayload): Block[] {
     {
       type: 'section',
       fields: [
-        { type: 'mrkdwn', text: `*Rule:*\n${meta.ruleName || '—'}` },
-        { type: 'mrkdwn', text: `*Failures:*\n${meta.failureCount || '—'}` },
+        { type: 'mrkdwn', text: `*Rule:*\n${meta.ruleName || '-'}` },
+        { type: 'mrkdwn', text: `*Failures:*\n${meta.failureCount || '-'}` },
       ],
     },
     { type: 'section', text: { type: 'mrkdwn', text: payload.body } },
@@ -417,13 +417,13 @@ function buildRetryExhaustedBlocks(payload: NotificationPayload): Block[] {
     {
       type: 'section',
       fields: [
-        { type: 'mrkdwn', text: `*Workflow:*\n${meta.workflowName || '—'}` },
-        { type: 'mrkdwn', text: `*Instance:*\n${meta.instanceName || meta.instanceId || '—'}` },
+        { type: 'mrkdwn', text: `*Workflow:*\n${meta.workflowName || '-'}` },
+        { type: 'mrkdwn', text: `*Instance:*\n${meta.instanceName || meta.instanceId || '-'}` },
       ],
     },
     {
       type: 'section',
-      text: { type: 'mrkdwn', text: `*Attempts:* ${meta.retryMaxAttempts || '—'}\n${payload.body}` },
+      text: { type: 'mrkdwn', text: `*Attempts:* ${meta.retryMaxAttempts || '-'}\n${payload.body}` },
     },
     { type: 'divider' },
     contextBlock(payload.orgId),
@@ -431,7 +431,7 @@ function buildRetryExhaustedBlocks(payload: NotificationPayload): Block[] {
 
   const buttons: ActionElement[] = [];
   if (payload.actionUrl) buttons.push(actionButton('View in Baton', payload.actionUrl, 'danger'));
-  if (meta.maestroInstanceUrl) buttons.push(actionButton('Open in Maestro ↗', meta.maestroInstanceUrl as string));
+  if (meta.maestroInstanceUrl) buttons.push(actionButton('Open in Workflow Builder ↗', meta.maestroInstanceUrl as string));
   if (buttons.length > 0) blocks.push({ type: 'actions', elements: buttons });
 
   return blocks;
@@ -488,8 +488,8 @@ function buildConnectionLifecycleBlocks(payload: NotificationPayload): Block[] {
     {
       type: 'section',
       fields: [
-        { type: 'mrkdwn', text: `*Platform:*\n${meta.platform || '—'}` },
-        { type: 'mrkdwn', text: `*Connection:*\n${meta.displayName || '—'}` },
+        { type: 'mrkdwn', text: `*Platform:*\n${meta.platform || '-'}` },
+        { type: 'mrkdwn', text: `*Connection:*\n${meta.displayName || '-'}` },
       ],
     },
   ];
@@ -692,8 +692,8 @@ export async function handleAppMention(
   } else if (text.startsWith('help')) {
     replyText =
       '*Baton Alerts Bot commands:*\n' +
-      '• `@Baton Alerts Bot status` — Check if Baton is running\n' +
-      '• `@Baton Alerts Bot help` — Show this message\n\n' +
+      '• `@Baton Alerts Bot status` - Check if Baton is running\n' +
+      '• `@Baton Alerts Bot help` - Show this message\n\n' +
       '_Configure alert channels at Settings → Slack in Baton._';
   } else {
     replyText = `I don't recognize that command. Try \`@Baton Alerts Bot help\`.`;

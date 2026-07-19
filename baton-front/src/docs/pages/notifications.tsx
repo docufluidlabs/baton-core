@@ -6,14 +6,14 @@ export default function Notifications() {
     <>
       <h1>Notifications & alerts</h1>
       <Lead>
-        Baton tells you the moment something needs attention — through the in-app bell and through Slack — and
+        Baton tells you the moment something needs attention - through the in-app bell and through Slack - and
         the Notifications page is where you choose what fires, where it lands, and review the full feed.
       </Lead>
 
       <Screenshot
         src={notificationsShot}
         alt="The Notifications page with preferences, Slack routing, and the in-app inbox feed"
-        caption="The Notifications page — per-event preferences, Slack routing, and the in-app inbox feed."
+        caption="The Notifications page - per-event preferences, Slack routing, and the in-app inbox feed."
       />
 
       <h2>The Notifications page</h2>
@@ -22,7 +22,7 @@ export default function Notifications() {
         <strong>Slack</strong>, and <strong>Inbox</strong>.
       </p>
 
-      <Callout type="note" title="Two delivery channels — email is not one of them">
+      <Callout type="note" title="Two delivery channels - email is not one of them">
         These events are delivered through exactly two channels: <strong>In-App</strong> (the bell) and{' '}
         <strong>Slack</strong>. Email is not a delivery channel for notification events, so configure alerts
         through the bell and Slack.
@@ -39,7 +39,7 @@ export default function Notifications() {
       <p>The <strong>Slack</strong> tab holds your Slack integration config:</p>
       <ul>
         <li>A master <strong>enable / pause</strong> toggle for the whole integration</li>
-        <li><strong>Channel Routing</strong> — choose which Slack channel receives each event type. A default channel handles anything unrouted, and per-event overrides are optional.</li>
+        <li><strong>Channel Routing</strong> - choose which Slack channel receives each event type. A default channel handles anything unrouted, and per-event overrides are optional.</li>
         <li><strong>Save Settings</strong> and <strong>Send Test Message</strong> buttons</li>
       </ul>
 
@@ -51,14 +51,14 @@ export default function Notifications() {
       </KV>
       <p>
         Each entry shows a severity icon, a title, a timestamp, a "View details →" link, and a category tag,
-        plus per-item dismiss (×) and mark-read (✓) controls. Entries are time-grouped — Today, Yesterday, This
+        plus per-item dismiss (×) and mark-read (✓) controls. Entries are time-grouped - Today, Yesterday, This
         Week, and so on. The top-right of the Inbox shows the unread count and a <strong>Mark all read</strong>{' '}
         button.
       </p>
 
       <h2>The notification bell</h2>
       <p>
-        The bell in the global header opens a popover that mirrors the Inbox — the same entries and the same
+        The bell in the global header opens a popover that mirrors the Inbox - the same entries and the same
         dismiss and mark-read controls. The bell's badge matches the Inbox unread count, so the two always
         agree.
       </p>
@@ -75,8 +75,8 @@ export default function Notifications() {
             <tr><td>Workflow Failed</td><td><Badge color="red">Error</Badge></td><td>A workflow instance crashes or errors out.</td></tr>
             <tr><td>Workflow Completed</td><td><Badge color="green">Success</Badge></td><td>A workflow instance finishes successfully.</td></tr>
             <tr><td>Workflow Launched</td><td><Badge color="blue">Info</Badge></td><td>A new workflow instance starts running.</td></tr>
-            <tr><td>Automation Failed</td><td><Badge color="red">Error</Badge></td><td>All retry attempts exhausted — needs manual action.</td></tr>
-            <tr><td>Connection Degraded</td><td><Badge color="red">Error</Badge></td><td>A platform connection is down — blocks API requests.</td></tr>
+            <tr><td>Automation Failed</td><td><Badge color="red">Error</Badge></td><td>All retry attempts exhausted - needs manual action.</td></tr>
+            <tr><td>Connection Degraded</td><td><Badge color="red">Error</Badge></td><td>A platform connection is down - blocks API requests.</td></tr>
             <tr><td>Webhook Failed</td><td><Badge color="amber">Warning</Badge></td><td>An incoming webhook signature was rejected.</td></tr>
           </tbody>
         </table>
@@ -89,13 +89,13 @@ export default function Notifications() {
         <Step title="Connect your workspace">On the Slack tab, click <strong>Connect Slack</strong> to start the install and authorize flow for your Slack workspace.</Step>
         <Step title="Enable the integration">Switch the master enable toggle on so Baton can post messages.</Step>
         <Step title="Set a default channel">Under Channel Routing, pick the default channel that receives anything you don't route elsewhere.</Step>
-        <Step title="Add per-event overrides">Route critical alerts — such as <strong>Automation Failed</strong> and <strong>Connection Degraded</strong> — to a high-signal channel, while routine events go elsewhere.</Step>
+        <Step title="Add per-event overrides">Route critical alerts - such as <strong>Automation Failed</strong> and <strong>Connection Degraded</strong> - to a high-signal channel, while routine events go elsewhere.</Step>
         <Step title="Save and test">Click <strong>Save Settings</strong>, then use <strong>Send Test Message</strong> to confirm Baton has the right permissions and the message lands where you expect.</Step>
       </Steps>
 
       <p>
         A typical Slack message includes a severity icon and the event title, your org and the automation name,
-        the Maestro Instance ID with a "View in Baton" link, and — for failures — a short error excerpt.
+        the Workflow Builder Instance ID with a "View in Baton" link, and - for failures - a short error excerpt.
       </p>
 
       <h2>Where to go next</h2>

@@ -368,7 +368,7 @@ function InviteMemberModal({ open, onClose }: { open: boolean; onClose: () => vo
       toast.success('Invite link copied');
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error('Could not copy — select the link and copy manually');
+      toast.error('Could not copy - select the link and copy manually');
     }
   }
 
@@ -377,7 +377,7 @@ function InviteMemberModal({ open, onClose }: { open: boolean; onClose: () => vo
       {inviteUrl ? (
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
-            Share this link with <strong className="text-gray-900">{email}</strong> — opening
+            Share this link with <strong className="text-gray-900">{email}</strong> - opening
             it lets them set a password and join your organization.
           </p>
           <div className="flex items-center gap-2">

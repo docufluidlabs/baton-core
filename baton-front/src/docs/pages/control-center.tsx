@@ -8,20 +8,20 @@ export default function ControlCenter() {
     <>
       <h1>Resolution Center</h1>
       <Lead>
-        The Resolution Center is your fix-it queue: a single narrow page that surfaces every broken Maestro
-        instance and gives you the buttons to clear it — land here, fix everything, and leave with zeros.
+        The Resolution Center is your fix-it queue: a single narrow page that surfaces every broken workflow
+        instance and gives you the buttons to clear it - land here, fix everything, and leave with zeros.
       </Lead>
 
       <Screenshot
         src={controlCenterShot}
-        alt="The Resolution Center page showing failed and running Maestro instances grouped into tabs with Retry and Cancel actions"
-        caption="The Resolution Center — failed, in-progress, and resolved instances in tabs, each card with Retry / Cancel."
+        alt="The Resolution Center page showing failed and running workflow instances grouped into tabs with Retry and Cancel actions"
+        caption="The Resolution Center - failed, in-progress, and resolved instances in tabs, each card with Retry / Cancel."
       />
 
       <h2>What the Resolution Center is for</h2>
       <p>
         The Resolution Center (<code>/control-center</code>) is the operational counterpart to the Flow Builder.
-        Where the Flow Builder shows the wiring — every source, automation, and workflow — the Resolution Center
+        Where the Flow Builder shows the wiring - every source, automation, and workflow - the Resolution Center
         shows what's <em>broken</em> and lets you act on it. Its header carries the working tagline:{' '}
         <em>"Fix everything → leave with zeros."</em> The page is intentionally narrow and focused: you come
         here when something has failed, you clear the list, and you leave.
@@ -30,7 +30,7 @@ export default function ControlCenter() {
       <h2>Where to find it</h2>
       <p>
         The sidebar entry is a red <strong>shield</strong> icon with a badge that counts unresolved issues.
-        When there are zero failed or errored items, the badge disappears entirely — so a shield with no badge
+        When there are zero failed or errored items, the badge disappears entirely - so a shield with no badge
         means there is nothing to fix.
       </p>
       <p>At the top-right of the page, a header indicator tells you the same thing in words:</p>
@@ -42,7 +42,7 @@ export default function ControlCenter() {
       <h2>The status tabs</h2>
       <p>
         Issues are organized into six tabs, each with its own live count badge. <strong>All</strong> is the
-        default landing tab — it pools every actionable instance (Failed, Overdue, and In Progress) into one
+        default landing tab - it pools every actionable instance (Failed, Overdue, and In Progress) into one
         list so you can work top to bottom without tab-hopping.
       </p>
 
@@ -54,19 +54,19 @@ export default function ControlCenter() {
             <tr><th>Tab</th><th>What it holds</th><th>What you do here</th></tr>
           </thead>
           <tbody>
-            <tr><td><strong>All</strong></td><td>Every actionable instance — Failed, Overdue, and In Progress, deduped into one list.</td><td>The default queue — work everything from a single place.</td></tr>
-            <tr><td><strong>Failed</strong></td><td>Maestro instances in a failed state.</td><td>The primary fix-me queue — retry or cancel each one.</td></tr>
+            <tr><td><strong>All</strong></td><td>Every actionable instance - Failed, Overdue, and In Progress, deduped into one list.</td><td>The default queue - work everything from a single place.</td></tr>
+            <tr><td><strong>Failed</strong></td><td>Workflow instances in a failed state.</td><td>The primary fix-me queue - retry or cancel each one.</td></tr>
             <tr><td><strong>Overdue</strong></td><td>Running instances that have passed their expected duration.</td><td>Give them more time with <strong>Add days</strong>, or cancel.</td></tr>
             <tr><td><strong>In Progress</strong></td><td>Instances running after a retry or a postpone was kicked off.</td><td>Wait for them to land; cancel if needed.</td></tr>
-            <tr><td><strong>Resolved</strong></td><td>Instances that were retried and reached completed.</td><td>Kept as a confirmation log — nothing to fix.</td></tr>
-            <tr><td><strong>Cancelled</strong></td><td>Instances explicitly cancelled, by you or by Docusign.</td><td>A record only — nothing to fix.</td></tr>
+            <tr><td><strong>Resolved</strong></td><td>Instances that were retried and reached completed.</td><td>Kept as a confirmation log - nothing to fix.</td></tr>
+            <tr><td><strong>Cancelled</strong></td><td>Instances explicitly cancelled, by you or by Docusign.</td><td>A record only - nothing to fix.</td></tr>
           </tbody>
         </table>
       </TableWrap>
 
       <p>
         The count badge takes its tab's colour while there's something to act on, and fades to a grey zero when
-        the tab is empty. Each tab also has its own empty state — for example, "No failed instances" — so an
+        the tab is empty. Each tab also has its own empty state - for example, "No failed instances" - so an
         empty Failed tab confirms you're at zero.
       </p>
 
@@ -80,7 +80,7 @@ export default function ControlCenter() {
       <p>
         Below the tabs sit up to three rows of filter chips that narrow what the active tab shows. They stack:
         the status tab is the coarse filter, and each chip row drills in further. Every chip is a button you
-        toggle — the live controls below behave exactly like the ones in the app.
+        toggle - the live controls below behave exactly like the ones in the app.
       </p>
 
       <h3>The In Progress origin sub-filter</h3>
@@ -97,7 +97,7 @@ export default function ControlCenter() {
       <p>
         The <strong>Platform</strong> row carries one chip per source platform present in the list, plus an{' '}
         <strong>All</strong> chip that clears it. Pick a platform and a second <strong>Automation</strong> row
-        cascades open — slightly dimmed — so you can narrow to a single automation. Selecting a new platform
+        cascades open - slightly dimmed - so you can narrow to a single automation. Selecting a new platform
         always resets the automation choice, and the two filters combine with the active tab.
       </p>
 
@@ -112,8 +112,8 @@ export default function ControlCenter() {
       <ChipStatesDemo />
 
       <p>
-        Filter selections are independent per tab — narrowing Failed doesn't change what you see under In
-        Progress — so you can keep a different lens on each queue.
+        Filter selections are independent per tab - narrowing Failed doesn't change what you see under In
+        Progress - so you can keep a different lens on each queue.
       </p>
 
       <h2>Reading a per-instance card</h2>
@@ -121,7 +121,7 @@ export default function ControlCenter() {
       <ul>
         <li>The automation name (with a violet ⚡ icon) and the matched object</li>
         <li>A status badge in the status colour, plus a coloured left rail</li>
-        <li>The started time — or, for instances with a deadline, a "days passed" count</li>
+        <li>The started time - or, for instances with a deadline, a "days passed" count</li>
         <li>The source platform icon and name</li>
         <li>A progress bar with the current or final step</li>
         <li>Free-form tags you can add for triage, shared across your org</li>
@@ -134,7 +134,7 @@ export default function ControlCenter() {
       <StatusLegend />
 
       <p>
-        <strong>Overdue</strong> isn't a separate status — it's a <em>running</em> instance that has passed its
+        <strong>Overdue</strong> isn't a separate status - it's a <em>running</em> instance that has passed its
         expected duration, so its left rail stays blue while the "days passed" count turns red.
       </p>
 
@@ -172,16 +172,16 @@ export default function ControlCenter() {
       <h3>Retry</h3>
       <p>
         <strong>Retry</strong> restarts the instance from the beginning. The original Action lineage stays
-        attached — retries are tracked against the same Action rather than creating new ones — and the instance
+        attached - retries are tracked against the same Action rather than creating new ones - and the instance
         moves to the <strong>In Progress</strong> tab. Watch it there until it lands in <strong>Resolved</strong>.
       </p>
 
       <h3>Cancel</h3>
       <p>
-        <strong>Cancel</strong> asks Maestro to abort the instance and moves it to the{' '}
-        <strong>Cancelled</strong> tab. Some Maestro states can't be cancelled — for example, an instance that
-        has already completed or already been cancelled. If Maestro refuses, Baton surfaces Maestro's own error
-        so you know why.
+        <strong>Cancel</strong> asks Workflow Builder to abort the instance and moves it to the{' '}
+        <strong>Cancelled</strong> tab. Some workflow states can't be cancelled - for example, an instance that
+        has already completed or already been cancelled. If Workflow Builder refuses, Baton surfaces its error
+        message so you know why.
       </p>
 
       <h3>Report Issue</h3>
@@ -194,12 +194,12 @@ export default function ControlCenter() {
       <h2>Open in Docusign</h2>
       <p>
         <strong>Open in Docusign</strong> is available on every tab. It deep-links straight to the instance
-        inside Docusign Maestro when you need to inspect the run at the source.
+        inside Docusign Workflow Builder when you need to inspect the run at the source.
       </p>
 
       <Callout type="tip" title="Leave with zeros">
         Treat the Resolution Center as a checklist, not a dashboard you watch. Start on the Failed tab, work each
-        card top to bottom — Retry the ones that should re-run, Cancel the ones that shouldn't — then check In
+        card top to bottom - Retry the ones that should re-run, Cancel the ones that shouldn't - then check In
         Progress until those clear into Resolved. When the shield badge disappears and the header reads{' '}
         <strong>All clear</strong>, you're done. That's "leave with zeros."
       </Callout>
@@ -207,7 +207,7 @@ export default function ControlCenter() {
       <h2>Where to go next</h2>
       <Cards>
         <Card to="logs" title="Action logs & instances">See the full Verify → Route lifecycle behind each instance and the automatic retry schedule.</Card>
-        <Card to="notifications" title="Notifications & alerts">Get alerted the moment an automation exhausts its retries — before you even open the Resolution Center.</Card>
+        <Card to="notifications" title="Notifications & alerts">Get alerted the moment an automation exhausts its retries - before you even open the Resolution Center.</Card>
       </Cards>
     </>
   );

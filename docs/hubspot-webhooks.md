@@ -1,4 +1,4 @@
-# HubSpot Webhook Integration — Baton
+# HubSpot Webhook Integration - Baton
 
 ## Overview
 
@@ -19,7 +19,7 @@ There are **two ways** to receive HubSpot webhooks:
 
 ## Method 1: App Webhook (Recommended)
 
-The simplest approach — no HubSpot Private App required.
+The simplest approach - no HubSpot Private App required.
 
 ### Step 1: Add HubSpot App in Baton UI
 
@@ -104,7 +104,7 @@ HubSpot uses this client secret to sign webhooks (HMAC-SHA256 v3).
 2. Signs it with HMAC-SHA256 using the client secret
 3. Base64-encodes the result and sends it in the `X-HubSpot-Signature-v3` header
 4. Baton reproduces the same process and compares signatures (timing-safe)
-5. Additionally validates `X-HubSpot-Request-Timestamp` — rejects requests older than 5 minutes
+5. Additionally validates `X-HubSpot-Request-Timestamp` - rejects requests older than 5 minutes
 
 HubSpot documentation: https://developers.hubspot.com/docs/api/webhooks/validating-requests
 
@@ -112,7 +112,7 @@ HubSpot documentation: https://developers.hubspot.com/docs/api/webhooks/validati
 
 Baton resolves each incoming event to your org by matching the `portalId` in the payload against the `accountId` of a HubSpot record in the `platform-connections` table. Find your Portal ID in HubSpot under **Settings → Account Defaults → Account Info**.
 
-Since HubSpot has no OAuth flow in Baton, there is currently no API endpoint to create this connection record — it must be inserted directly into the `baton-platform-connections` table (with `platform: "hubspot"` and `accountId` set to your portal ID). Events arriving without a matching connection are stored as **unmatched** and are visible in the Events UI.
+Since HubSpot has no OAuth flow in Baton, there is currently no API endpoint to create this connection record - it must be inserted directly into the `baton-platform-connections` table (with `platform: "hubspot"` and `accountId` set to your portal ID). Events arriving without a matching connection are stored as **unmatched** and are visible in the Events UI.
 
 For this reason, **Method 1 (App Webhook) is the recommended path** unless you specifically need Private App subscriptions.
 
@@ -148,9 +148,9 @@ curl -X POST https://your-domain.com/api/webhooks/hubspot \
 | `company.created` | Company Created | A new company was created |
 | `company.updated` | Company Updated | A company was updated |
 | `company.deleted` | Company Deleted | A company was deleted |
-| `contact.*` | All Contact Events | Wildcard — any contact event |
-| `deal.*` | All Deal Events | Wildcard — any deal event |
-| `company.*` | All Company Events | Wildcard — any company event |
+| `contact.*` | All Contact Events | Wildcard - any contact event |
+| `deal.*` | All Deal Events | Wildcard - any deal event |
+| `company.*` | All Company Events | Wildcard - any company event |
 
 ## HubSpot Webhook Payload Format
 

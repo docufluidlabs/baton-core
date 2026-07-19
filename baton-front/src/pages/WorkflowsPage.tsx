@@ -122,7 +122,7 @@ function WorkflowsTab() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Workflow Checker</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Sync workflows from Docusign Maestro, create test pairs, and launch.
+            Sync workflows from Docusign Workflow Builder, create test pairs, and launch.
           </p>
         </div>
         <button
@@ -284,7 +284,7 @@ function WorkflowCard({
         if (val !== undefined && val !== '')
           inputs[field.key] = field.type === 'number' ? Number(val) : val;
       }
-      const instanceName = `Test — ${
+      const instanceName = `Test - ${
         Object.values(triggerInputs).filter(Boolean).join(', ') ||
         new Date().toLocaleTimeString()
       }`;
@@ -512,7 +512,7 @@ function WorkflowGridCard({ workflow, onSync }: { workflow: Workflow; onSync: ()
         if (val !== undefined && val !== '')
           inputs[field.key] = field.type === 'number' ? Number(val) : val;
       }
-      const instanceName = `Test — ${
+      const instanceName = `Test - ${
         Object.values(triggerInputs).filter(Boolean).join(', ') ||
         new Date().toLocaleTimeString()
       }`;
@@ -618,7 +618,7 @@ function WorkflowGridCard({ workflow, onSync }: { workflow: Workflow; onSync: ()
             </button>
             {workflow.maestroUrl && (
               <a href={workflow.maestroUrl} target="_blank" rel="noopener noreferrer"
-                className="p-1.5 rounded-md text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors" title="Edit in Maestro">
+                className="p-1.5 rounded-md text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors" title="Edit in Workflow Builder">
                 <Pencil className="w-3 h-3" />
               </a>
             )}
@@ -762,7 +762,7 @@ function GridCardInstances({ workflowId, maestroBaseUrl, onFlipBack, schemaKeys 
                         onClick={(e) => {
                           e.stopPropagation();
                           setRetryingId(inst.id);
-                          launchWorkflow(inst.workflowId, `Retry — ${inst.instanceName}`, inst.inputData)
+                          launchWorkflow(inst.workflowId, `Retry - ${inst.instanceName}`, inst.inputData)
                             .then(() => { mutateInstances(); mutate('/workflows'); mutate('/instances/counts'); }).finally(() => setRetryingId(null));
                         }}
                         disabled={retryingId === inst.id}
@@ -808,7 +808,7 @@ function GridCardInstances({ workflowId, maestroBaseUrl, onFlipBack, schemaKeys 
                         <div key={key} className="flex items-center gap-2 px-2.5 py-1 odd:bg-gray-50/60">
                           <span className="text-[9px] font-medium text-gray-400 w-[90px] shrink-0 truncate" title={key}>{key}</span>
                           <span className="text-[10px] text-gray-800 font-mono truncate">
-                            {typeof value === 'object' ? JSON.stringify(value) : String(value ?? '—')}
+                            {typeof value === 'object' ? JSON.stringify(value) : String(value ?? '-')}
                           </span>
                         </div>
                       ))}
@@ -1040,7 +1040,7 @@ function EmptyState({ onSync, syncing }: { onSync: () => void; syncing: boolean 
       <WorkflowIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
       <h3 className="text-lg font-medium text-gray-900 mb-1">No workflows synced</h3>
       <p className="text-sm text-gray-500 mb-6">
-        Connect Docusign and sync your Maestro workflows to get started.
+        Connect Docusign and sync your Workflow Builder workflows to get started.
       </p>
       <button
         onClick={onSync}

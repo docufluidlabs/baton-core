@@ -358,8 +358,8 @@ const EVENT_META: Array<{ key: string; label: string; emoji: string; desc: strin
   { key: 'workflow_failed',     label: 'Workflow Failed',            emoji: '🔴', desc: 'A workflow instance crashes or errors out' },
   { key: 'workflow_completed',  label: 'Workflow Completed',         emoji: '🟢', desc: 'A workflow instance finishes successfully' },
   { key: 'workflow_launched',   label: 'Workflow Launched',          emoji: '🔵', desc: 'A new workflow instance starts running' },
-  { key: 'automation_failed',   label: 'Automation Failed',          emoji: '🔴', desc: 'All retry attempts exhausted — needs manual action' },
-  { key: 'connection_degraded', label: 'Connection Degraded',        emoji: '🔴', desc: 'Platform connection down — blocks all API requests' },
+  { key: 'automation_failed',   label: 'Automation Failed',          emoji: '🔴', desc: 'All retry attempts exhausted - needs manual action' },
+  { key: 'connection_degraded', label: 'Connection Degraded',        emoji: '🔴', desc: 'Platform connection down - blocks all API requests' },
   { key: 'webhook_failed',     label: 'Webhook Failed',             emoji: '🟡', desc: 'Incoming webhook HMAC signature rejected' },
 ];
 
@@ -645,7 +645,7 @@ function SlackTab() {
       const res = await testSlackNotification();
       toast.success(res.message || 'Test message sent!');
     } catch (err: any) {
-      toast.error(err?.message || 'Test failed — check bot token and channel');
+      toast.error(err?.message || 'Test failed - check bot token and channel');
     } finally {
       setTesting(false);
     }
