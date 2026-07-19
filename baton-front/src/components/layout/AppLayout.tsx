@@ -11,7 +11,6 @@ import {
   Menu,
   X,
   ShieldAlert,
-  Calculator,
   BookOpen,
   CircleHelp,
 } from 'lucide-react';
@@ -27,7 +26,6 @@ import { useFlowStore } from '@/stores/flowStore';
 import { ActivityLogSidebar } from '@/components/flows/ActivityLogSidebar';
 import { clarityIdentify, claritySetPage } from '@/lib/clarity';
 import { useInstances, useAutomations, useConnections } from '@/hooks/useApi';
-import { useIsHidden } from '@/hooks/useIsHidden';
 
 const NAV_ITEMS = [
   // { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -88,7 +86,6 @@ export function AppLayout() {
     closeMobileSidebar,
   } = useLayoutStore();
   const ccBadge = useControlCenterBadge();
-  const { isHidden } = useIsHidden();
   const { data: connectionsData } = useConnections();
   const hasDocuSign = connectionsData?.connections?.some((c) => c.platform === 'docusign') ?? false;
   const { getToken, userId, orgId, isLoaded, isSignedIn } = useAuth();
@@ -265,24 +262,6 @@ export function AppLayout() {
 
         {/* Bottom */}
         <div className="border-t border-gray-100 p-2 space-y-0.5">
-          {/* Legacy extras */}
-          {isHidden && (
-            <NavLink
-              to="/extras"
-              onClick={closeMobileSidebar}
-              className={({ isActive }) =>
-                clsx(
-                  'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-brand-50 text-brand-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                )
-              }
-            >
-              <Calculator className="w-5 h-5 flex-shrink-0" />
-              {(!collapsed || mobileSidebarOpen) && <span>Extras</span>}
-            </NavLink>
-          )}
           {BOTTOM_NAV_ITEMS.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}

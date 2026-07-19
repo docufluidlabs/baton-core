@@ -14,7 +14,6 @@ const mockUseAutomationActions = vi.fn();
 vi.mock('@/hooks/useApi', () => ({
   useAutomationActions: (...args: any[]) => mockUseAutomationActions(...args),
   retryInstance: vi.fn(),
-  reportInstance: vi.fn(),
 }));
 
 vi.mock('sonner', () => ({

@@ -17,8 +17,6 @@ import OAuthCallbackPage from './pages/OAuthCallbackPage';
 import CreateOrgPage from './pages/CreateOrgPage';
 import DocsApp from './docs/DocsApp';
 import SubprocessorsPage from './pages/legal/SubprocessorsPage';
-import ExtrasPage from './pages/extras/ExtrasPage';
-import { HiddenRoute } from './components/HiddenRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useConnections } from './hooks/useApi';
 
@@ -69,11 +67,6 @@ function AuthenticatedApp() {
             <Route path="/salesforce-setup" element={<SalesforceSetupPage />} />
             <Route path="/setup/:slug" element={<ConnectorSetupPage />} />
             <Route path="/create-org" element={<CreateOrgPage />} />
-            {/* Internal, employee-only (email-domain gated, read-only) */}
-            <Route
-              path="/extras"
-              element={<HiddenRoute><ExtrasPage /></HiddenRoute>}
-            />
           </Route>
         </Routes>
       </SignedIn>

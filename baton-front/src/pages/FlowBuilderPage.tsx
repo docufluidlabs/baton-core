@@ -5,7 +5,7 @@
  * ReactFlow nodes/edges are still local (useNodesState) because they need
  * ReactFlow's internal change-tracking.
  */
-import { useMemo, useEffect, useCallback, useRef, useState, Component, type ReactNode } from 'react';
+import { useMemo, useEffect, useCallback, useRef, Component, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   ReactFlow,
@@ -44,9 +44,7 @@ import { WorkflowNode, type WorkflowNodeData } from '@/components/flows/Workflow
 import { FlowSidebar } from '@/components/flows/FlowSidebar';
 import { ActionLogsSidebar } from '@/components/flows/ActionLogsSidebar';
 import { useFlowStore } from '@/stores/flowStore';
-import { Plus, Loader2, GitBranch, X as XIcon, Send, CheckCircle, XCircle, MessagesSquare } from 'lucide-react';
-import { useUser } from '@clerk/clerk-react';
-import { createSupportTicket } from '@/hooks/useApi';
+import { Plus, Loader2, GitBranch, X as XIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   COL_X, ROW_GAP, START_Y,
@@ -531,8 +529,6 @@ function FlowBuilderContent() {
   const showEmpty = !isLoading && connections.length === 0 && activeInstalledPlatforms.length === 0;
   const showNoAutomations = !isLoading && !showEmpty && automations.length === 0;
 
-  const [supportOpen, setSupportOpen] = useState(false);
-
   const isMobile = window.innerWidth < 768;
   const safeBottomStyle = isMobile ? { marginBottom: 'calc(env(safe-area-inset-bottom, 0px) + 60px)' } : undefined;
 
@@ -629,17 +625,6 @@ function FlowBuilderContent() {
       {/* Per-workflow instances now open in the Activity Log (filtered to the
           workflow) — see openActivityLog(wf.id, wf.name) above and AppLayout. */}
 
-      {/* Contact Support — desktop/tablet only */}
-      <button
-        onClick={() => setSupportOpen(true)}
-        title="Contact Support"
-        className="hidden md:flex items-center justify-center absolute bottom-6 right-6 z-10 w-[60px] h-[60px] bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 rounded-full shadow-md hover:shadow-lg transition-all"
-      >
-        <MessagesSquare className="w-7 h-7 text-gray-500" />
-      </button>
-
-      <ContactSupportModal open={supportOpen} onClose={() => setSupportOpen(false)} />
-
       {/* Action Logs Sidebar */}
       <ActionLogsSidebar
         open={logsRuleId !== null}
@@ -653,150 +638,6 @@ function FlowBuilderContent() {
     </div>
   );
 }
-
-type SupportModalState = { step: 'form' } | { step: 'success' } | { step: 'error'; message: string };
-
-function ContactSupportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { user } = useUser();
-  const defaultEmail = user?.primaryEmailAddress?.emailAddress ?? '';
-
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [email, setEmail] = useState(defaultEmail);
-  const [sending, setSending] = useState(false);
-  const [state, setState] = useState<SupportModalState>({ step: 'form' });
-
-  function handleClose() {
-    onClose();
-    setTimeout(() => { setTitle(''); setDescription(''); setEmail(defaultEmail); setState({ step: 'form' }); }, 300);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!title.trim()) return;
-    setSending(true);
-    try {
-      await createSupportTicket({ title: title.trim(), description: description.trim(), email: email.trim() });
-      setState({ step: 'success' });
-    } catch (err: any) {
-      setState({ step: 'error', message: err?.message || err?.error || 'Something went wrong. Please try again.' });
-    } finally {
-      setSending(false);
-    }
-  }
-
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={handleClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full mx-4 md:mx-0 md:w-[440px] max-h-[90vh] overflow-y-auto z-10">
-
-        {state.step === 'form' && (
-          <form onSubmit={handleSubmit}>
-            <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
-              <div>
-                <h3 className="text-base font-semibold text-gray-900">Contact Support</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Describe the problem and we'll create a support ticket</p>
-              </div>
-              <button type="button" onClick={handleClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                <XIcon className="w-4 h-4 text-gray-400" />
-              </button>
-            </div>
-
-            <div className="px-6 py-4 space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                  What can we help with? <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Workflow fails after contact lookup"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none"
-                  autoFocus
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">Your email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">Additional details</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Describe what you expected to happen and what happened instead..."
-                  rows={4}
-                  className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none resize-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
-              <button type="button" onClick={handleClose} className="px-3.5 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={!title.trim() || sending}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-lg transition-colors disabled:opacity-50"
-              >
-                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Send to Support
-              </button>
-            </div>
-          </form>
-        )}
-
-        {state.step === 'success' && (
-          <div className="px-6 py-10 text-center">
-            <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-7 h-7 text-green-500" />
-            </div>
-            <h3 className="text-base font-semibold text-gray-900">Ticket Created</h3>
-            <p className="text-sm text-gray-500 mt-1.5 max-w-[300px] mx-auto">
-              Your support ticket has been submitted. Our team will review it shortly.
-            </p>
-            <div className="flex items-center justify-center mt-6">
-              <button onClick={handleClose} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                Close
-              </button>
-            </div>
-          </div>
-        )}
-
-        {state.step === 'error' && (
-          <div className="px-6 py-10 text-center">
-            <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
-              <XCircle className="w-7 h-7 text-red-500" />
-            </div>
-            <h3 className="text-base font-semibold text-gray-900">Failed to Create Ticket</h3>
-            <p className="text-sm text-gray-500 mt-1.5 max-w-[300px] mx-auto">{state.message}</p>
-            <div className="flex items-center justify-center gap-2 mt-6">
-              <button onClick={() => setState({ step: 'form' })} className="px-4 py-2 text-sm font-medium text-brand-600 bg-brand-50 hover:bg-brand-100 rounded-lg transition-colors">
-                Try Again
-              </button>
-              <button onClick={handleClose} className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                Close
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 
 function EmptyFlowState({ onAddAutomation, hasPlatforms }: { onAddAutomation: () => void; hasPlatforms: boolean }) {
   return (

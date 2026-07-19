@@ -6,13 +6,13 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
-  useAutomationActions, retryInstance, reportInstance, type AutomationAction,
+  useAutomationActions, retryInstance, type AutomationAction,
   useAutomationQueue, releaseQueuedWebhook, cancelQueuedWebhook, type QueuedWebhook,
 } from '@/hooks/useApi';
 import { timeAgo } from '@/lib/utils';
 import {
   X, Loader2, Clock, AlertTriangle, Copy,
-  RefreshCw, CheckCircle2, XCircle, Loader, MessageSquareWarning,
+  RefreshCw, CheckCircle2, XCircle, Loader,
   ChevronRight, Play, Trash2, Pause, Search,
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -123,9 +123,6 @@ export function ActionLogsSidebar({ open, ruleId, ruleName, ruleStatus, initialA
       if (match) setExpandedId(match.pipelineEntryId);
     }
   }, [initialActionNumber, actions]);
-  const [reportedIds, setReportedIds] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('baton-reported-ids') || '[]')); } catch { return new Set(); }
-  });
 
   function toggleFilter(s: FilterStatus) {
     setActiveFilters((prev) => {
@@ -329,12 +326,6 @@ export function ActionLogsSidebar({ open, ruleId, ruleName, ruleStatus, initialA
                   isLast={i === pageItems.length - 1}
                   expanded={expandedId === action.pipelineEntryId}
                   onToggle={() => setExpandedId(expandedId === action.pipelineEntryId ? null : action.pipelineEntryId)}
-                  reported={reportedIds.has(action.instance?.id || '')}
-                  onReported={(id) => setReportedIds((prev) => {
-                    const next = new Set(prev).add(id);
-                    try { localStorage.setItem('baton-reported-ids', JSON.stringify([...next])); } catch {}
-                    return next;
-                  })}
                   onRetried={() => mutateActions()}
                 />
               ))}
@@ -350,24 +341,19 @@ export function ActionLogsSidebar({ open, ruleId, ruleName, ruleStatus, initialA
 
 // ─── Action Card ─────────────────────────────────────────────
 
-function ActionCard({ action, isLast, expanded, onToggle, reported, onReported, onRetried }: {
+function ActionCard({ action, isLast, expanded, onToggle, onRetried }: {
   action: AutomationAction;
   isLast: boolean;
   expanded: boolean;
   onToggle: () => void;
-  reported: boolean;
-  onReported: (instanceId: string) => void;
   onRetried?: () => void;
 }) {
   const [retrying, setRetrying] = useState(false);
-  const [reporting, setReporting] = useState(false);
   const [payloadOpen, setPayloadOpen] = useState(false);
   const borderColor = STATUS_BORDER[getDisplayStatus(action)] || 'border-l-gray-300';
   const label = action.actionNumber != null ? `Relay ${action.actionNumber}` : 'Relay';
 
   const isAutoRetrying = action.instance?.status === 'running' && (action.instance.retryCount ?? 0) > 0;
-  const retriesExhausted = action.instance?.status === 'failed'
-    && (action.instance.retryCount ?? 0) >= (action.instance.retryMaxAttempts ?? 6);
   const canRetry = (isAutoRetrying || action.instance?.status === 'failed') && !!action.instance;
 
   async function handleRetry() {
@@ -381,23 +367,6 @@ function ActionCard({ action, isLast, expanded, onToggle, reported, onReported, 
       // error shown by global handler
     } finally {
       setRetrying(false);
-    }
-  }
-
-  async function handleReport() {
-    if (!action.instance) return;
-    setReporting(true);
-    try {
-      const result = await reportInstance(action.instance.id, {
-        title: `Failed: Relay ${action.actionNumber ?? ''}`,
-        description: action.instance.errorMessage || action.errorMessage || '',
-      });
-      toast.success('Support ticket created', { description: result.taskUrl });
-      onReported(action.instance.id);
-    } catch {
-      // error shown by global handler
-    } finally {
-      setReporting(false);
     }
   }
 
@@ -538,32 +507,20 @@ function ActionCard({ action, isLast, expanded, onToggle, reported, onReported, 
           )}
 
           {/* Action buttons */}
-          {(canRetry || retriesExhausted) && (
+          {canRetry && (
             <div className="flex items-center gap-2 pt-0.5">
-              {canRetry && (
-                <button
-                  onClick={handleRetry}
-                  disabled={retrying}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-brand-600 hover:bg-brand-50 rounded-lg border border-brand-200 transition-colors disabled:opacity-50"
-                >
-                  {retrying ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                  Retry now
-                </button>
-              )}
+              <button
+                onClick={handleRetry}
+                disabled={retrying}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-brand-600 hover:bg-brand-50 rounded-lg border border-brand-200 transition-colors disabled:opacity-50"
+              >
+                {retrying ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                Retry now
+              </button>
               {isAutoRetrying && action.instance?.nextRetryAt && (
                 <span className="text-[10px] text-gray-400">
                   Next retry in <RetryCountdown nextRetryAt={action.instance.nextRetryAt} />
                 </span>
-              )}
-              {retriesExhausted && action.instance && (
-                <button
-                  onClick={handleReport}
-                  disabled={reporting || reported}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-amber-600 hover:bg-amber-50 rounded-lg border border-amber-200 transition-colors disabled:opacity-50 ml-auto"
-                >
-                  {reporting ? <Loader2 className="w-3 h-3 animate-spin" /> : <MessageSquareWarning className="w-3 h-3" />}
-                  {reported ? 'Reported' : 'Contact Support'}
-                </button>
               )}
             </div>
           )}

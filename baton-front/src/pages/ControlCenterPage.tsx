@@ -22,7 +22,6 @@ import {
 import { PlatformIcon } from '@/components/ui/PlatformIcon';
 import { InstanceCard } from '@/components/flows/InstancesSidebar';
 import { byStartedAtDesc } from '@/components/flows/instanceFilters';
-import { ReportIssueModal } from '@/components/flows/ReportIssueModal';
 import clsx from 'clsx';
 
 // ─── Constants ────────────────────────────────────────────────
@@ -102,10 +101,6 @@ export default function ControlCenterPage() {
   // In Progress sub-filter: instances arrive here either after a failure was
   // retried (Try Again) or after an Overdue instance was postponed (Add Days).
   const [inProgressKind, setInProgressKind] = useState<InProgressKind>('all');
-  const [reportingInstance, setReportingInstance] = useState<WorkflowInstance | null>(null);
-  const [reportedIds, setReportedIds] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('baton-reported-ids') || '[]')); } catch { return new Set(); }
-  });
 
   const { data: failedData,    isLoading: loadingFailed,    mutate: mutateFailed }    = useInstances({ status: 'failed',    limit: 100 });
   const { data: runningData,   isLoading: loadingRunning,   mutate: mutateRunning }   = useInstances({ status: 'running',   limit: 100 });
@@ -447,8 +442,6 @@ export default function ControlCenterPage() {
                 retryingId={retryingId}
                 onCancel={() => handleCancel(inst)}
                 onRetry={() => handleRetry(inst)}
-                reported={reportedIds.has(inst.id)}
-                onReport={() => setReportingInstance(inst)}
                 showPostpone={canPostpone}
                 postponingId={postponingId}
                 onPostpone={(days) => handlePostpone(inst, days)}
@@ -456,20 +449,6 @@ export default function ControlCenterPage() {
             );
           })}
         </div>
-      )}
-
-      {reportingInstance && (
-        <ReportIssueModal
-          instance={reportingInstance}
-          onClose={() => setReportingInstance(null)}
-          onSubmitted={(id) => {
-            setReportedIds((prev) => {
-              const next = new Set(prev).add(id);
-              try { localStorage.setItem('baton-reported-ids', JSON.stringify([...next])); } catch {}
-              return next;
-            });
-          }}
-        />
       )}
     </div>
   );

@@ -9,7 +9,6 @@ import {
   retryInstance,
   type WorkflowInstance,
 } from '@/hooks/useApi';
-import { ReportIssueModal } from './ReportIssueModal';
 import { InstanceCard, STATUS, FILTER_ORDER, resolveDisplayInputs, type Status } from './InstancesSidebar';
 import { monthRangeBounds, withinBounds, matchesQuery, inputsToText, byStartedAtDesc } from './instanceFilters';
 import { PlatformIcon } from '@/components/ui/PlatformIcon';
@@ -80,10 +79,6 @@ export function ActivityLogSidebar({ open, onClose, onActionClick, workflowId, w
 
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
-  const [reportingInstance, setReportingInstance] = useState<WorkflowInstance | null>(null);
-  const [reportedIds, setReportedIds] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('baton-reported-ids') || '[]')); } catch { return new Set(); }
-  });
   const [activeFilters, setActiveFilters] = useState<Set<Status>>(
     () => new Set<Status>(['running', 'completed', 'failed']),
   );
@@ -496,8 +491,6 @@ export function ActivityLogSidebar({ open, onClose, onActionClick, workflowId, w
                         mutate('/instances/counts');
                       } catch {} finally { setRetryingId(null); }
                     }}
-                    reported={reportedIds.has(inst.id)}
-                    onReport={() => setReportingInstance(inst)}
                     onActionClick={onActionClick}
                   />
                 );
@@ -509,20 +502,6 @@ export function ActivityLogSidebar({ open, onClose, onActionClick, workflowId, w
         {filtered.length > 0 && <PaginationFooter {...pagination} />}
       </div>
       </div>
-
-      {reportingInstance && (
-        <ReportIssueModal
-          instance={reportingInstance}
-          onClose={() => setReportingInstance(null)}
-          onSubmitted={(id) => {
-            setReportedIds((prev) => {
-              const next = new Set(prev).add(id);
-              try { localStorage.setItem('baton-reported-ids', JSON.stringify([...next])); } catch {}
-              return next;
-            });
-          }}
-        />
-      )}
     </>
   );
 }

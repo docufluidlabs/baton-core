@@ -3,7 +3,7 @@
  * Organization settings, members, billing, audit log
  */
 import { useState, useEffect, useMemo } from 'react';
-import { useOrganization, useUser } from '@clerk/clerk-react';
+import { useOrganization } from '@clerk/clerk-react';
 import { api, fetcher } from '@/lib/api';
 import useSWR, { useSWRConfig } from 'swr';
 import { toast } from 'sonner';
@@ -19,12 +19,11 @@ import {
   Check,
   CheckCircle2,
   Sparkles,
-  X,
   Hourglass,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { timeAgo, formatDateFull } from '@/lib/utils';
-import { sendEnterpriseContact, type BillingResponse, type BillingPlansResponse } from '@/hooks/useApi';
+import { type BillingResponse, type BillingPlansResponse } from '@/hooks/useApi';
 import { Modal } from '@/components/ui/Modal';
 
 type Tab = 'general' | 'members' | 'billing' | 'audit';
@@ -163,7 +162,6 @@ function BillingSettings() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [successOpen, setSuccessOpen] = useState(false);
-  const [contactOpen, setContactOpen] = useState(false);
 
   // Detect ?checkout=success on mount, open modal, scrub the query param.
   // We re-fetch billing data on a short retry loop because the Stripe webhook
@@ -370,12 +368,9 @@ function BillingSettings() {
                       Current plan
                     </div>
                   ) : isContactPlan ? (
-                    <button
-                      onClick={() => setContactOpen(true)}
-                      className="flex items-center justify-center gap-1.5 text-sm font-semibold py-2.5 rounded-lg bg-brand-600 text-white hover:bg-brand-700 transition-colors"
-                    >
+                    <div className="text-center text-xs font-medium py-2.5 rounded-lg border text-gray-500 border-gray-200 bg-gray-50">
                       Contact us
-                    </button>
+                    </div>
                   ) : (
                     <button
                       onClick={() => startCheckout(p.slug)}
@@ -408,201 +403,7 @@ function BillingSettings() {
         onClose={() => setSuccessOpen(false)}
         billing={billing}
       />
-
-      <EnterpriseContactModal
-        open={contactOpen}
-        onClose={() => setContactOpen(false)}
-      />
     </div>
-  );
-}
-
-const RELAY_OPTIONS = ['1,000 – 5,000', '5,000 – 10,000', '10,000+'] as const;
-const TEAM_SIZE_OPTIONS = ['1 – 10', '10 – 50', '50 – 200', '200+'] as const;
-
-function EnterpriseContactModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { user } = useUser();
-  const { organization } = useOrganization();
-  const defaultName = user?.fullName || '';
-  const defaultEmail = user?.primaryEmailAddress?.emailAddress || '';
-  const defaultCompany = organization?.name || '';
-
-  const [name, setName] = useState(defaultName);
-  const [email, setEmail] = useState(defaultEmail);
-  const [company, setCompany] = useState(defaultCompany);
-  const [teamSize, setTeamSize] = useState('');
-  const [relays, setRelays] = useState('');
-  const [message, setMessage] = useState('');
-
-  useEffect(() => {
-    if (defaultName) setName((prev) => prev || defaultName);
-    if (defaultEmail) setEmail((prev) => prev || defaultEmail);
-    if (defaultCompany) setCompany((prev) => prev || defaultCompany);
-  }, [defaultName, defaultEmail, defaultCompany]);
-
-  const [sending, setSending] = useState(false);
-  const canSubmit = !sending && name.trim() && email.trim() && company.trim() && relays;
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!canSubmit) return;
-
-    setSending(true);
-    try {
-      await sendEnterpriseContact({
-        name: name.trim(),
-        email: email.trim(),
-        company: company.trim(),
-        teamSize: teamSize || undefined,
-        relays,
-        message: message.trim() || undefined,
-      });
-      toast.success("Thanks! We'll be in touch within one business day.");
-      setMessage('');
-      onClose();
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to send message. Please try again.');
-    } finally {
-      setSending(false);
-    }
-  }
-
-  const inputCls =
-    'w-full px-3 py-2.5 text-sm rounded-lg border border-gray-300 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none';
-
-  return (
-    <Modal open={open} onClose={onClose} title="" hideHeader className="max-w-4xl">
-      <form onSubmit={submit}>
-        <div className="relative pb-5 border-b border-gray-100">
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute top-0 right-0 p-1.5 rounded-lg hover:bg-gray-100"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-          <div className="text-xs font-semibold tracking-[0.18em] text-gray-900 uppercase">
-            Enterprise
-          </div>
-          <h2 className="mt-3 text-2xl font-bold text-gray-900 leading-tight">
-            A plan built around your relay volume.
-          </h2>
-          <p className="mt-3 text-sm text-gray-600 max-w-xl">
-            Tell us your monthly volume and stack — we'll put together pricing, SLAs, and an
-            onboarding plan tailored to your team.
-          </p>
-        </div>
-
-        <div className="pt-5 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1.5">
-                Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Sarah Chen"
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1.5">
-                Work email <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="sarah@company.com"
-                className={inputCls}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1.5">
-              Company <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              placeholder="Acme Robotics"
-              className={inputCls}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1.5">
-                Team size
-              </label>
-              <select
-                value={teamSize}
-                onChange={(e) => setTeamSize(e.target.value)}
-                className={clsx(inputCls, !teamSize && 'text-gray-400')}
-              >
-                <option value="">Select…</option>
-                {TEAM_SIZE_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt} className="text-gray-900">
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1.5">
-                Relays / month <span className="text-red-500">*</span>
-              </label>
-              <select
-                required
-                value={relays}
-                onChange={(e) => setRelays(e.target.value)}
-                className={clsx(inputCls, !relays && 'text-gray-400')}
-              >
-                <option value="">Select…</option>
-                {RELAY_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt} className="text-gray-900">
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1.5">
-              Anything else?
-            </label>
-            <textarea
-              rows={3}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="e.g. We have a complex T&M services contract that nobody is checking against rate cards."
-              className={clsx(inputCls, 'resize-y')}
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between pt-5 mt-5 border-t border-gray-100">
-          <span className="text-sm text-gray-500">
-            We'll get back to you within one business day.
-          </span>
-          <button
-            type="submit"
-            disabled={!canSubmit}
-            className="text-sm font-semibold px-5 py-2.5 rounded-lg bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {sending ? 'Sending…' : 'Send message →'}
-          </button>
-        </div>
-      </form>
-    </Modal>
   );
 }
 

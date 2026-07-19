@@ -82,20 +82,12 @@ const env = {
   RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL || 'Baton <notifications@iambaton.com>',
   NOTIFICATION_FROM_EMAIL: process.env.NOTIFICATION_FROM_EMAIL || 'notifications@iambaton.com',
 
-  // Contact form (iambaton.com)
-  CONTACT_FROM_EMAIL: process.env.CONTACT_FROM_EMAIL || 'noreply@iambaton.com',
-  CONTACT_TO_EMAIL: process.env.CONTACT_TO_EMAIL || 'hello@iambaton.com',
-
   // Slack OAuth App (distributed — each org installs via OAuth)
   SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET || '',
   SLACK_DEFAULT_CHANNEL: process.env.SLACK_DEFAULT_CHANNEL || '#baton-alerts',
   SLACK_CLIENT_ID: process.env.SLACK_CLIENT_ID || '',
   SLACK_CLIENT_SECRET: process.env.SLACK_CLIENT_SECRET || '',
   SLACK_OAUTH_REDIRECT_URI: process.env.SLACK_OAUTH_REDIRECT_URI || '',
-
-  // ClickUp (MVP — support tickets for failed instances)
-  SUPPORT_TICKET_TOKEN: process.env.SUPPORT_TICKET_TOKEN || '',
-  SUPPORT_TICKET_LIST_ID: process.env.SUPPORT_TICKET_LIST_ID || '',
 
   // Scheduler — set SCHEDULER_ENABLED=false on extra pods to prevent duplicate cron execution (#10)
   SCHEDULER_ENABLED: process.env.SCHEDULER_ENABLED !== 'false',

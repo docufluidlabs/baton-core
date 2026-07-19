@@ -3,10 +3,9 @@ import { createPortal } from 'react-dom';
 import { useSWRConfig } from 'swr';
 import { useWorkflowInstances, useWorkflows, useConnections, useAutomations, cancelInstance, retryInstance, setInstanceTags, parseTriggerInputSchema, type WorkflowInstance, type TriggerInputSchema } from '@/hooks/useApi';
 import { toast } from 'sonner';
-import { ReportIssueModal } from './ReportIssueModal';
 import { timeAgo, daysPassed, overdueLevel, formatDateFull, type OverdueLevel } from '@/lib/utils';
 import {
-  X, Loader2, Ban, Clock, Eye, ExternalLink, RefreshCw, AlertTriangle, User, Timer, CheckCircle, ShieldCheck, XCircle, PauseCircle, MessageSquareWarning, Copy, Zap, Search, Tag, Plus, Check, CalendarPlus,
+  X, Loader2, Ban, Clock, Eye, ExternalLink, RefreshCw, AlertTriangle, User, Timer, CheckCircle, ShieldCheck, XCircle, PauseCircle, Copy, Zap, Search, Tag, Plus, Check, CalendarPlus,
 } from 'lucide-react';
 import { PlatformIcon } from '@/components/ui/PlatformIcon';
 import { usePagination, PaginationFooter } from '@/components/ui/Pagination';
@@ -105,10 +104,6 @@ export function InstancesSidebar({ open, workflowId, workflowName, onClose, onAc
   }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
-  const [reportedIds, setReportedIds] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem('baton-reported-ids') || '[]')); } catch { return new Set(); }
-  });
-  const [reportingInstance, setReportingInstance] = useState<WorkflowInstance | null>(null);
   const [activeFilters, setActiveFilters] = useState<Set<Status>>(
     () => new Set<Status>(['running', 'completed', 'failed']),
   );
@@ -346,8 +341,6 @@ export function InstancesSidebar({ open, workflowId, workflowName, onClose, onAc
                       mutate('/instances/counts');
                     } catch {} finally { setRetryingId(null); }
                   }}
-                  reported={reportedIds.has(inst.id)}
-                  onReport={() => setReportingInstance(inst)}
                   onActionClick={onActionClick}
                 />
               ))}
@@ -357,21 +350,6 @@ export function InstancesSidebar({ open, workflowId, workflowName, onClose, onAc
 
         {filtered.length > 0 && <PaginationFooter {...pagination} />}
       </div>
-
-      {/* Report Issue Modal */}
-      {reportingInstance && (
-        <ReportIssueModal
-          instance={reportingInstance}
-          onClose={() => setReportingInstance(null)}
-          onSubmitted={(id) => {
-            setReportedIds((prev) => {
-              const next = new Set(prev).add(id);
-              try { localStorage.setItem('baton-reported-ids', JSON.stringify([...next])); } catch {}
-              return next;
-            });
-          }}
-        />
-      )}
     </>
   );
 }
@@ -445,7 +423,7 @@ export function resolveDisplayInputs(
   return result;
 }
 
-export function InstanceCard({ inst, maestroBaseUrl, triggerInputSchema, expectedDurationDays, cancellingId, retryingId, onCancel, onRetry, reported, onReport, onActionClick, showPostpone, postponingId, onPostpone }: {
+export function InstanceCard({ inst, maestroBaseUrl, triggerInputSchema, expectedDurationDays, cancellingId, retryingId, onCancel, onRetry, onActionClick, showPostpone, postponingId, onPostpone }: {
   inst: WorkflowInstance;
   maestroBaseUrl?: string;
   triggerInputSchema?: TriggerInputSchema;
@@ -454,8 +432,6 @@ export function InstanceCard({ inst, maestroBaseUrl, triggerInputSchema, expecte
   retryingId: string | null;
   onCancel: () => void;
   onRetry: () => void;
-  reported?: boolean;
-  onReport?: () => void;
   onActionClick?: (ruleId: string, ruleName: string, actionNumber: number) => void;
   /** Resolution Center only: show the "+ Add days" postpone control for overdue instances. */
   showPostpone?: boolean;
@@ -814,16 +790,6 @@ export function InstanceCard({ inst, maestroBaseUrl, triggerInputSchema, expecte
           )}
           {maestroBaseUrl && (
             <MaestroMenu monitorUrl={monitorUrl} instanceUrl={inst.instanceUrl} fallbackUrl={maestroBaseUrl} />
-          )}
-          {inst.status === 'failed' && onReport && (
-            <button
-              onClick={onReport}
-              disabled={reported}
-              className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-amber-600 hover:bg-amber-50 rounded transition-colors disabled:opacity-50"
-            >
-              <MessageSquareWarning className="w-3 h-3" />
-              {reported ? 'Reported' : 'Support'}
-            </button>
           )}
         </div>
       )}

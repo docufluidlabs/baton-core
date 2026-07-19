@@ -22,7 +22,6 @@ import settingsRoutes from './routes/settings';
 import appRoutes from './routes/apps';
 import publicCatalogRoutes from './routes/public-catalog';
 import webhookEndpointRoutes from './routes/webhook-endpoints';
-import supportRoutes from './routes/support';
 import flowLayoutRoutes from './routes/flow-layout';
 
 // Webhook routes (no auth)
@@ -173,7 +172,6 @@ apiRouter.use('/settings', settingsRoutes);
 apiRouter.use('/platforms', appRoutes);
 apiRouter.use('/webhook-endpoints', webhookEndpointRoutes);
 apiRouter.use('/slack', slackConfigRouter);
-apiRouter.use('/support', supportRoutes);
 apiRouter.use('/flow-layout', flowLayoutRoutes);
 apiRouter.use('/salesforce/bootstrap-tokens', sfBootstrapTokensRoutes);
 apiRouter.use('/salesforce/rotate-secret', sfRotateSecretRoutes);

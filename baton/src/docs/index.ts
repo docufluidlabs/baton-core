@@ -34,7 +34,6 @@ import './routes/events.docs';
 import './routes/dashboard.docs';
 import './routes/notifications.docs';
 import './routes/user-activity.docs';
-import './routes/support.docs';
 
 export { buildOpenApiDocument } from './generator';
 export { registry } from './registry';

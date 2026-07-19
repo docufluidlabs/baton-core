@@ -419,30 +419,11 @@ export async function postponeInstance(instanceId: string, days: number): Promis
   await api.post(`/instances/${instanceId}/postpone`, { days });
 }
 
-export async function reportInstance(instanceId: string, data: { title: string; description: string; email?: string }): Promise<{ taskUrl: string }> {
-  return api.post<{ taskUrl: string }>(`/instances/${instanceId}/report`, data);
-}
-
 /** Replace the org-shared tags on an instance. Returns the normalized list the
  *  server stored (trimmed/deduped), which may differ from what was sent. */
 export async function setInstanceTags(instanceId: string, tags: string[]): Promise<string[]> {
   const res = await api.put<{ id: string; tags: string[] }>(`/instances/${instanceId}/tags`, { tags });
   return res.tags;
-}
-
-export async function createSupportTicket(data: { title: string; description: string; email?: string }): Promise<{ taskUrl: string }> {
-  return api.post<{ taskUrl: string }>('/support/ticket', data);
-}
-
-export async function sendEnterpriseContact(data: {
-  name: string;
-  email: string;
-  company: string;
-  teamSize?: string;
-  relays: string;
-  message?: string;
-}): Promise<{ message: string }> {
-  return api.post<{ message: string }>('/support/contact', data);
 }
 
 export type InstanceStatusCounts = Record<string, { completed: number; failed: number; cancelled: number; running: number }>;
