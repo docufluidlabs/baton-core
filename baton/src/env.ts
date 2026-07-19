@@ -72,11 +72,6 @@ const env = {
   // HubSpot (webhook-only — no OAuth)
   HUBSPOT_WEBHOOK_SECRET: process.env.HUBSPOT_WEBHOOK_SECRET || '',
 
-  // S3
-  S3_ENDPOINT: process.env.S3_ENDPOINT || '',
-  S3_ACCESS_KEY: process.env.S3_ACCESS_KEY || '',
-  S3_SECRET_KEY: process.env.S3_SECRET_KEY || '',
-
   // Notifications
   RESEND_API_KEY: process.env.RESEND_API_KEY || '',
   RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL || 'Baton <notifications@iambaton.com>',
