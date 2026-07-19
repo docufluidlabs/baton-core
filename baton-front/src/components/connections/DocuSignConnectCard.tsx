@@ -11,9 +11,28 @@
  * credentials — no full page reload needed.
  */
 import { toast } from 'sonner';
-import { Plug, Loader2, Copy, ExternalLink, RefreshCw, Info } from 'lucide-react';
+import { Plug, Loader2, Copy, ExternalLink, RefreshCw, Info, AlertTriangle } from 'lucide-react';
 import { PlatformIcon } from '@/components/ui/PlatformIcon';
 import { useDocusignSetupStatus, type DocusignSetupStatus } from '@/hooks/useApi';
+
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+/**
+ * The redirect URI is built server-side from API_URL. If the operator deployed
+ * publicly but never set APP_URL/API_URL, the server still thinks it lives on
+ * localhost — and every generated URL (this redirect URI, webhook URLs) is
+ * confidently wrong. The browser knows the origin actually in use, so we can
+ * detect the dangerous direction: browsing from a real domain while the
+ * server-built URI points at loopback.
+ */
+export function isLikelyMisconfiguredApiUrl(redirectUri: string, browserHostname: string): boolean {
+  try {
+    const uriHost = new URL(redirectUri).hostname;
+    return LOOPBACK_HOSTS.has(uriHost) && !LOOPBACK_HOSTS.has(browserHostname);
+  } catch {
+    return false;
+  }
+}
 
 interface DocuSignConnectCardProps {
   connecting: boolean;
@@ -73,6 +92,7 @@ function SetupGuide({
   isRechecking: boolean;
 }) {
   const isSandbox = setup.oauthBase.includes('account-d');
+  const apiUrlMismatch = isLikelyMisconfiguredApiUrl(setup.redirectUri, window.location.hostname);
 
   async function handleCopy() {
     await navigator.clipboard.writeText(setup.redirectUri);
@@ -142,6 +162,20 @@ function SetupGuide({
           </p>
         </li>
       </ol>
+
+      {apiUrlMismatch && (
+        <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <span>
+            You&apos;re browsing from <strong>{window.location.hostname}</strong>, but the server built this
+            redirect URI from a localhost <code className="font-mono">API_URL</code>. Registering it in DocuSign
+            will not work — set <code className="font-mono">APP_URL</code> and{' '}
+            <code className="font-mono">API_URL</code> in{' '}
+            <code className="font-mono">baton/.env</code> to this install&apos;s public URL and restart, so OAuth
+            and webhook URLs are generated correctly.
+          </span>
+        </div>
+      )}
 
       {isSandbox && (
         <div className="flex items-center gap-2 text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">

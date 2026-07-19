@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { DocuSignConnectCard } from './DocuSignConnectCard';
+import { DocuSignConnectCard, isLikelyMisconfiguredApiUrl } from './DocuSignConnectCard';
 
 // ─── Mocks ──────────────────────────────────────────────────
 
@@ -138,5 +138,28 @@ describe('configured — Connect button', () => {
     setupHook(undefined);
     render(<DocuSignConnectCard connecting={false} onConnect={vi.fn()} />);
     expect(screen.getByRole('button', { name: /connect docusign/i })).toBeInTheDocument();
+  });
+});
+
+// ─── isLikelyMisconfiguredApiUrl ────────────────────────────
+
+describe('isLikelyMisconfiguredApiUrl', () => {
+  it('warns when browsing from a real domain but the URI points at loopback', () => {
+    expect(isLikelyMisconfiguredApiUrl('http://localhost:3001/api/cb', 'baton.acme.com')).toBe(true);
+    expect(isLikelyMisconfiguredApiUrl('http://127.0.0.1:3001/api/cb', 'baton.acme.com')).toBe(true);
+  });
+
+  it('does not warn when browsing from loopback (local dev / demo)', () => {
+    expect(isLikelyMisconfiguredApiUrl('http://localhost:3001/api/cb', 'localhost')).toBe(false);
+    expect(isLikelyMisconfiguredApiUrl('http://localhost:3001/api/cb', '127.0.0.1')).toBe(false);
+  });
+
+  it('does not warn when the URI points at a real domain', () => {
+    expect(isLikelyMisconfiguredApiUrl('https://baton.acme.com/api/cb', 'baton.acme.com')).toBe(false);
+    expect(isLikelyMisconfiguredApiUrl('https://api.acme.com/api/cb', 'app.acme.com')).toBe(false);
+  });
+
+  it('stays silent on an unparseable URI', () => {
+    expect(isLikelyMisconfiguredApiUrl('not-a-url', 'baton.acme.com')).toBe(false);
   });
 });
