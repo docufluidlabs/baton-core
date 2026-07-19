@@ -1,6 +1,6 @@
 /**
  * AES-256-GCM Encryption Service
- * Upgraded from CBC (existing procore pattern) to GCM for authenticated encryption
+ * Uses GCM (not CBC) for authenticated encryption
  */
 import * as crypto from 'crypto';
 import env from '../env';

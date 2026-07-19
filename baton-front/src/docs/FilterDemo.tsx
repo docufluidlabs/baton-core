@@ -105,11 +105,11 @@ export function InProgressOriginDemo() {
   );
 }
 
-const DEMO_PLATFORMS = ['salesforce', 'hubspot', 'pipedrive'];
+const DEMO_PLATFORMS = ['salesforce', 'hubspot', 'zendesk'];
 const DEMO_AUTOMATIONS: Record<string, string[]> = {
   salesforce: ['Closed-won → NDA', 'New account → MSA'],
   hubspot: ['Deal won → Order form'],
-  pipedrive: ['Deal won → Quote'],
+  zendesk: ['Ticket solved → CSAT form'],
 };
 
 /** The cascading Platform → Automation filter rows. Pick a platform to reveal its automations. */

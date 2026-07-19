@@ -1,7 +1,7 @@
 /**
  * Maestro Service — Baton
  * 
- * Ported from: procore/src/services/maestro-workflow.service.ts
+ * DocuSign Maestro workflow API client.
  * 
  * Key differences from original:
  *   - Dynamic workflowId per call (not from env)

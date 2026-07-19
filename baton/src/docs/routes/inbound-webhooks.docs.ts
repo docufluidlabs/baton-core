@@ -67,12 +67,6 @@ const providerWebhooks: ProviderSpec[] = [
     headers: z.object({}),
   },
   {
-    path: '/api/webhooks/pipedrive',
-    provider: 'Pipedrive',
-    description: 'Pipedrive event subscriptions.',
-    headers: z.object({}),
-  },
-  {
     path: '/api/webhooks/bamboohr',
     provider: 'BambooHR',
     description: 'BambooHR HR events. Verified via per-connection secret.',
@@ -85,12 +79,6 @@ const providerWebhooks: ProviderSpec[] = [
     headers: z.object({
       'x-docusign-signature-1': z.string().openapi({ description: 'DocuSign Connect signature.' }),
     }),
-  },
-  {
-    path: '/api/webhooks/middesk',
-    provider: 'Middesk',
-    description: 'Middesk business verification events.',
-    headers: z.object({}),
   },
 ];
 

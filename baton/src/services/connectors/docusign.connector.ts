@@ -1,7 +1,7 @@
 /**
  * DocuSign Connector — Baton
  * 
- * Ported from: procore/src/services/docusign-oauth.service.ts
+ * DocuSign OAuth + Maestro workflow launching.
  * Uses Authorization Code flow (not JWT Grant — that's for service accounts)
  * 
  * DocuSign is special in Baton: it's both a platform connection AND the Maestro host.

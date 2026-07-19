@@ -13,7 +13,7 @@ export default function Concepts() {
 
       <KV>
         <KVRow label="Connection">An authenticated link between Baton and an external system. Today only <strong>Docusign</strong> requires a connection, set up through OAuth. Source platforms do not need a connection.</KVRow>
-        <KVRow label="Source platform">Any external business platform that sends webhooks to Baton — HubSpot, Salesforce, Procore, Xero, BambooHR, and others. A source platform needs no OAuth; it only needs your webhook URL.</KVRow>
+        <KVRow label="Source platform">Any external business platform that sends webhooks to Baton — HubSpot, Salesforce, Zendesk, BambooHR, and others. A source platform needs no OAuth; it only needs your webhook URL.</KVRow>
         <KVRow label="Docusign Maestro">Docusign's workflow orchestration product. Baton triggers Maestro's workflows; it has none of its own.</KVRow>
         <KVRow label="Extension App">A Docusign or partner app that runs as a step <em>inside</em> a Maestro workflow. Baton does not replace these — Maestro uses them after Baton triggers a workflow.</KVRow>
       </KV>

@@ -95,16 +95,11 @@ export default function ConnectionsPage() {
   // Smart delete warning
   const [deleteWarning, setDeleteWarning] = useState<{ platform: InstalledPlatform; activeAutomations: Automation[] } | null>(null);
 
-  // Temporarily hidden from the UI — re-enable by removing the slug from this set.
-  const HIDDEN_SLUGS = new Set(['powerautomate']);
-
   const connections = data?.connections || [];
   const platforms = platformsData?.platforms || [];
   const installedPlatforms = installedPlatformsData?.platforms ?? [];
-  const activePlatforms = installedPlatforms.filter(
-    (a) => a.status === 'active' && !HIDDEN_SLUGS.has(a.appSlug),
-  );
-  const templates = (templatesData?.templates ?? []).filter((t) => !HIDDEN_SLUGS.has(t.slug));
+  const activePlatforms = installedPlatforms.filter((a) => a.status === 'active');
+  const templates = templatesData?.templates ?? [];
   const automations = automationsData?.automations ?? [];
   const userRole = meData?.user?.role ?? '';
   const canInstall = ['superuser', 'owner', 'admin'].includes(userRole);
@@ -565,7 +560,7 @@ function ConnectedPlatformCard({
   const category = template?.category ?? plat.category ?? '';
   const hasAutomations = automationCount > 0;
 
-  const STABLE_SLUGS = new Set(['xero', 'zohocrm', 'hubspot', 'bamboohr', 'zendesk']);
+  const STABLE_SLUGS = new Set(['zohocrm', 'hubspot', 'bamboohr', 'zendesk']);
   const isBeta = !STABLE_SLUGS.has(plat.appSlug);
 
   return (

@@ -58,19 +58,6 @@ const env = {
   DOCUSIGN_CONNECT_HMAC_KEY: process.env.DOCUSIGN_CONNECT_HMAC_KEY || '',
   DOCUSIGN_MAESTRO_API_BASE: process.env.DOCUSIGN_MAESTRO_API_BASE || 'https://api-d.docusign.com',
 
-  // Procore
-  PROCORE_CLIENT_ID: process.env.PROCORE_CLIENT_ID || '',
-  PROCORE_CLIENT_SECRET: process.env.PROCORE_CLIENT_SECRET || '',
-  PROCORE_REDIRECT_URI: process.env.PROCORE_REDIRECT_URI || '',
-  PROCORE_AUTH_URL: process.env.PROCORE_AUTH_URL || 'https://login.procore.com',
-  PROCORE_WEBHOOK_SECRET: process.env.PROCORE_WEBHOOK_SECRET || '',
-
-  // Xero
-  XERO_CLIENT_ID: process.env.XERO_CLIENT_ID || '',
-  XERO_CLIENT_SECRET: process.env.XERO_CLIENT_SECRET || '',
-  XERO_REDIRECT_URI: process.env.XERO_REDIRECT_URI || '',
-  XERO_WEBHOOK_KEY: process.env.XERO_WEBHOOK_KEY || '',
-
   // BambooHR
   BAMBOOHR_CLIENT_ID: process.env.BAMBOOHR_CLIENT_ID || '',
   BAMBOOHR_CLIENT_SECRET: process.env.BAMBOOHR_CLIENT_SECRET || '',
@@ -82,20 +69,8 @@ const env = {
   ZOHO_CLIENT_SECRET: process.env.ZOHO_CLIENT_SECRET || '',
   ZOHO_REDIRECT_URI: process.env.ZOHO_REDIRECT_URI || '',
 
-  // Smartsheet
-  SMARTSHEET_CLIENT_ID: process.env.SMARTSHEET_CLIENT_ID || '',
-  SMARTSHEET_CLIENT_SECRET: process.env.SMARTSHEET_CLIENT_SECRET || '',
-  SMARTSHEET_REDIRECT_URI: process.env.SMARTSHEET_REDIRECT_URI || '',
-  SMARTSHEET_WEBHOOK_SECRET: process.env.SMARTSHEET_WEBHOOK_SECRET || '',
-
   // HubSpot (webhook-only — no OAuth)
   HUBSPOT_WEBHOOK_SECRET: process.env.HUBSPOT_WEBHOOK_SECRET || '',
-
-  // Middesk (webhook-only — HMAC-SHA256)
-  MIDDESK_WEBHOOK_SECRET: process.env.MIDDESK_WEBHOOK_SECRET || '',
-
-  // Pipedrive (webhook-only for demo)
-  PIPEDRIVE_WEBHOOK_SECRET: process.env.PIPEDRIVE_WEBHOOK_SECRET || '',
 
   // S3
   S3_ENDPOINT: process.env.S3_ENDPOINT || '',

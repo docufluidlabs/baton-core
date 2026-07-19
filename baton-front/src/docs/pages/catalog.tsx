@@ -53,23 +53,14 @@ export default function Catalog() {
             <tr><th>Platform</th><th>Category</th><th>Verification</th></tr>
           </thead>
           <tbody>
+            <tr><td>Salesforce</td><td>CRM</td><td>HMAC</td></tr>
+            <tr><td>HubSpot</td><td>CRM</td><td>HMAC</td></tr>
             <tr><td>Zoho CRM</td><td>CRM</td><td>Basic Auth</td></tr>
-            <tr><td>Pipedrive</td><td>CRM</td><td>Basic Auth</td></tr>
-            <tr><td>Xero</td><td>Accounting</td><td>HMAC</td></tr>
-            <tr><td>Smartsheet</td><td>Productivity</td><td>HMAC</td></tr>
             <tr><td>Zendesk</td><td>Support</td><td>HMAC</td></tr>
-            <tr><td>QuickBooks</td><td>Accounting</td><td>HMAC</td></tr>
-            <tr><td>Slack (as a source)</td><td>Productivity</td><td>HMAC</td></tr>
-            <tr><td>Jira</td><td>Project management</td><td>HMAC</td></tr>
-            <tr><td>Airtable</td><td>Productivity</td><td>HMAC</td></tr>
-            <tr><td>Asana</td><td>Project management</td><td>HMAC</td></tr>
-            <tr><td>Coupa</td><td>Procurement</td><td>Basic Auth</td></tr>
-            <tr><td>ServiceNow</td><td>ITSM</td><td>Basic Auth</td></tr>
+            <tr><td>Power Automate</td><td>Automation</td><td>Basic Auth</td></tr>
             <tr><td>Greenhouse</td><td>HR / ATS</td><td>HMAC</td></tr>
             <tr><td>monday.com</td><td>Project management</td><td>No signing (URL secrecy)</td></tr>
-            <tr><td>Middesk</td><td>KYB</td><td>HMAC</td></tr>
             <tr><td>BambooHR</td><td>HR</td><td>HMAC</td></tr>
-            <tr><td>Procore</td><td>Construction</td><td>No signing (URL secrecy)</td></tr>
           </tbody>
         </table>
       </TableWrap>

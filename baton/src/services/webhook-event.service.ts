@@ -5,7 +5,7 @@
  *
  * #12 — Idempotency: platforms frequently retry webhook delivery.
  * Each call to storeWebhookEvent extracts a platform-native event ID
- * (e.g. DocuSign envelopeId, Xero webhookId, Procore event_id) and
+ * (e.g. DocuSign envelopeId, HubSpot eventId) and
  * uses a ConditionExpression to ensure only one record per platform event.
  * On a duplicate, the function returns the existing event without re-queuing.
  */
@@ -30,24 +30,10 @@ function extractPlatformEventId(platform: Platform, payload: Record<string, any>
       // DocuSign Connect: envelopeId is stable across retries
       return payload.envelopeId || payload.data?.envelopeId || payload.EnvelopeID;
     }
-    case 'xero': {
-      // Xero webhook: events array, each has an eventId
-      const events = Array.isArray(payload.events) ? payload.events : null;
-      if (events?.length) {
-        return events.map((e: any) => e.eventId).filter(Boolean).sort().join(',');
-      }
-      return payload.webhookId || payload.eventId;
-    }
-    case 'procore': {
-      return payload.event_id?.toString() || payload.id?.toString();
-    }
     case 'hubspot': {
       const events = Array.isArray(payload) ? payload : [payload];
       // Use the first eventId as the key; batch retries share the same event IDs
       return events.map((e: any) => e.eventId).filter(Boolean).sort().join(',');
-    }
-    case 'smartsheet': {
-      return payload.webhookId?.toString() || payload.nonce;
     }
     case 'bamboohr': {
       return payload.id?.toString() || payload.eventId?.toString();

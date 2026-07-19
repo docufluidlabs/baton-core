@@ -80,7 +80,7 @@ export const GROUPS: DocGroup[] = [
     intro: 'Look things up: verification, supported platforms, troubleshooting, and terms.',
     items: [
       { slug: 'verification', title: 'Verification methods', description: 'How Baton proves each webhook is genuine (HMAC, Basic Auth).', keywords: 'hmac basic auth signature secret security reject 401' },
-      { slug: 'catalog', title: 'Supported platforms', description: 'Every platform Baton connects to, with its verification method.', keywords: 'integrations list connectors hubspot salesforce xero zoho' },
+      { slug: 'catalog', title: 'Supported platforms', description: 'Every platform Baton connects to, with its verification method.', keywords: 'integrations list connectors hubspot salesforce zendesk zoho' },
       { slug: 'troubleshooting', title: 'Troubleshooting & FAQ', description: 'Common problems and how to fix them fast.', keywords: 'help problems errors faq why not working fix support' },
       { slug: 'glossary', title: 'Glossary', description: 'Definitions for every term used in the docs.', keywords: 'definitions terms vocabulary meaning' },
     ],

@@ -8,10 +8,12 @@
 export type UserRole = 'owner' | 'admin' | 'member' | 'viewer' | 'superuser';
 export type OrgPlan = 'free_demo' | 'starter' | 'growth' | 'enterprise';
 export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused_overcap';
-// Demo platforms: salesforce, hubspot, zohocrm, pipedrive
+// Registered connectors: docusign (destination) + salesforce, hubspot, zohocrm,
+// zendesk, bamboohr, powerautomate (inbound). greenhouse/mondaycom/slack are
+// catalog/webhook-only integrations without a connector class.
 // Legacy platforms kept for backward compat with existing connectors/routes
-export type Platform = 'salesforce' | 'hubspot' | 'zohocrm' | 'pipedrive' | 'procore' | 'xero' | 'bamboohr' | 'smartsheet' | 'docusign' | 'zendesk' | 'quickbooks' | 'slack' | 'jira' | 'airtable' | 'asana' | 'coupa' | 'servicenow' | 'greenhouse' | 'mondaycom' | 'middesk' | 'powerautomate';
-export type AppSlug = 'salesforce' | 'hubspot' | 'zohocrm' | 'pipedrive' | 'procore' | 'xero' | 'bamboohr' | 'smartsheet' | 'zendesk' | 'quickbooks' | 'slack' | 'jira' | 'airtable' | 'asana' | 'coupa' | 'servicenow' | 'greenhouse' | 'mondaycom' | 'middesk' | 'powerautomate';
+export type Platform = 'salesforce' | 'hubspot' | 'zohocrm' | 'bamboohr' | 'docusign' | 'zendesk' | 'slack' | 'greenhouse' | 'mondaycom' | 'powerautomate';
+export type AppSlug = 'salesforce' | 'hubspot' | 'zohocrm' | 'bamboohr' | 'zendesk' | 'slack' | 'greenhouse' | 'mondaycom' | 'powerautomate';
 export type ConnectionStatus = 'pending' | 'healthy' | 'warning' | 'error' | 'disconnected';
 export type MaestroStatus = 'draft' | 'active' | 'paused';
 export type TriggerType = 'http' | 'link' | 'api_call' | 'form';

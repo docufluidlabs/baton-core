@@ -2,7 +2,7 @@
  * Token Refresh Worker — Baton
  * 
  * Proactively refreshes tokens that are about to expire.
- * Pattern from: procore-oauth.service.ts → isTokenExpired() (5min buffer)
+ * Refreshes OAuth tokens before expiry (5min buffer)
  * 
  * This worker is triggered on a schedule (every 5 minutes via cron job)
  * that sends a message to the SQS queue for each connection needing refresh.

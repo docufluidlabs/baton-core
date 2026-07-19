@@ -3,7 +3,7 @@
  * POST /api/webhooks/docusign
  *
  * DocuSign Connect sends envelope/recipient events with accountId in payload.
- * We resolve the connection via accountId-index (same pattern as Xero/Procore).
+ * We resolve the connection via accountId-index.
  */
 import { Router } from 'express';
 import { webhookRateLimiter } from '../../middleware/rate-limit';

@@ -23,7 +23,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
     const category = req.query.category as string; // inbound | rule_match | workflow | envelope
     const status = req.query.status as string;     // pending | running | completed | failed
-    const platform = req.query.platform as string; // docusign | xero | procore | ...
+    const platform = req.query.platform as string; // docusign | salesforce | hubspot | ...
     const cursor = req.query.cursor as string;     // base64-encoded LastEvaluatedKey
 
     const docClient = getDocClient();

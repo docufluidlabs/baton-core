@@ -44,7 +44,7 @@ export default function Welcome() {
       <h2>What is Baton?</h2>
       <p>
         <strong>Baton is a webhook-focused command center for Docusign Maestro workflows.</strong> It sits
-        between your business platforms (Salesforce, HubSpot, Procore, Xero, and more) and Docusign Maestro:
+        between your business platforms (Salesforce, HubSpot, Zendesk, and more) and Docusign Maestro:
       </p>
       <ol>
         <li>A platform you use fires an <strong>event</strong> — a deal closes, a record is created, a project reaches a stage.</li>
@@ -54,7 +54,7 @@ export default function Welcome() {
       </ol>
 
       <FlowStrip>
-        <FlowNode k="Source" t="Your platform" d="Salesforce, HubSpot, Procore…" />
+        <FlowNode k="Source" t="Your platform" d="Salesforce, HubSpot, Zendesk…" />
         <FlowNode k="Webhook" t="Baton" d="Verifies & routes the event" />
         <FlowNode k="Launch" t="Maestro" d="Runs your signing workflow" />
         <FlowNode k="Watch" t="Flow Builder" d="Live status & error fixing" />

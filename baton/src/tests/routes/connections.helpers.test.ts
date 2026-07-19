@@ -50,7 +50,7 @@ describe('stripSensitiveFields', () => {
     const connection = {
       id: 'conn-1',
       orgId: 'org-1',
-      platform: 'procore',
+      platform: 'salesforce',
       status: 'healthy',
       accessTokenEnc: 'enc',
       refreshTokenEnc: 'enc',
@@ -59,7 +59,7 @@ describe('stripSensitiveFields', () => {
     const result = stripSensitiveFields(connection);
     expect(result.id).toBe('conn-1');
     expect(result.orgId).toBe('org-1');
-    expect(result.platform).toBe('procore');
+    expect(result.platform).toBe('salesforce');
     expect(result.status).toBe('healthy');
   });
 
@@ -78,24 +78,14 @@ describe('extractAccountId', () => {
     expect(extractAccountId('docusign', tokens)).toBe('ds-acct-123');
   });
 
-  it('procore: returns tokens.raw.company_id.toString()', () => {
-    const tokens = { raw: { company_id: 456 } };
-    expect(extractAccountId('procore', tokens)).toBe('456');
-  });
-
-  it('xero: returns tokens.raw.tenants[0].tenantId', () => {
-    const tokens = { raw: { tenants: [{ tenantId: 'xero-tenant-789' }] } };
-    expect(extractAccountId('xero', tokens)).toBe('xero-tenant-789');
-  });
-
   it('bamboohr: returns undefined', () => {
     const tokens = { raw: {} };
     expect(extractAccountId('bamboohr', tokens)).toBeUndefined();
   });
 
-  it('smartsheet: returns undefined', () => {
+  it('zendesk: returns undefined (default branch)', () => {
     const tokens = { raw: {} };
-    expect(extractAccountId('smartsheet', tokens)).toBeUndefined();
+    expect(extractAccountId('zendesk', tokens)).toBeUndefined();
   });
 
   it('zohocrm: returns undefined', () => {
@@ -122,23 +112,8 @@ describe('extractDisplayName', () => {
     expect(extractDisplayName('docusign', tokens)).toBe('DocuSign Account');
   });
 
-  it('procore always returns "Procore Account"', () => {
-    const tokens = { raw: {} };
-    expect(extractDisplayName('procore', tokens)).toBe('Procore Account');
-  });
-
-  it('xero with tenantName returns that name', () => {
-    const tokens = { raw: { tenants: [{ tenantName: 'My Xero Org' }] } };
-    expect(extractDisplayName('xero', tokens)).toBe('My Xero Org');
-  });
-
-  it('xero without tenants returns "Xero Organization"', () => {
-    const tokens = { raw: {} };
-    expect(extractDisplayName('xero', tokens)).toBe('Xero Organization');
-  });
-
   it('unknown platform returns "${platform} Connection"', () => {
     expect(extractDisplayName('bamboohr', {})).toBe('bamboohr Connection');
-    expect(extractDisplayName('smartsheet', {})).toBe('smartsheet Connection');
+    expect(extractDisplayName('zendesk', {})).toBe('zendesk Connection');
   });
 });

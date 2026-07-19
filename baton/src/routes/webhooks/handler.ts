@@ -5,7 +5,7 @@
  * 1. Parse raw body
  * 2. Verify signature via connector
  * 3. Store in webhook_events
- * 4. Return 200 immediately (critical for Xero's 5s timeout, etc.)
+ * 4. Return 200 immediately (providers enforce short delivery timeouts)
  * 5. Enqueue SQS job for async processing
  */
 

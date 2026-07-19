@@ -86,27 +86,22 @@ export const PLATFORM_LABELS: Record<string, string> = {
   salesforce: 'Salesforce',
   hubspot: 'HubSpot',
   zohocrm: 'Zoho CRM',
-  pipedrive: 'Pipedrive',
   docusign: 'Docusign',
   mondaycom: 'monday.com',
-  procore: 'Procore',
   zendesk: 'Zendesk',
-  // xero: 'Xero',
-  // bamboohr: 'BambooHR',
-  // smartsheet: 'Smartsheet',
+  bamboohr: 'BambooHR',
+  greenhouse: 'Greenhouse',
+  powerautomate: 'Power Automate',
 };
 
 export const PLATFORM_ICONS: Record<string, string> = {
   salesforce: '☁️',
   hubspot: '🔶',
   zohocrm: '💼',
-  pipedrive: '🟢',
   docusign: '📝',
   mondaycom: '📅',
-  procore: '🏗️',
   zendesk: '🎫',
-  // Old platforms (kept for reference)
-  // xero: '📊',
-  // bamboohr: '👥',
-  // smartsheet: '📋',
+  bamboohr: '🎋',
+  greenhouse: '🌱',
+  powerautomate: '⚡',
 };

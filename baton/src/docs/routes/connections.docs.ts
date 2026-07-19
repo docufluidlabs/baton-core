@@ -145,7 +145,7 @@ registry.registerPath({
   method: 'get',
   path: '/api/connections/{id}/accounts',
   tags: [TAG],
-  summary: 'List available accounts/tenants for a connection (DocuSign, Xero)',
+  summary: 'List available accounts for a connection (DocuSign)',
   security: SECURITY,
   request: { params: idParam },
   responses: {

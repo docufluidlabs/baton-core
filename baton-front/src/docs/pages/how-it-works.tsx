@@ -7,7 +7,7 @@ export default function HowItWorks() {
       <Lead>Baton listens for webhooks from your business platforms, launches the right Docusign Maestro workflow, and then watches that run so you can follow it without leaving Baton.</Lead>
 
       <h2>What Baton does, in one picture</h2>
-      <p>Baton sits between your source platforms (Salesforce, HubSpot, Procore, Xero, BambooHR, and others) and Docusign Maestro. When a platform fires a webhook, Baton confirms the event is genuine, finds the value Maestro needs inside the payload, and triggers the matching workflow. From there, Maestro runs on its own and Baton keeps an eye on the result.</p>
+      <p>Baton sits between your source platforms (Salesforce, HubSpot, Zendesk, BambooHR, and others) and Docusign Maestro. When a platform fires a webhook, Baton confirms the event is genuine, finds the value Maestro needs inside the payload, and triggers the matching workflow. From there, Maestro runs on its own and Baton keeps an eye on the result.</p>
 
       <FlowStrip>
         <FlowNode k="Source platform" t="Webhook fires" d="An event (deal won, record updated) sends a webhook to your automation's Baton URL." />

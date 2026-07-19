@@ -203,8 +203,8 @@ export async function findMatchingRules(
     }
 
     // If a sourceId is provided, the rule must be associated with the same
-    // connection or app — prevents rules from one Procore app triggering on
-    // webhooks from a different Procore installation in the same org.
+    // connection or app — prevents rules from one app installation triggering
+    // on webhooks from a different installation in the same org.
     if (sourceId) {
       const ruleSource = rule.connectionId || rule.appId;
       if (ruleSource && ruleSource !== sourceId) {

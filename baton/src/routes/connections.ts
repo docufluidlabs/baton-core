@@ -178,7 +178,6 @@ router.get('/:platform/callback', async (req: Request, res: Response, next: Next
       accountId,
       metadata: {
         apiBase: tokens.raw?.userInfo?.accounts?.[0]?.base_uri, // DocuSign
-        companyId: tokens.raw?.xero_tenant_id, // Xero
       },
       createdBy: storedState.userId,
     });
@@ -276,15 +275,6 @@ router.get('/:id/accounts', requireAuth, requireViewer, async (req: Request, res
       } else {
         accounts = userAccounts;
       }
-    } else if (connection.platform === 'xero') {
-      // Xero: fetch tenants
-      const { XeroConnector } = await import('../services/connectors/xero.connector');
-      const xero = new XeroConnector();
-      const tenants = await xero.fetchTenants(accessToken);
-      accounts = tenants.map((t) => ({
-        id: t.tenantId,
-        name: t.tenantName,
-      }));
     }
 
     res.json({
@@ -453,20 +443,12 @@ function extractAccountId(platform: Platform, tokens: any): string | undefined {
   switch (platform) {
     case 'docusign':
       return tokens.raw?.userInfo?.accounts?.[0]?.account_id;
-    case 'procore':
-      return tokens.raw?.company_id?.toString();
-    case 'xero':
-      // Xero tenants come from a separate API call, stored in raw.tenants[]
-      return tokens.raw?.tenants?.[0]?.tenantId;
     case 'bamboohr':
       // BambooHR: extracted asynchronously in the callback handler below (#13)
       return tokens.raw?.subdomain || tokens.raw?.companyDomain;
     case 'zohocrm':
       // Zoho: current user's org ID fetched after token exchange (#13)
       return tokens.raw?.userInfo?.id?.toString() || tokens.raw?.userInfo?.org?.[0]?.id?.toString();
-    case 'smartsheet':
-      // Smartsheet: current user's ID fetched after token exchange (#13)
-      return tokens.raw?.userInfo?.id?.toString();
     default:
       return undefined;
   }
@@ -476,10 +458,6 @@ function extractDisplayName(platform: Platform, tokens: any): string {
   switch (platform) {
     case 'docusign':
       return 'Docusign';
-    case 'procore':
-      return 'Procore Account';
-    case 'xero':
-      return tokens.raw?.tenants?.[0]?.tenantName || 'Xero Organization';
     default:
       return `${platform} Connection`;
   }

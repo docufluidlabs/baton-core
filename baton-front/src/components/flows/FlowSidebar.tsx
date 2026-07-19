@@ -197,16 +197,10 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
   const { data: templatesData } = usePlatformTemplates();
   // const { data: eventTypesData } = useAutomationEventTypes(...); // kept for commented-out event picker
   const { mutate } = useSWRConfig();
-  // Temporarily hidden from the UI — re-enable by removing the slug from this set.
-  const HIDDEN_SLUGS = new Set(['powerautomate']);
   const connections = connectionsData?.connections || [];
   const allAutomations = automationsData?.automations || [];
-  const installedPlatforms = (installedPlatformsData?.platforms || []).filter(
-    (p) => !HIDDEN_SLUGS.has(p.appSlug),
-  );
-  const platformTemplates = (templatesData?.templates || []).filter(
-    (t) => !HIDDEN_SLUGS.has(t.slug),
-  );
+  const installedPlatforms = installedPlatformsData?.platforms || [];
+  const platformTemplates = templatesData?.templates || [];
 
   const [sourceKey, setSourceKey] = useState('');
   const [eventType, setEventType] = useState('*');
@@ -269,7 +263,7 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
 
   // const { data: eventTypesData } = useAutomationEventTypes(sourceType === 'connection' ? sourcePlatform : ''); // kept for commented-out event picker
 
-  const platforms = (platformsData?.platforms || []).filter((p) => !HIDDEN_SLUGS.has(p.platform));
+  const platforms = platformsData?.platforms || [];
   const workflows = (workflowsData?.workflows || []).filter((wf) => wf.maestroStatus === 'active');
 
   // 1 workflow = 1 automation: exclude workflows already used by other automations

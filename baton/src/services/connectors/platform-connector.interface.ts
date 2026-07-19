@@ -2,13 +2,8 @@
  * PlatformConnector Interface — Baton
  * 
  * Unified interface that all platform connectors must implement.
- * Ported and unified from:
- *   - procore-oauth.service.ts
- *   - xero-oauth.service.ts (+ PKCE)
- *   - smartsheet-oauth.service.ts
- *   - docusign-oauth.service.ts (JWT Grant)
- * 
- * Each platform = one class implementing this interface.
+ * Each platform = one class implementing this interface, registered in index.ts.
+ * This is the extension surface for adding new platforms to Baton.
  */
 
 import { Platform, PlatformConnection } from '../../lib/types';
@@ -28,7 +23,7 @@ export interface OAuthTokens {
 export interface OAuthAuthorizeResult {
   redirectUrl: string;
   state: string;           // CSRF state to validate on callback
-  codeVerifier?: string;   // PKCE code_verifier (Xero)
+  codeVerifier?: string;   // PKCE code_verifier (for platforms requiring PKCE)
 }
 
 export interface OAuthCallbackParams {
@@ -94,7 +89,6 @@ export interface PlatformConnector {
 
   /**
    * Check if token is expired (with 5-minute buffer)
-   * Pattern from: procore-oauth.service.ts → isTokenExpired()
    */
   isTokenExpired(createdAt: number, expiresIn: number): boolean;
 
@@ -103,11 +97,11 @@ export interface PlatformConnector {
   /**
    * Verify webhook signature/authenticity
    * Each platform has its own mechanism:
-   *   - Xero: HMAC-SHA256
    *   - DocuSign Connect: HMAC-SHA256
-   *   - Procore: static header token
+   *   - Salesforce: HMAC-SHA256
    *   - BambooHR: HMAC-SHA256
-   *   - Smartsheet: verification challenge + HMAC
+   *   - Zendesk: HMAC-SHA256 (timestamp + body)
+   *   - Power Automate: Basic Auth
    */
   verifyWebhookSignature(
     rawBody: Buffer,
@@ -155,7 +149,6 @@ export abstract class BasePlatformConnector implements PlatformConnector {
 
   /**
    * Check if token is expired with 5-minute buffer
-   * Ported from: procore-oauth.service.ts → isTokenExpired()
    */
   isTokenExpired(createdAt: number, expiresIn: number): boolean {
     const now = Math.floor(Date.now() / 1000);

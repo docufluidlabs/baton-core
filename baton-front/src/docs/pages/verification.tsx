@@ -20,10 +20,10 @@ export default function Verification() {
 
       <h3>Basic Authentication</h3>
       <p>Some platforms cannot sign their payloads. For those, you choose a <strong>username and password</strong> and enter the <em>same</em> values in both Baton and the platform. The platform sends those credentials in an Authorization header, and Baton checks them on every request.</p>
-      <p>The most common mistake here is a mismatch: the values must be identical in both places. Basic Authentication is used by Zoho CRM, Pipedrive, Coupa, and ServiceNow.</p>
+      <p>The most common mistake here is a mismatch: the values must be identical in both places. Basic Authentication is used by Zoho CRM and Power Automate.</p>
 
       <h3>No signing (URL secrecy only)</h3>
-      <p>A few platforms physically cannot sign their webhooks at all — for example monday.com and Procore. For these, Baton accepts any request posted to the webhook URL. The protection comes from the URL itself: each automation's URL contains a long, random secret, so it is not guessable.</p>
+      <p>A few platforms physically cannot sign their webhooks at all — for example monday.com. For these, Baton accepts any request posted to the webhook URL. The protection comes from the URL itself: each automation's URL contains a long, random secret, so it is not guessable.</p>
       <p>Because there is no signature, anyone who has the URL can post events that Baton will accept. <strong>Treat the URL like a password.</strong> This is the lowest-trust option — choose a real HMAC scheme whenever the platform supports one.</p>
 
       <Callout type="warning" title='"No signing" is the lowest-trust option'>With URL secrecy, a leaked webhook URL is enough to forge events. Keep the URL private, never post it where others can see it, and prefer HMAC whenever the platform offers it.</Callout>
@@ -34,8 +34,8 @@ export default function Verification() {
           <thead><tr><th>Method</th><th>What it does</th><th>What you do</th><th>Example platforms</th></tr></thead>
           <tbody>
             <tr><td>HMAC signature</td><td>Platform signs the body with a shared secret; Baton recomputes and compares.</td><td>Copy the platform's signing secret into Baton.</td><td>HubSpot, Salesforce, most CRMs</td></tr>
-            <tr><td>Basic Authentication</td><td>Platform sends a username/password header; Baton checks it.</td><td>Set the same username and password in both Baton and the platform.</td><td>Zoho CRM, Pipedrive, Coupa, ServiceNow</td></tr>
-            <tr><td>No signing (URL secrecy)</td><td>Baton accepts any request to the URL; the URL itself holds a random secret.</td><td>Keep the webhook URL private.</td><td>monday.com, Procore</td></tr>
+            <tr><td>Basic Authentication</td><td>Platform sends a username/password header; Baton checks it.</td><td>Set the same username and password in both Baton and the platform.</td><td>Zoho CRM, Power Automate</td></tr>
+            <tr><td>No signing (URL secrecy)</td><td>Baton accepts any request to the URL; the URL itself holds a random secret.</td><td>Keep the webhook URL private.</td><td>monday.com</td></tr>
           </tbody>
         </table>
       </TableWrap>

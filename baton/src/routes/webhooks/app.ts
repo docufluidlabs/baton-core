@@ -101,37 +101,6 @@ router.post('/:webhookKey', async (req: Request, res: Response, _next: NextFunct
       return;
     }
 
-    // ─── 4b. Xero Intent-to-Receive validation ───────────
-    // Xero sends a validation POST with payload like:
-    //   {"events":[],"firstEventSequence":0,"lastEventSequence":0,"entropy":"..."}
-    // Must respond 200 if HMAC valid, 401 otherwise. Must be within 5 seconds.
-    const xeroSig = req.headers['x-xero-signature'] as string | undefined;
-    const isXeroITR = appSlug === 'xero' && xeroSig &&
-      Array.isArray(payload.events) && payload.events.length === 0 && payload.entropy;
-
-    if (isXeroITR) {
-      const expectedSig = crypto
-        .createHmac('sha256', secretKey)
-        .update(rawBody)
-        .digest('base64');
-
-      let valid = false;
-      try {
-        valid = crypto.timingSafeEqual(Buffer.from(xeroSig), Buffer.from(expectedSig));
-      } catch {
-        valid = false;
-      }
-
-      if (valid) {
-        logInfo('Xero intent-to-receive validation succeeded', { appSlug, orgId });
-        res.status(200).send();
-      } else {
-        logWarn('Xero intent-to-receive validation failed', { appSlug, orgId });
-        res.status(401).send();
-      }
-      return;
-    }
-
     // ─── 5. Verify signature ──────────────────────────────
     const headers = Object.fromEntries(
       Object.entries(req.headers).map(([k, v]) => [k, String(v)]),
