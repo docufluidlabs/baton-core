@@ -1,0 +1,17 @@
+# Gitleaks configuration for baton-core.
+# Extends the default ruleset; allowlists known fake/test values only.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known fake secrets used in unit tests and documentation placeholders"
+paths = [
+  # Fake Svix/Clerk webhook secret (base64 of "testsecret") used by route tests
+  '''baton/src/tests/routes/clerk\.test\.ts''',
+]
+regexes = [
+  # .env.example placeholder values
+  '''(sk|pk)_test_xxxxx''',
+  '''whsec_xxxxx''',
+]

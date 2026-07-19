@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment — never commit real env files
+.env
+.env.*
+!.env.example
+
+# Deployment values (Helm/K8s) — never commit
+values/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+coverage/
+playwright-report/
+test-results/

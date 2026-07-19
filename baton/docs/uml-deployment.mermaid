@@ -1,0 +1,87 @@
+---
+title: "Baton — Deployment Diagram"
+---
+graph TB
+    subgraph client["🖥️ Client Browser"]
+        spa["React SPA<br/><b>baton-front</b><br/><i>Vite build → static assets</i>"]
+    end
+
+    subgraph cdn["🌍 CDN / Hosting (Vercel)"]
+        static["Static Files<br/><i>index.html, JS, CSS</i>"]
+    end
+
+    subgraph tunnel["🔗 ngrok Tunnel (dev)"]
+        ngrok["ngrok<br/><i>your-domain.ngrok-free.app</i><br/>→ localhost:3001"]
+    end
+
+    subgraph server["🖧 Application Server"]
+        subgraph node_process["Node.js Process"]
+            express["Express Server<br/>Port 3001<br/><i>API routes + webhook handlers</i>"]
+            worker1["WebhookWorker<br/><i>SQS long-poll</i>"]
+            worker2["LauncherWorker<br/><i>SQS long-poll</i>"]
+            worker3["TokenRefreshWorker<br/><i>SQS long-poll</i>"]
+            worker4["NotifSenderWorker<br/><i>SQS long-poll</i>"]
+            cron["node-cron Scheduler<br/><i>3 scheduled jobs</i>"]
+        end
+    end
+
+    subgraph aws["☁️ AWS Region (us-east-1)"]
+        subgraph dynamodb_tables["DynamoDB"]
+            t1["organizations"]
+            t2["users"]
+            t3["platform-connections"]
+            t4["workflows"]
+            t5["workflow-instances"]
+            t6["automation-rules"]
+            t7["trigger-pipeline"]
+            t8["audit-log"]
+            t9["webhook-events"]
+            t10["user-platform-identities"]
+            t11["notification-preferences"]
+            t12["notifications"]
+            t13["oauth-states (TTL)"]
+        end
+
+        subgraph sqs_queues["SQS"]
+            q1["baton-webhook-processing"]
+            q2["baton-workflow-launcher"]
+            q3["baton-token-refresh"]
+            q4["baton-notification-sender"]
+        end
+    end
+
+    subgraph external_saas["☁️ External SaaS"]
+        clerk_svc["Clerk<br/><i>Auth &amp; sessions</i>"]
+        ds_api["DocuSign API<br/><i>Maestro + eSign</i>"]
+        resend["Resend<br/><i>Transactional email</i>"]
+        slack_api["Slack API<br/><i>Bot notifications</i>"]
+        platforms_ext["Business Platforms<br/><i>Procore, Xero, BambooHR,<br/>Zoho CRM, Smartsheet</i>"]
+    end
+
+    spa -->|"HTTPS"| static
+    spa -->|"/api/* proxy"| express
+    platforms_ext -->|"Webhook POST"| ngrok
+    ngrok --> express
+
+    express <--> dynamodb_tables
+    express --> sqs_queues
+    worker1 <--> q1
+    worker2 <--> q2
+    worker3 <--> q3
+    worker4 <--> q4
+    cron --> q3
+
+    express <--> clerk_svc
+    express <--> platforms_ext
+    worker2 --> ds_api
+    worker4 --> resend
+    worker4 --> slack_api
+
+    style spa fill:#06b6d4,stroke:#0891b2,color:#fff
+    style express fill:#2563eb,stroke:#1e40af,color:#fff
+    style worker1 fill:#7c3aed,stroke:#6d28d9,color:#fff
+    style worker2 fill:#7c3aed,stroke:#6d28d9,color:#fff
+    style worker3 fill:#7c3aed,stroke:#6d28d9,color:#fff
+    style worker4 fill:#7c3aed,stroke:#6d28d9,color:#fff
+    style cron fill:#8b5cf6,stroke:#7c3aed,color:#fff
+    style ngrok fill:#1e293b,stroke:#475569,color:#fff

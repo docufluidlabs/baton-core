@@ -1,0 +1,12 @@
+node_modules
+dist
+.env
+.env.local
+*.tsbuildinfo
+.DS_Store
+coverage
+repomix-output.txt
+repomix-output-full.txt
+repomix-output-ai.txt
+repomix-output-full.json
+repomix-output-ai.json

@@ -1,0 +1,19 @@
+node_modules
+dist
+dist-preview
+.env
+.env.local
+*.tsbuildinfo
+.DS_Store
+coverage
+repomix-output.txt
+repomix-output-full.txt
+repomix-output-ai.txt
+repomix-output-full.json
+repomix-output-ai.json
+
+# Playwright E2E
+.env.e2e
+e2e/.auth/
+playwright-report/
+test-results/

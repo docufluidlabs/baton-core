@@ -1,0 +1,165 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Baton — SQS Queues'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues:
+      - development
+      - staging
+      - production
+
+  QueuePrefix:
+    Type: String
+    Default: baton-
+
+Resources:
+  # ============= Webhook Processing Queue =============
+  WebhookProcessingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${QueuePrefix}webhook-processing'
+      VisibilityTimeout: 60
+      MessageRetentionPeriod: 1209600  # 14 days
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt WebhookProcessingDLQ.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  WebhookProcessingDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${QueuePrefix}webhook-processing-dlq'
+      MessageRetentionPeriod: 1209600
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  # ============= Workflow Launcher Queue =============
+  WorkflowLauncherQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${QueuePrefix}workflow-launcher'
+      VisibilityTimeout: 120
+      MessageRetentionPeriod: 1209600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt WorkflowLauncherDLQ.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  WorkflowLauncherDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${QueuePrefix}workflow-launcher-dlq'
+      MessageRetentionPeriod: 1209600
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  # ============= Token Refresh Queue =============
+  TokenRefreshQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${QueuePrefix}token-refresh'
+      VisibilityTimeout: 60
+      MessageRetentionPeriod: 1209600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt TokenRefreshDLQ.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  TokenRefreshDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${QueuePrefix}token-refresh-dlq'
+      MessageRetentionPeriod: 1209600
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  # ============= Notification Sender Queue =============
+  NotificationSenderQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${QueuePrefix}notification-sender'
+      VisibilityTimeout: 30
+      MessageRetentionPeriod: 1209600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt NotificationSenderDLQ.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  NotificationSenderDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${QueuePrefix}notification-sender-dlq'
+      MessageRetentionPeriod: 1209600
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+Outputs:
+  WebhookProcessingQueueUrl:
+    Value: !Ref WebhookProcessingQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-WebhookProcessingQueueUrl'
+
+  WebhookProcessingQueueArn:
+    Value: !GetAtt WebhookProcessingQueue.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-WebhookProcessingQueueArn'
+
+  WorkflowLauncherQueueUrl:
+    Value: !Ref WorkflowLauncherQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-WorkflowLauncherQueueUrl'
+
+  WorkflowLauncherQueueArn:
+    Value: !GetAtt WorkflowLauncherQueue.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-WorkflowLauncherQueueArn'
+
+  TokenRefreshQueueUrl:
+    Value: !Ref TokenRefreshQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-TokenRefreshQueueUrl'
+
+  TokenRefreshQueueArn:
+    Value: !GetAtt TokenRefreshQueue.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-TokenRefreshQueueArn'
+
+  NotificationSenderQueueUrl:
+    Value: !Ref NotificationSenderQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-NotificationSenderQueueUrl'
+
+  NotificationSenderQueueArn:
+    Value: !GetAtt NotificationSenderQueue.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-NotificationSenderQueueArn'

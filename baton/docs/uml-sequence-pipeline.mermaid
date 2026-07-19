@@ -1,0 +1,65 @@
+---
+title: "Baton — UML Sequence: Webhook → Workflow Pipeline"
+---
+sequenceDiagram
+    participant Platform as 🏗️ External Platform<br/>(Procore/Xero/...)
+    participant Webhook as ⚡ Webhook Route<br/>/api/webhooks/{platform}
+    participant Connector as 🔌 PlatformConnector<br/>verifySignature()
+    participant DynamoDB as 🗄️ DynamoDB
+    participant SQS_WH as 📨 SQS<br/>webhook-processing
+    participant Worker as ⚙️ WebhookWorker
+    participant RuleEngine as 🎯 RuleEngine
+    participant SQS_WF as 📨 SQS<br/>workflow-launcher
+    participant Launcher as 🚀 LauncherWorker
+    participant Maestro as 📝 DocuSign Maestro
+    participant SQS_N as 📨 SQS<br/>notification-sender
+    participant Notifier as 📧 NotifSender
+
+    Note over Platform,Notifier: Event-Driven Pipeline (13 steps)
+
+    Platform->>+Webhook: POST /api/webhooks/procore<br/>{event_type, resource_id, ...}
+    Webhook->>+Connector: verifyWebhookSignature(body, headers, secret)
+    Connector-->>-Webhook: {valid: true}
+
+    Webhook->>DynamoDB: Store raw event<br/>→ webhook-events table
+    Webhook->>SQS_WH: Enqueue {platform, eventId, payload}
+    Webhook-->>-Platform: 200 OK
+
+    Note over SQS_WH,Worker: Async Processing
+
+    SQS_WH->>+Worker: Poll message
+    Worker->>+Connector: extractEventInfo(payload)
+    Connector-->>-Worker: {eventType: "vendor.created",<br/>summary, recordId, metadata}
+
+    Worker->>DynamoDB: Create pipeline entry<br/>→ trigger-pipeline table<br/>status: "processing"
+
+    Worker->>+RuleEngine: findMatchingRules(orgId, platform, eventType)
+    RuleEngine->>DynamoDB: Query automation-rules<br/>GSI: orgId + status=active
+    DynamoDB-->>RuleEngine: Matching rules[]
+    RuleEngine->>RuleEngine: evaluateConditions(rule, eventData)
+    RuleEngine-->>-Worker: matchedRules[]
+
+    loop For each matched rule
+        Worker->>Worker: mapFields(rule.actionConfig, eventData)
+        Worker->>SQS_WF: Enqueue {ruleId, workflowId,<br/>triggerInputs, pipelineId}
+        Worker->>DynamoDB: Update pipeline<br/>status: "matched"
+    end
+    Worker-->>-SQS_WH: Delete message (ack)
+
+    SQS_WF->>+Launcher: Poll message
+    Launcher->>DynamoDB: Get workflow details<br/>+ connection tokens
+    Launcher->>Launcher: Decrypt access token<br/>(AES-256-GCM)
+
+    Launcher->>+Maestro: POST /maestro/v1/workflows/{id}/instances<br/>{instanceName, triggerInputs}
+    Maestro-->>-Launcher: {instanceId, status: "running"}
+
+    Launcher->>DynamoDB: Store instance<br/>→ workflow-instances table
+    Launcher->>DynamoDB: Update pipeline<br/>status: "completed"
+    Launcher->>DynamoDB: Increment rule.timesTriggered
+    Launcher->>SQS_N: Enqueue notification<br/>{type: "workflow_launched", ...}
+    Launcher-->>-SQS_WF: Delete message (ack)
+
+    SQS_N->>+Notifier: Poll message
+    Notifier->>DynamoDB: Store in-app notification
+    Notifier->>Notifier: Send email (Resend)<br/>and/or Slack message
+    Notifier-->>-SQS_N: Delete message (ack)

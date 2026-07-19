@@ -1,0 +1,43 @@
+---
+title: "Baton — C4 Level 1: System Context"
+---
+graph TB
+    subgraph users["👤 Users"]
+        admin["Admin / Org Owner<br/><i>Manages connections,<br/>creates automation rules</i>"]
+        member["Team Member<br/><i>Views dashboards,<br/>monitors events</i>"]
+    end
+
+    baton["🔷 BATON<br/><b>Workflow Orchestration Platform</b><br/><i>Connects business platforms<br/>to DocuSign Maestro workflows<br/>via event-driven automation</i>"]
+
+    subgraph external["External Business Platforms"]
+        docusign["📝 DocuSign<br/><b>Maestro + eSignature</b><br/><i>Workflow engine &amp; signing</i>"]
+        procore["🏗️ Procore<br/><b>Construction Mgmt</b>"]
+        xero["📊 Xero<br/><b>Accounting</b>"]
+        bamboo["👥 BambooHR<br/><b>HR Platform</b>"]
+        zoho["💼 Zoho CRM<br/><b>Sales CRM</b>"]
+        smartsheet["📋 Smartsheet<br/><b>Work Mgmt</b>"]
+    end
+
+    clerk["🔐 Clerk<br/><b>Auth Provider</b><br/><i>SSO &amp; orgs</i>"]
+    aws["☁️ AWS<br/><b>DynamoDB + SQS</b>"]
+
+    admin -->|"Configure &amp; manage"| baton
+    member -->|"View &amp; monitor"| baton
+    baton <-->|"OAuth + Webhooks"| procore
+    baton <-->|"OAuth PKCE + Webhooks"| xero
+    baton <-->|"OAuth + Webhooks"| bamboo
+    baton <-->|"OAuth + Webhooks"| zoho
+    baton <-->|"OAuth + Webhooks"| smartsheet
+    baton <-->|"JWT Grant + Maestro API + Connect"| docusign
+    baton <-->|"Session auth + Org webhooks"| clerk
+    baton <-->|"Storage + Queues"| aws
+
+    style baton fill:#2563eb,stroke:#1e40af,color:#fff,stroke-width:3px
+    style docusign fill:#1a1a2e,stroke:#6366f1,color:#fff
+    style procore fill:#f97316,stroke:#ea580c,color:#fff
+    style xero fill:#13b5ea,stroke:#0e8bbf,color:#fff
+    style bamboo fill:#73c41d,stroke:#5a9e17,color:#fff
+    style zoho fill:#e42527,stroke:#b91c1e,color:#fff
+    style smartsheet fill:#0073ea,stroke:#005bb5,color:#fff
+    style clerk fill:#6c47ff,stroke:#5535d4,color:#fff
+    style aws fill:#ff9900,stroke:#cc7a00,color:#fff

@@ -1,0 +1,70 @@
+---
+title: "Baton — C4 Level 2: Container Diagram"
+---
+graph TB
+    user["👤 User<br/><i>Admin / Team Member</i>"]
+
+    subgraph baton_system["Baton System"]
+        frontend["🌐 baton-front<br/><b>React SPA</b><br/><i>Vite + React 18 + TypeScript<br/>React Router, @xyflow/react<br/>SWR, Tailwind CSS, Clerk</i><br/>Port 3002"]
+
+        subgraph backend_group["baton API Server"]
+            api["⚡ Express API<br/><b>REST API</b><br/><i>12 route modules<br/>+ 7 webhook routes<br/>Clerk auth + RBAC</i><br/>Port 3001"]
+
+            workers["⚙️ SQS Workers<br/><b>Background Processors</b><br/><i>4 workers polling SQS<br/>webhook, launcher,<br/>token-refresh, notifications</i>"]
+
+            scheduler["⏰ Scheduler<br/><b>node-cron</b><br/><i>Token refresh (5m)<br/>Instance sync (1h)<br/>Cleanup (daily)</i>"]
+        end
+
+        subgraph data_layer["AWS Data Layer"]
+            dynamo["🗄️ DynamoDB<br/><b>13 Tables</b><br/><i>connections, workflows,<br/>rules, events, audit,<br/>oauth-states (TTL)</i>"]
+
+            sqs["📨 SQS<br/><b>4 Queues</b><br/><i>webhook-processing<br/>workflow-launcher<br/>token-refresh<br/>notification-sender</i>"]
+        end
+    end
+
+    subgraph platforms["External Platforms"]
+        ds["📝 DocuSign Maestro"]
+        pc["🏗️ Procore"]
+        xr["📊 Xero"]
+        bh["👥 BambooHR"]
+        zh["💼 Zoho CRM"]
+        ss["📋 Smartsheet"]
+    end
+
+    clerk["🔐 Clerk"]
+
+    user -->|"HTTPS"| frontend
+    frontend -->|"REST /api/*<br/>via Vite proxy"| api
+    user -->|"Session"| clerk
+    clerk -->|"JWT verify"| api
+
+    api -->|"Read/Write"| dynamo
+    api -->|"Enqueue"| sqs
+    workers -->|"Poll &amp; process"| sqs
+    workers -->|"Read/Write"| dynamo
+    scheduler -->|"Enqueue refresh jobs"| sqs
+    scheduler -->|"Read connections"| dynamo
+
+    api <-->|"OAuth flows"| ds
+    api <-->|"OAuth flows"| pc
+    api <-->|"OAuth PKCE"| xr
+    api <-->|"OAuth flows"| bh
+    api <-->|"OAuth flows"| zh
+    api <-->|"OAuth flows"| ss
+
+    workers -->|"Launch workflow<br/>Maestro API"| ds
+    ds -->|"Connect webhook"| api
+    pc -->|"Webhook"| api
+    xr -->|"Webhook"| api
+    bh -->|"Webhook"| api
+    zh -->|"Webhook"| api
+    ss -->|"Webhook"| api
+
+    style frontend fill:#06b6d4,stroke:#0891b2,color:#fff
+    style api fill:#2563eb,stroke:#1e40af,color:#fff
+    style workers fill:#7c3aed,stroke:#6d28d9,color:#fff
+    style scheduler fill:#8b5cf6,stroke:#7c3aed,color:#fff
+    style dynamo fill:#ff9900,stroke:#cc7a00,color:#fff
+    style sqs fill:#ff9900,stroke:#cc7a00,color:#fff
+    style clerk fill:#6c47ff,stroke:#5535d4,color:#fff
+    style ds fill:#1a1a2e,stroke:#6366f1,color:#fff

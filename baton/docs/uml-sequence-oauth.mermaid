@@ -1,0 +1,73 @@
+---
+title: "Baton — UML Sequence: OAuth Connection Flow"
+---
+sequenceDiagram
+    participant User as 👤 User
+    participant Frontend as 🌐 baton-front
+    participant API as ⚡ Baton API
+    participant Encrypt as 🔒 EncryptionService
+    participant Connector as 🔌 PlatformConnector
+    participant DynamoDB as 🗄️ DynamoDB
+    participant Platform as 🏗️ External Platform
+
+    Note over User,Platform: Step 1 — Initiate OAuth
+
+    User->>Frontend: Click "Connect Procore"
+    Frontend->>API: POST /api/connections/procore/authorize
+    API->>Connector: authorize(orgId, userId)
+    Connector->>Connector: Generate CSRF state<br/>(+ PKCE verifier for Xero)
+    Connector-->>API: {redirectUrl, state, codeVerifier?}
+    API->>DynamoDB: Store oauth-state<br/>{state, orgId, userId, platform,<br/>codeVerifier, ttl: 10min}
+    API-->>Frontend: {redirectUrl}
+    Frontend->>Platform: Redirect to OAuth consent screen
+
+    Note over User,Platform: Step 2 — User Grants Access
+
+    User->>Platform: Approve access
+    Platform->>Frontend: Redirect to callback<br/>/auth/callback?code=xxx&state=yyy
+
+    Note over User,Platform: Step 3 — Token Exchange
+
+    Frontend->>API: POST /api/auth/callback<br/>{code, state, platform}
+    API->>DynamoDB: Lookup oauth-state by state
+    DynamoDB-->>API: {orgId, userId, platform, codeVerifier}
+    API->>DynamoDB: Delete oauth-state (one-time use)
+
+    API->>Connector: handleCallback({code, state, codeVerifier})
+    Connector->>Platform: POST /oauth/token<br/>{code, client_id, client_secret, ...}
+    Platform-->>Connector: {access_token, refresh_token,<br/>expires_in, scope}
+    Connector-->>API: OAuthTokens
+
+    Note over User,Platform: Step 4 — Secure Storage
+
+    API->>Connector: testConnection(accessToken)
+    Connector->>Platform: GET /api/me (lightweight check)
+    Platform-->>Connector: {id, name, ...}
+    Connector-->>API: {healthy: true, details: {accountId, name}}
+
+    API->>Encrypt: encrypt(accessToken)
+    Encrypt-->>API: {ciphertext, iv, tag}
+    API->>Encrypt: encrypt(refreshToken)
+    Encrypt-->>API: {ciphertext, iv, tag}
+
+    API->>DynamoDB: PutItem → platform-connections<br/>{id, orgId, platform, status: "healthy",<br/>encryptedAccessToken, encryptedRefreshToken,<br/>tokenExpiresIn, tokenCreatedAt, accountId}
+
+    API-->>Frontend: {connection: {id, platform, status}}
+    Frontend-->>User: ✅ "Procore connected!"
+
+    Note over User,Platform: Later — Token Refresh (every 5 min cron check)
+
+    rect rgb(255, 249, 235)
+        API->>DynamoDB: Scan connections<br/>where tokenExpired
+        DynamoDB-->>API: [expiring connections]
+        loop Each expiring connection
+            API->>Encrypt: decrypt(encryptedRefreshToken)
+            Encrypt-->>API: refreshToken
+            API->>Connector: refreshToken(refreshToken)
+            Connector->>Platform: POST /oauth/token<br/>{grant_type: refresh_token}
+            Platform-->>Connector: New tokens
+            Connector-->>API: OAuthTokens
+            API->>Encrypt: encrypt(newAccessToken)
+            API->>DynamoDB: Update connection tokens
+        end
+    end

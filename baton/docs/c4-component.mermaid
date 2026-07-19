@@ -1,0 +1,95 @@
+---
+title: "Baton — C4 Level 3: Backend Components"
+---
+graph TB
+    frontend["🌐 baton-front"]
+
+    subgraph api_layer["API Layer (Express Routes)"]
+        auth_r["🔑 /api/auth<br/><i>OAuth initiate &amp; callback</i>"]
+        conn_r["🔌 /api/connections<br/><i>CRUD, test, refresh, accounts</i>"]
+        wf_r["📋 /api/workflows<br/><i>Sync, launch, instances</i>"]
+        rule_r["⚡ /api/rules<br/><i>CRUD, pause/resume, history</i>"]
+        event_r["📊 /api/events<br/><i>Pipeline events &amp; stats</i>"]
+        dash_r["📈 /api/dashboard<br/><i>Aggregated overview</i>"]
+        notif_r["🔔 /api/notifications<br/><i>User notifications</i>"]
+        settings_r["⚙️ /api/settings<br/><i>Org &amp; user prefs</i>"]
+    end
+
+    subgraph webhook_layer["Webhook Ingress (No Auth)"]
+        wh_ds["DocuSign Connect"]
+        wh_pc["Procore"]
+        wh_xr["Xero"]
+        wh_bh["BambooHR"]
+        wh_zh["Zoho CRM"]
+        wh_ss["Smartsheet"]
+        wh_clerk["Clerk"]
+    end
+
+    subgraph middleware_layer["Middleware"]
+        mw_auth["🛡️ requireAuth<br/><i>Clerk session verify<br/>+ dev bypass</i>"]
+        mw_rbac["👮 RBAC<br/><i>requireViewer<br/>requireMember<br/>requireAdmin</i>"]
+        mw_rate["🚦 Rate Limiter<br/><i>express-rate-limit</i>"]
+        mw_err["❌ Error Handler<br/><i>Zod, NotFound,<br/>Auth, generic</i>"]
+    end
+
+    subgraph service_layer["Services"]
+        conn_svc["🔌 ConnectionService<br/><i>Token storage (AES-256-GCM)<br/>Status management</i>"]
+        wf_svc["📋 WorkflowService<br/><i>Maestro sync &amp; launch</i>"]
+        rule_eng["⚡ RuleEngine<br/><i>Rule CRUD, matching,<br/>condition evaluation</i>"]
+        encrypt["🔒 EncryptionService<br/><i>AES-256-GCM encrypt/decrypt<br/>HMAC verification</i>"]
+        notif_svc["🔔 NotificationService<br/><i>Resend email, Slack,<br/>in-app notifications</i>"]
+    end
+
+    subgraph connector_layer["Platform Connectors"]
+        c_iface["«interface»<br/>PlatformConnector<br/><i>authorize, callback,<br/>refreshToken, verifyWebhook,<br/>extractEvent, testConnection,<br/>getSupportedEventTypes</i>"]
+        c_pc["ProcoreConnector"]
+        c_xr["XeroConnector"]
+        c_bh["BambooHRConnector"]
+        c_zh["ZohoCRMConnector"]
+        c_ss["SmartsheetConnector"]
+        c_ds["DocuSignConnector"]
+    end
+
+    subgraph worker_layer["SQS Workers"]
+        w_wh["🔄 WebhookWorker<br/><i>Parse → match rules<br/>→ enqueue launches</i>"]
+        w_launch["🚀 LauncherWorker<br/><i>Call Maestro API<br/>→ track instance</i>"]
+        w_token["🔑 TokenRefreshWorker<br/><i>Decrypt → refresh<br/>→ re-encrypt</i>"]
+        w_notif["📧 NotifSenderWorker<br/><i>Email, Slack,<br/>in-app delivery</i>"]
+    end
+
+    dynamo["🗄️ DynamoDB"]
+    sqs["📨 SQS"]
+
+    frontend --> mw_rate --> mw_auth --> mw_rbac
+    mw_rbac --> auth_r & conn_r & wf_r & rule_r & event_r & dash_r & notif_r & settings_r
+
+    auth_r --> conn_svc
+    conn_r --> conn_svc
+    wf_r --> wf_svc
+    rule_r --> rule_eng
+
+    conn_svc --> encrypt
+    conn_svc --> connector_layer
+    wf_svc --> c_ds
+
+    c_iface -.->|implements| c_pc & c_xr & c_bh & c_zh & c_ss & c_ds
+
+    webhook_layer -->|"Signature verify<br/>via connector"| connector_layer
+    webhook_layer -->|"Enqueue raw event"| sqs
+
+    w_wh --> rule_eng
+    w_wh --> connector_layer
+    w_launch --> wf_svc
+    w_token --> conn_svc
+    w_notif --> notif_svc
+
+    worker_layer <--> sqs
+    service_layer <--> dynamo
+    api_layer --> mw_err
+
+    style frontend fill:#06b6d4,stroke:#0891b2,color:#fff
+    style c_iface fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    style dynamo fill:#ff9900,stroke:#cc7a00,color:#fff
+    style sqs fill:#ff9900,stroke:#cc7a00,color:#fff
+    style encrypt fill:#dc2626,stroke:#b91c1c,color:#fff
+    style rule_eng fill:#2563eb,stroke:#1e40af,color:#fff

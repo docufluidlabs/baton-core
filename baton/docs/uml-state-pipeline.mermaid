@@ -1,0 +1,43 @@
+---
+title: "Baton — UML State Diagram: Pipeline Event Lifecycle"
+---
+stateDiagram-v2
+    [*] --> received : Webhook arrives
+
+    received --> processing : WebhookWorker picks up
+    processing --> matched : Rule(s) found &amp; conditions pass
+    processing --> no_match : No matching rules
+    processing --> failed : Extraction or matching error
+
+    matched --> launching : LauncherWorker picks up
+    launching --> completed : Maestro instance created
+    launching --> retry : Maestro API error (transient)
+    launching --> failed : Max retries exceeded
+
+    retry --> launching : Retry after delay<br/>(linear / exponential)
+
+    no_match --> [*] : Pipeline ends<br/>(logged, no action)
+    completed --> [*] : Pipeline ends<br/>(notification sent)
+    failed --> [*] : Pipeline ends<br/>(error notification sent)
+
+    state received {
+        [*] --> signature_verify
+        signature_verify --> store_raw : Valid signature
+        signature_verify --> rejected : Invalid signature
+        store_raw --> enqueue_sqs
+        rejected --> [*]
+    }
+
+    state processing {
+        [*] --> extract_event
+        extract_event --> find_rules
+        find_rules --> evaluate_conditions
+        evaluate_conditions --> map_fields : Conditions pass
+    }
+
+    state launching {
+        [*] --> decrypt_tokens
+        decrypt_tokens --> call_maestro
+        call_maestro --> track_instance
+        track_instance --> send_notification
+    }

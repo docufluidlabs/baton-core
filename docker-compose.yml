@@ -1,0 +1,65 @@
+version: "3.8"
+
+# Self-host quickstart: frontend (/) and backend (/api) on one domain (http://localhost).
+# For production deployments, set APP_URL / API_URL / FRONTEND_URL to your public URL
+# and terminate SSL externally (reverse proxy / load balancer).
+
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
+    restart: unless-stopped
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: dynamodb,sqs,s3
+      DEFAULT_REGION: us-east-1
+      PERSISTENCE: 1
+    volumes:
+      - localstack-data:/var/lib/localstack
+    networks:
+      - baton-net
+
+  baton-api:
+    build:
+      context: ./baton
+      dockerfile: Dockerfile
+    container_name: baton-api
+    restart: unless-stopped
+    env_file: ./baton/.env
+    environment:
+      PORT: "3001"
+      APP_URL: "${APP_URL:-http://localhost}"
+      API_URL: "${API_URL:-http://localhost}"
+      FRONTEND_URL: "${FRONTEND_URL:-http://localhost}"
+      DYNAMODB_ENDPOINT: "http://localstack:4566"
+      SQS_ENDPOINT: "http://localstack:4566"
+    depends_on:
+      - localstack
+    networks:
+      - baton-net
+    # Only expose to host for direct debugging; nginx handles public traffic
+    # ports:
+    #   - "3001:3001"
+
+  baton-front:
+    build:
+      context: ./baton-front
+      dockerfile: Dockerfile
+      args:
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:-}
+    container_name: baton-front
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - baton-api
+    networks:
+      - baton-net
+
+networks:
+  baton-net:
+    driver: bridge
+
+volumes:
+  localstack-data:

@@ -1,0 +1,61 @@
+@import '@xyflow/react/dist/style.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sidebar-width: 240px;
+}
+
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ReactFlow overrides */
+.react-flow__node {
+  @apply shadow-sm;
+}
+
+/* Legal pages — typography for Privacy / Terms / Subprocessors */
+.legal-content {
+  @apply text-gray-700;
+}
+.legal-content h2 {
+  @apply mt-12 text-xl font-semibold text-gray-900 scroll-mt-24;
+}
+.legal-content h3 {
+  @apply mt-8 text-lg font-semibold text-gray-900;
+}
+.legal-content p {
+  @apply my-4 leading-relaxed;
+}
+.legal-content ul {
+  @apply my-4 list-disc space-y-2 pl-6;
+}
+.legal-content ol {
+  @apply my-4 list-decimal space-y-2 pl-6;
+}
+.legal-content a {
+  @apply text-blue-600 underline-offset-4 hover:underline;
+}
+.legal-content table {
+  @apply my-6 w-full border-collapse text-sm;
+}
+.legal-content th {
+  @apply border-b border-gray-300 bg-gray-50 px-3 py-2 text-left font-semibold;
+}
+.legal-content td {
+  @apply border-b border-gray-200 px-3 py-2 align-top;
+}
+.legal-content strong {
+  @apply font-semibold text-gray-900;
+}
+.legal-content code {
+  @apply rounded bg-gray-100 px-1 py-0.5 text-sm;
+}
