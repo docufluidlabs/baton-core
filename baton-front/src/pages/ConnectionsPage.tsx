@@ -20,6 +20,7 @@ import {
 import { useSWRConfig } from 'swr';
 import { ConnectionDetailModal } from '@/components/connections/ConnectionDetailModal';
 import { DocuSignSidePanel } from '@/components/connections/DocuSignSidePanel';
+import { DocuSignConnectCard } from '@/components/connections/DocuSignConnectCard';
 import { AddPlatformModal } from '@/components/connections/AddPlatformModal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Modal } from '@/components/ui/Modal';
@@ -219,26 +220,10 @@ export default function ConnectionsPage() {
             />
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-dashed border-gray-300 p-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <PlatformIcon platform="docusign" size={32} />
-              <div>
-                <h3 className="font-medium text-gray-900">Docusign</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Connect your Docusign account to enable envelope workflows.</p>
-              </div>
-            </div>
-            <button
-              onClick={() => handleConnect('docusign')}
-              disabled={connecting === 'docusign'}
-              className="px-5 py-2.5 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2 shrink-0"
-            >
-              {connecting === 'docusign' ? (
-                <><Loader2 className="w-4 h-4 animate-spin" /> Connecting...</>
-              ) : (
-                <><Plug className="w-4 h-4" /> Connect Docusign</>
-              )}
-            </button>
-          </div>
+          <DocuSignConnectCard
+            connecting={connecting === 'docusign'}
+            onConnect={() => handleConnect('docusign')}
+          />
         )}
       </section>
 

@@ -16,7 +16,7 @@ export default function ConnectDocusign() {
       <p>Baton uses Docusign's standard OAuth sign-in, so you never paste credentials into Baton — you authorize Baton inside Docusign's own login screen. Here is the full flow:</p>
 
       <Steps>
-        <Step title="Open the Connections page"> Go to <code>/connections</code>. The <strong>Docusign Connection</strong> section is at the top. If no connection exists yet, you will see a setup prompt instead of a connection card.</Step>
+        <Step title="Open the Connections page"> Go to <code>/connections</code>. The <strong>Docusign Connection</strong> section is at the top. If no connection exists yet, you will see a setup prompt instead of a connection card. On self-hosted installs where the Docusign OAuth app is not configured yet, this prompt shows the exact Redirect URI to copy into your Docusign app, along with the environment keys to set.</Step>
         <Step title="Click Connect Docusign"> Baton redirects you to the Docusign login screen.</Step>
         <Step title="Sign in and authorize"> Log in with your Docusign credentials and approve the access Baton requests.</Step>
         <Step title="Get redirected back to Baton"> Docusign sends you back to Baton, which securely stores the access tokens (encrypted). You do not see or handle any token material.</Step>

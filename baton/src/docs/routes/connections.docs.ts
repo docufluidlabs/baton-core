@@ -57,6 +57,32 @@ registry.registerPath({
 
 registry.registerPath({
   method: 'get',
+  path: '/api/connections/docusign/setup-status',
+  tags: [TAG],
+  summary: 'DocuSign OAuth app setup status (guided self-host setup)',
+  description:
+    'Readable by any authenticated role. Reports whether DOCUSIGN_INTEGRATION_KEY and DOCUSIGN_SECRET_KEY are set, plus the exact redirect URI to register in the DocuSign app. The frontend uses this to show a guided setup instead of a doomed Connect button.',
+  security: SECURITY,
+  responses: {
+    200: {
+      description: 'Setup status',
+      content: {
+        'application/json': {
+          schema: z.object({
+            configured: z.boolean(),
+            redirectUri: z.string().url(),
+            oauthBase: z.string().url(),
+            developerPortalUrl: z.string().url(),
+          }),
+        },
+      },
+    },
+    401: commonErrorResponses[401],
+  },
+});
+
+registry.registerPath({
+  method: 'get',
   path: '/api/connections/{id}',
   tags: [TAG],
   summary: 'Get connection details (tokens stripped)',
@@ -88,6 +114,19 @@ registry.registerPath({
     400: commonErrorResponses[400],
     401: commonErrorResponses[401],
     403: commonErrorResponses[403],
+    409: {
+      description: 'DocuSign OAuth app is not configured on the server (self-host setup incomplete)',
+      content: {
+        'application/json': {
+          schema: z.object({
+            error: z.string(),
+            message: z.string(),
+            redirectUri: z.string().url(),
+            developerPortalUrl: z.string().url(),
+          }),
+        },
+      },
+    },
   },
 });
 

@@ -334,6 +334,23 @@ export function usePlatforms() {
   return useSWR<{ platforms: PlatformMeta[] }>('/connections/platforms', fetcher);
 }
 
+export interface DocusignSetupStatus {
+  /** true when the server has both DOCUSIGN_INTEGRATION_KEY and DOCUSIGN_SECRET_KEY */
+  configured: boolean;
+  /** Exact OAuth redirect URI to register in the DocuSign app (Apps & Keys) */
+  redirectUri: string;
+  /** DocuSign OAuth base — contains 'account-d' when pointing at the developer sandbox */
+  oauthBase: string;
+  developerPortalUrl: string;
+}
+
+/** Whether the server's DocuSign OAuth app is configured. When it is not,
+ *  the Connections page shows the guided one-time provider-app setup
+ *  (n8n-style: exact redirect URI to copy) instead of a doomed Connect button. */
+export function useDocusignSetupStatus() {
+  return useSWR<DocusignSetupStatus>('/connections/docusign/setup-status', fetcher);
+}
+
 export function useWorkflows(options?: { refreshInterval?: number }) {
   return useSWR<{ workflows: Workflow[] }>('/workflows', fetcher, options);
 }
