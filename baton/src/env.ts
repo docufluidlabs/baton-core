@@ -10,6 +10,8 @@ const env = {
   APP_URL: process.env.APP_URL || 'http://localhost:3001',
   API_URL: process.env.API_URL || 'http://localhost:3001',
   FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3002',
+  // Max authenticated API requests per minute, per client IP.
+  RATE_LIMIT_PER_MINUTE: parseInt(process.env.RATE_LIMIT_PER_MINUTE || '300', 10),
 
   // AWS General
   AWS_REGION: process.env.AWS_REGION || 'us-east-1',
@@ -55,6 +57,8 @@ const env = {
   ZOHO_CLIENT_ID: process.env.ZOHO_CLIENT_ID || '',
   ZOHO_CLIENT_SECRET: process.env.ZOHO_CLIENT_SECRET || '',
   ZOHO_REDIRECT_URI: process.env.ZOHO_REDIRECT_URI || '',
+  // Regional accounts server: .com (US), .eu, .in, .com.au, .com.cn, .jp
+  ZOHO_ACCOUNTS_BASE: process.env.ZOHO_ACCOUNTS_BASE || 'https://accounts.zoho.com',
 
   // HubSpot (webhook-only — no OAuth)
   HUBSPOT_WEBHOOK_SECRET: process.env.HUBSPOT_WEBHOOK_SECRET || '',

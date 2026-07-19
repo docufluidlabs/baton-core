@@ -36,7 +36,7 @@ export default function Catalog() {
           </thead>
           <tbody>
             <tr><td>HubSpot</td><td>CRM</td><td>HMAC (HubSpot signature using the App Client Secret)</td><td>The reference integration.</td></tr>
-            <tr><td>Salesforce</td><td>CRM</td><td>HMAC</td><td>Uses the dedicated Baton managed package — see the <DocLink to="salesforce">Salesforce</DocLink> page.</td></tr>
+            <tr><td>Salesforce</td><td>CRM</td><td>HMAC</td><td>You build the outbound webhook in your org — see the <DocLink to="salesforce">Salesforce</DocLink> page.</td></tr>
           </tbody>
         </table>
       </TableWrap>

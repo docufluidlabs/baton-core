@@ -6,6 +6,7 @@ vi.mock('../../env', () => ({
     ZOHO_CLIENT_ID: 'test-id',
     ZOHO_CLIENT_SECRET: 'test-secret',
     ZOHO_REDIRECT_URI: 'http://localhost:3001/api/connections/zohocrm/callback',
+    ZOHO_ACCOUNTS_BASE: 'https://accounts.zoho.com',
     API_URL: 'http://localhost:3001',
   },
 }));

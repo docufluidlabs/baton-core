@@ -174,6 +174,20 @@ describe('createWebhookHandler', () => {
     expect(mockStoreWebhookEvent).not.toHaveBeenCalled();
   });
 
+  it('returns 401 when a secret exists but no connector can verify it (fail closed)', async () => {
+    mockHasConnector.mockReturnValue(false);
+
+    const handler = createWebhookHandler(defaultOptions);
+    const res = mockRes();
+
+    await handler(mockReq({ data: 'x' }), res, vi.fn());
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Signature verification unavailable' });
+    expect(mockStoreWebhookEvent).not.toHaveBeenCalled();
+    expect(mockSendMessage).not.toHaveBeenCalled();
+  });
+
   it('returns 200 even on internal errors (prevents platform retries)', async () => {
     mockHasConnector.mockReturnValue(true);
     mockGetConnector.mockReturnValue({

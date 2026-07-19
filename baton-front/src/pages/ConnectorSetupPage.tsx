@@ -8,7 +8,7 @@
  * the webhook in the external platform → send a test event), built from the
  * platform's catalog template (`/platforms/catalog`).
  *
- * Route: /setup/:slug. Salesforce keeps its own managed-package page at
+ * Route: /setup/:slug. Salesforce keeps its own bespoke setup page at
  * /salesforce-setup, so /setup/salesforce redirects there.
  */
 import { useParams, Navigate, Link } from 'react-router-dom';
@@ -32,7 +32,7 @@ export default function ConnectorSetupPage() {
   const { slug = '' } = useParams();
   const { data, isLoading } = usePlatformTemplates();
 
-  // Salesforce has its own bespoke managed-package guide.
+  // Salesforce has its own bespoke setup guide.
   if (slug === 'salesforce') return <Navigate to="/salesforce-setup" replace />;
 
   const template = data?.templates.find((t) => t.slug === slug);

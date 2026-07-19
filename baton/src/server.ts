@@ -153,7 +153,7 @@ app.use('/api/auth', localAuthRoutes);
 app.use('/api/connections', connectionRoutes);
 
 // ─── API Routes (session auth required) ──────────────────────
-// Per-org rate limiting applied after auth for all authenticated routes
+// Per-IP rate limiting applied after auth for all authenticated routes
 const apiRouter = express.Router();
 apiRouter.use(requireAuth);
 apiRouter.use(orgRateLimiter);

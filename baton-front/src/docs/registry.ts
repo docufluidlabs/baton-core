@@ -40,7 +40,7 @@ export const GROUPS: DocGroup[] = [
     items: [
       { slug: 'connect-docusign', title: 'Connect Docusign', description: 'The one connection Baton needs before anything else.', keywords: 'oauth maestro account login authorize sync token' },
       { slug: 'connections', title: 'Source platforms', description: 'Add a source platform and start receiving its webhooks.', keywords: 'add platform hubspot crm webhook secret connections catalog' },
-      { slug: 'salesforce', title: 'Salesforce package', description: 'Set up the Salesforce AppExchange package and its bootstrap auth.', keywords: 'salesforce appexchange managed package apex flow bootstrap' },
+      { slug: 'salesforce', title: 'Salesforce setup', description: 'Send Salesforce events to Baton with an outbound webhook you build in your org.', keywords: 'salesforce apex flow outbound message remote site hmac webhook manual' },
       { slug: 'custom-webhook', title: 'Custom POST webhooks', description: 'Send events from any system that is not in the catalog.', keywords: 'custom endpoint generic api key json bespoke' },
       { slug: 'setup', title: 'Setup guides', description: 'Step-by-step webhook setup for each supported platform.', keywords: 'setup guide bamboohr hubspot zoho install configure steps per platform' },
     ],

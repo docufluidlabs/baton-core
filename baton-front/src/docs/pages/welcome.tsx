@@ -68,9 +68,11 @@ export default function Welcome() {
 
       <h2>Who Baton is for</h2>
       <p>
-        Baton is built for the <strong>admin</strong> who owns an organization's agreement automation —
-        operations, revenue ops, or IT. In one place you connect your tools, wire up automations, and keep
-        them healthy. Everyone who signs in to Baton is an admin of their organization.
+        Baton is built for the team that owns an organization's agreement automation — operations,
+        revenue ops, or IT. In one place you connect your tools, wire up automations, and keep them
+        healthy. The user who sets up Baton becomes the <strong>owner</strong> and can invite
+        teammates as <strong>admins</strong>, <strong>members</strong>, or read-only{' '}
+        <strong>viewers</strong> from <DocLink to="settings">Settings → Members</DocLink>.
       </p>
 
       <h2>The six screens you'll use</h2>

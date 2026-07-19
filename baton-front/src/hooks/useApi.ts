@@ -625,28 +625,9 @@ export async function cancelInstance(instanceId: string) {
   return res;
 }
 
-/** Pre-generate a per-automation webhook URL (no DB write).
- *  Pass sourcePlatform='salesforce' to receive a URL with an embedded one-time
- *  bootstrap token, ready to paste into Flow Builder without manual secret entry. */
+/** Pre-generate a per-automation webhook URL (no DB write). */
 export async function preflightAutomation(sourcePlatform?: string): Promise<{ webhookKey: string; webhookUrl: string }> {
   return api.post<{ webhookKey: string; webhookUrl: string }>('/automations/preflight', { sourcePlatform });
-}
-
-/** Issue a fresh bootstrap-enriched webhook URL for an existing Salesforce automation.
- *  Use when reopening the rule edit panel — gives the admin a paste-ready URL even
- *  though the original token was already redeemed. The Apex managed package treats
- *  the bootstrap query param as harmless when its local secret cache is already
- *  populated, so re-issuing causes no disruption to existing webhook delivery. */
-export async function issueSfBootstrapUrl(webhookKey: string): Promise<{ tokenId: string; expiresAt: number; webhookUrl: string }> {
-  return api.post<{ tokenId: string; expiresAt: number; webhookUrl: string }>('/salesforce/bootstrap-tokens', { webhookKey });
-}
-
-/** Force-rotate the HMAC secret for a Salesforce automation. Clears Baton-side
- *  sfRegistrations and issues a fresh bootstrap URL. The Apex managed package
- *  (v0.8+) auto-heals on next dispatch: receives 401, re-registers via the
- *  embedded bootstrap token, and overwrites its cached secret. Admin-only. */
-export async function rotateSfSecret(webhookKey: string): Promise<{ tokenId: string; expiresAt: number; webhookUrl: string; clearedSfOrgs: string[] }> {
-  return api.post<{ tokenId: string; expiresAt: number; webhookUrl: string; clearedSfOrgs: string[] }>('/salesforce/rotate-secret', { webhookKey });
 }
 
 export async function createAutomation(data: Partial<Automation> & { webhookKey?: string }) {

@@ -3,6 +3,7 @@
  * In-app notifications + preferences
  */
 import { Router, Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
 import { QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { getDocClient, TableNames } from '../db/client';
 import { requireAuth } from '../middleware/auth';
@@ -168,8 +169,24 @@ router.get('/preferences', async (req: Request, res: Response, next: NextFunctio
 
 // ─── PUT /api/notifications/preferences — Update preferences ─
 
+// Whitelist of client-settable preference fields (mass-assignment guard).
+// Unknown keys are stripped; id/orgId/userId are always server-controlled.
+// Field shape mirrors NotificationPreferences in services/notification.service.ts.
+const EventChannelPrefsInput = z.object({
+  inApp: z.boolean(),
+  email: z.boolean(),
+});
+
+const UpdatePreferencesInput = z.object({
+  events: z.record(z.string().min(1).max(64).regex(/^[a-z][a-z0-9_]*$/), EventChannelPrefsInput).optional(),
+  email: z.boolean().optional(),
+  inApp: z.boolean().optional(),
+  mutedCategories: z.array(z.string().min(1).max(64)).max(50).optional(),
+});
+
 router.put('/preferences', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const updates = UpdatePreferencesInput.parse(req.body);
     const docClient = getDocClient();
     const { PutCommand } = await import('@aws-sdk/lib-dynamodb');
     const { v4: uuidv4 } = await import('uuid');
@@ -189,10 +206,12 @@ router.put('/preferences', async (req: Request, res: Response, next: NextFunctio
     await docClient.send(new PutCommand({
       TableName: TableNames.NOTIFICATION_PREFERENCES,
       Item: {
+        ...updates,
+        // Server-controlled fields last — the client can never override them.
         id,
         orgId,
+        userId: req.auth!.userId,
         updatedBy: req.auth!.userId,
-        ...req.body,
         updatedAt: new Date().toISOString(),
       },
     }));

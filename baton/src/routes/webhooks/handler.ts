@@ -110,6 +110,12 @@ export function createWebhookHandler(options: WebhookHandlerOptions) {
           });
           return;
         }
+      } else {
+        // Fail closed: a secret is configured but no connector is registered
+        // to verify it — never accept (or enqueue) an unverifiable webhook.
+        logWarn('No connector registered to verify webhook signature — rejecting', { platform });
+        res.status(401).json({ error: 'Signature verification unavailable' });
+        return;
       }
 
       // Store event (idempotency + audit)

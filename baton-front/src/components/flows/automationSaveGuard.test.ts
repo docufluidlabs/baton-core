@@ -43,8 +43,8 @@ describe('isAutomationSaveDisabled', () => {
     expect(isAutomationSaveDisabled({ ...valid, editingAutomation: false, secretSaved: false })).toBe(true);
   });
 
-  it('Salesforce is exempt from the secret requirement (bootstrap flow)', () => {
-    expect(isAutomationSaveDisabled({ ...valid, sourcePlatform: 'salesforce', secretSaved: false })).toBe(false);
+  it('Salesforce requires the secret like every other platform (manual webhook flow)', () => {
+    expect(isAutomationSaveDisabled({ ...valid, sourcePlatform: 'salesforce', secretSaved: false })).toBe(true);
   });
 
   it('editing an existing automation does not re-require the secret', () => {
@@ -69,8 +69,8 @@ describe('automationSaveBlockReason', () => {
     expect(automationSaveBlockReason({ ...valid, secretSaved: false })).toBe('secret-unsaved');
   });
 
-  it('does not report "secret-unsaved" for Salesforce', () => {
-    expect(automationSaveBlockReason({ ...valid, sourcePlatform: 'salesforce', secretSaved: false })).toBeNull();
+  it('reports "secret-unsaved" for Salesforce (no more bootstrap exemption)', () => {
+    expect(automationSaveBlockReason({ ...valid, sourcePlatform: 'salesforce', secretSaved: false })).toBe('secret-unsaved');
   });
 
   it('does not report "secret-unsaved" when editing', () => {

@@ -54,10 +54,13 @@ export default function Concepts() {
       <Callout type="warning" title="&quot;Action&quot; and &quot;Execution&quot; are the same thing">The Notifications page sometimes calls an action an "Execution." Both words refer to the same event: a webhook that was verified and routed to a workflow.</Callout>
 
       <h2>Roles: who uses Baton</h2>
-      <p>Baton has a single role.</p>
+      <p>Every member of an organization has one of four roles. Invite people and change roles from <strong>Settings → Members</strong>.</p>
 
       <KV>
-        <KVRow label="Admin">The only role. Every signed-in user is an admin of their organization and manages its connections, automations, and notifications. There are no other permission levels to assign.</KVRow>
+        <KVRow label="Owner">The user who set up the organization during first-run setup. Full control, including member management.</KVRow>
+        <KVRow label="Admin">Same day-to-day powers as the owner: manages connections, platforms, automations, secrets, settings, and members.</KVRow>
+        <KVRow label="Member">Operates automations — creates and edits them, launches and syncs workflows, retries failed runs — but cannot manage connections, organization settings, or members.</KVRow>
+        <KVRow label="Viewer">Read-only access to everything: dashboards, automations, logs, and instances.</KVRow>
       </KV>
 
       <h2>The screens you will use</h2>
@@ -72,7 +75,7 @@ export default function Concepts() {
             <tr><td>Workflow Checker</td><td>Lists every synced Maestro workflow and lets you launch any of them for testing.</td></tr>
             <tr><td>Connections</td><td>Where you connect Docusign and add source platforms.</td></tr>
             <tr><td>Notifications</td><td>The inbox of live status updates for your runs.</td></tr>
-            <tr><td>Settings</td><td>Organization and account settings.</td></tr>
+            <tr><td>Settings</td><td>Organization details, members, and the audit log.</td></tr>
           </tbody>
         </table>
       </TableWrap>

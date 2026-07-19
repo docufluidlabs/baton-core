@@ -133,8 +133,9 @@ export default function FlowBuilder() {
       </Steps>
 
       <Callout type="note" title="Salesforce automations">
-        For Salesforce, the panel also offers a bootstrap-URL button that hands off to the Salesforce package.
-        See <DocLink to="salesforce">Salesforce setup</DocLink>.
+        Salesforce uses the same webhook URL + secret flow as every other platform — the difference is
+        that you build the outbound call in your org yourself. See{' '}
+        <DocLink to="salesforce">Salesforce setup</DocLink>.
       </Callout>
 
       <h3>The preflight check before Save</h3>

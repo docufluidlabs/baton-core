@@ -31,7 +31,6 @@ import {
   updateConnectionWebhookSecret,
   updateAppWebhookSecret,
   preflightAutomation,
-  issueSfBootstrapUrl,
   connectPlatform,
   installPlatform,
   parseTriggerInputSchema,
@@ -221,9 +220,6 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
   // Pre-generated webhook URL for new automations
   const [preflightUrl, setPreflightUrl] = useState('');
   const [preflightKey, setPreflightKey] = useState('');
-  // For editing existing SF rules — fresh bootstrap-enriched URL issued on open
-  // so the admin always sees a paste-ready URL, not the redeemed/plain one.
-  const [editingEnrichedUrl, setEditingEnrichedUrl] = useState('');
   const [preflightLoading, setPreflightLoading] = useState(false);
   const [preflightCopied, setPreflightCopied] = useState(false);
   const [sourceDropdownOpen, setSourceDropdownOpen] = useState(false);
@@ -365,7 +361,6 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
     setPreflightUrl('');
     setPreflightKey('');
     setPreflightCopied(false);
-    setEditingEnrichedUrl('');
   }, [editingAutomation, open, preSelectedPlatform]);
 
 
@@ -375,20 +370,6 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
     setPreflightKey('');
     setPreflightCopied(false);
   }, [sourceKey]);
-
-  // Re-issue a bootstrap URL when editing an existing Salesforce automation
-  // so the admin sees a paste-ready URL (not the original redeemed token).
-  useEffect(() => {
-    if (!open || !editingAutomation || sourcePlatform !== 'salesforce') return;
-    if (!editingAutomation.webhookKey) return;
-    let cancelled = false;
-    issueSfBootstrapUrl(editingAutomation.webhookKey)
-      .then((result) => {
-        if (!cancelled) setEditingEnrichedUrl(result.webhookUrl);
-      })
-      .catch(() => { /* fall back to plain webhookUrl from rule */ });
-    return () => { cancelled = true; };
-  }, [open, editingAutomation, sourcePlatform]);
 
   // Pre-generate webhook URL when source is selected (new automations only)
   useEffect(() => {
@@ -408,7 +389,7 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
   }, [sourcePlatform, sourceType, editingAutomation, open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleCopyPreflightUrl() {
-    const url = editingEnrichedUrl || editingAutomation?.webhookUrl || preflightUrl;
+    const url = editingAutomation?.webhookUrl || preflightUrl;
     if (!url) return;
     await navigator.clipboard.writeText(url);
     setPreflightCopied(true);
@@ -781,7 +762,7 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
           {/* Source connector — link to the in-app install + setup guide.
               Opens in a new tab so the admin can follow the steps while the
               automation panel stays open. Salesforce has its own bespoke
-              managed-package page; every other connector uses /setup/:slug. */}
+              setup page; every other connector uses /setup/:slug. */}
           {(() => {
             const srcTemplate = platformTemplates.find((t) => t.slug === sourcePlatform);
             if (sourcePlatform !== 'salesforce' && !srcTemplate) return null;
@@ -801,9 +782,7 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
                 <PlatformIcon platform={sourcePlatform} size={18} />
                 <span className="flex-1 text-xs text-gray-700 leading-snug">
                   <strong className="font-semibold text-gray-900">Set up {srcName}.</strong>{' '}
-                  {sourcePlatform === 'salesforce'
-                    ? 'Install the Baton package and follow the step-by-step guide.'
-                    : `Configure the ${srcName} webhook and follow the step-by-step guide.`}
+                  {`Configure the ${srcName} webhook and follow the step-by-step guide.`}
                 </span>
                 <span
                   className="flex items-center gap-1 text-xs font-medium whitespace-nowrap"
@@ -1094,7 +1073,7 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
 
           {/* Webhook URL + Secret — shown after workflow/params so user configures "from → to" first */}
           {(sourceType === 'app' || sourceType === 'connection') && sourcePlatform && (() => {
-            const webhookUrl = editingEnrichedUrl || editingAutomation?.webhookUrl || preflightUrl;
+            const webhookUrl = editingAutomation?.webhookUrl || preflightUrl;
             const conn = sourceType === 'connection'
               ? connections.find((c) => c.platform === sourcePlatform)
               : null;
@@ -1131,24 +1110,7 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
                     <p className="text-[11px] text-gray-400 italic">Select a webhook source to generate URL</p>
                   )}
                 </div>
-                {/* Salesforce uses the v0.3 bootstrap flow — secret is auto-generated by the
-                    managed package's Apex on first webhook dispatch; no manual entry needed. */}
-                {(sourceType === 'app' || conn) && sourcePlatform === 'salesforce' && (
-                  <div>
-                    <label className="text-[10px] text-gray-500 mb-1 block font-medium">
-                      Webhook Secret
-                    </label>
-                    <div className="flex items-center gap-1.5">
-                      <span className="flex-1 text-[11px] text-gray-500 font-mono bg-white border border-gray-200 rounded px-2 py-1">
-                        ••••••••••••••••
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-gray-500 mt-1">
-                      Webhook secret was added automatically by the Salesforce managed package.
-                    </p>
-                  </div>
-                )}
-                {(sourceType === 'app' || conn) && sourcePlatform !== 'salesforce' && (() => {
+                {(sourceType === 'app' || conn) && (() => {
                   const srcTmpl = platformTemplates.find((t) => t.slug === sourcePlatform);
                   const isBasicAuth = !!(srcTmpl?.secretUsernameLabel || srcTmpl?.secretPasswordLabel);
                   const canSave = savingSecret || (isBasicAuth

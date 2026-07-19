@@ -4,9 +4,10 @@
  * Zoho CRM OAuth 2.0 Authorization Code flow.
  *
  * Key details:
- *   - Auth URL: https://accounts.zoho.com/oauth/v2/auth
- *   - Token URL: https://accounts.zoho.com/oauth/v2/token
+ *   - Auth URL: {ZOHO_ACCOUNTS_BASE}/oauth/v2/auth
+ *   - Token URL: {ZOHO_ACCOUNTS_BASE}/oauth/v2/token
  *   - Regional: .zoho.com (US), .zoho.eu (EU), .zoho.in (India), .zoho.com.au (AU)
+ *     — set ZOHO_ACCOUNTS_BASE to the matching accounts server (default US)
  *   - Webhooks: Zoho uses notification URLs with custom verification tokens
  *     (no HMAC signature — verification via shared secret in URL params)
  *   - Refresh tokens do not expire but can be revoked
@@ -28,8 +29,8 @@ import { logInfo, logError, logDebug } from '../../lib/logger';
 
 // ─── Constants ────────────────────────────────────────────────
 
-const ZOHO_AUTH_URL = 'https://accounts.zoho.com/oauth/v2/auth';
-const ZOHO_TOKEN_URL = 'https://accounts.zoho.com/oauth/v2/token';
+const ZOHO_AUTH_URL = `${env.ZOHO_ACCOUNTS_BASE}/oauth/v2/auth`;
+const ZOHO_TOKEN_URL = `${env.ZOHO_ACCOUNTS_BASE}/oauth/v2/token`;
 const ZOHO_API_BASE = 'https://www.zohoapis.com/crm/v6';
 const ZOHO_SCOPES = 'ZohoCRM.modules.ALL ZohoCRM.settings.ALL ZohoCRM.notifications.ALL ZohoCRM.users.READ';
 const API_TIMEOUT = 30_000;

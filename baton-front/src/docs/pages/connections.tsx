@@ -108,7 +108,7 @@ export default function Connections() {
 
       <h2>Related connection types</h2>
       <Cards>
-        <Card to="salesforce" title="Salesforce package">Salesforce uses a dedicated AppExchange managed package instead of a native webhook.</Card>
+        <Card to="salesforce" title="Salesforce setup">Salesforce has no native outbound webhook — you build the outbound call in your org.</Card>
         <Card to="custom-webhook" title="Custom POST webhooks">Bring in any source that can post JSON but is not in the catalog.</Card>
         <Card to="verification" title="Webhook verification">How Baton checks that an incoming webhook is authentic before it acts on it.</Card>
         <Card to="catalog" title="Platform catalog">Browse the supported source platforms and what each one needs.</Card>

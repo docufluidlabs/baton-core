@@ -8,7 +8,7 @@
 import { usePublicCatalog, type PlatformTemplate } from './useCatalog';
 import { Lead, Callout, Cards, Card, Steps, Step, TableWrap, DocLink } from './ui';
 
-// Salesforce ships a dedicated managed package — it has its own docs page.
+// Salesforce needs a hand-built outbound call — it has its own docs page.
 const SPECIAL_CASE_SLUGS = new Set(['salesforce']);
 
 function secretModel(t: PlatformTemplate) {
@@ -50,8 +50,9 @@ export function SetupOverview() {
       </p>
 
       <Callout type="note" title="Salesforce works differently">
-        Salesforce uses a dedicated AppExchange managed package instead of a native webhook. See the{' '}
-        <DocLink to="salesforce">Salesforce package</DocLink> guide.
+        Salesforce has no native outbound webhook — you build the outbound call in your org with a Flow
+        and Apex callout (or an Outbound Message). See the{' '}
+        <DocLink to="salesforce">Salesforce setup</DocLink> guide.
       </Callout>
 
       {isLoading && <p>Loading the platform catalog…</p>}
