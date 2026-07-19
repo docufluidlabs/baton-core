@@ -46,8 +46,6 @@ services:
     build:
       context: ./baton-front
       dockerfile: Dockerfile
-      args:
-        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:-}
     container_name: baton-front
     restart: unless-stopped
     ports:

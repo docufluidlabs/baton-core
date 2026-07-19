@@ -10,7 +10,6 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build:preview": "vite build --config vite.config.preview.ts",
     "build:staging": "tsc -b && vite build --mode staging",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
@@ -19,7 +18,6 @@
     "repomix:ai": "npx repomix ./src --output repomix-output-ai.txt --ignore \"node_modules,.git,.next,dist,dist-preview,build,coverage\""
   },
   "dependencies": {
-    "@clerk/clerk-react": "^5.15.0",
     "@xyflow/react": "^12.3.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.460.0",

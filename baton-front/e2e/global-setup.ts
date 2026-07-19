@@ -1,58 +1,50 @@
-import { test as setup, expect } from '@playwright/test';
+import { test as setup } from '@playwright/test';
 import fs from 'fs';
 
 const AUTH_FILE = 'e2e/.auth/user.json';
 
-setup('authenticate via Clerk', async ({ page }) => {
+setup('authenticate', async ({ page }) => {
   const baseURL = process.env.E2E_BASE_URL!;
-  const baseHost = new URL(baseURL).hostname;
+  const email = process.env.E2E_USER_EMAIL!;
+  const password = process.env.E2E_USER_PASSWORD!;
 
-  // If we have a saved session, try to reuse it
+  // If we have a saved session cookie, try to reuse it.
   if (fs.existsSync(AUTH_FILE)) {
     const raw = fs.readFileSync(AUTH_FILE, 'utf-8');
     const state = JSON.parse(raw);
-    // Check if there's a __session cookie for the target domain
     const hasSession = state.cookies?.some(
-      (c: { name: string; domain: string }) =>
-        c.name === '__session' && c.domain.includes(baseHost),
+      (c: { name: string }) => c.name === 'baton_session',
     );
     if (hasSession) {
-      // Add cookies to this context and check if session is still valid
       await page.context().addCookies(state.cookies);
       await page.goto(baseURL + '/flows');
-      // If we see the app (not sign-in), session is valid — save and done
       try {
         await page.getByRole('button', { name: /add automation/i }).waitFor({ timeout: 10_000 });
         await page.context().storageState({ path: AUTH_FILE });
         return;
       } catch {
-        // Session expired — fall through to login
+        // Session expired — fall through to fresh login
       }
     }
   }
 
-  // Fresh login
+  // Fresh login: the app routes to /setup on a first-run install (no users
+  // yet), otherwise to /signin.
   await page.goto(baseURL);
+  await page.waitForURL(/\/(setup|signin)/, { timeout: 15_000 });
 
-  // Wait for Clerk sign-in UI
-  await page.getByRole('heading', { name: /sign in/i }).waitFor({ timeout: 15_000 });
-
-  // Fill email + password (same page in this Clerk config)
-  await page.getByRole('textbox', { name: /email address/i }).fill(process.env.E2E_USER_EMAIL!);
-  await page.getByRole('textbox', { name: /password/i }).fill(process.env.E2E_USER_PASSWORD!);
-  await page.getByRole('button', { name: /continue/i }).click();
-
-  // Handle potential 2FA step
-  try {
-    await page.waitForURL('**/flows', { timeout: 10_000 });
-  } catch {
-    const url = page.url();
-    if (url.includes('factor-two')) {
-      // Wait for manual 2FA completion (up to 60s)
-      await page.waitForURL('**/flows', { timeout: 60_000 });
-    }
+  if (page.url().includes('/setup')) {
+    await page.getByLabel(/organization name/i).fill('E2E Org');
+    await page.getByLabel(/your name/i).fill('E2E User');
+    await page.getByLabel(/email/i).fill(email);
+    await page.getByLabel(/password/i).fill(password);
+    await page.getByRole('button', { name: /set up baton/i }).click();
+  } else {
+    await page.getByLabel(/email/i).fill(email);
+    await page.getByLabel(/password/i).fill(password);
+    await page.getByRole('button', { name: /sign in/i }).click();
   }
 
-  await expect(page.locator('body')).not.toContainText('Sign in to Baton');
+  await page.waitForURL('**/flows', { timeout: 15_000 });
   await page.context().storageState({ path: AUTH_FILE });
 });

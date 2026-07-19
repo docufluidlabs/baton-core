@@ -1,6 +1,6 @@
 import { LegalLayout } from './LegalLayout';
 
-const UPDATED_AT = '2026-05-11';
+const UPDATED_AT = '2026-07-19';
 
 interface Subprocessor {
   name: string;
@@ -17,13 +17,6 @@ const SUBPROCESSORS: Subprocessor[] = [
     data: 'All Baton service data and customer content at rest',
     location: 'United States (us-east-1, us-east-2)',
     url: 'https://aws.amazon.com/compliance/data-privacy/',
-  },
-  {
-    name: 'Clerk Technologies, Inc.',
-    purpose: 'User authentication and identity management',
-    data: 'Email, name, profile photo, password hash, session tokens',
-    location: 'United States',
-    url: 'https://clerk.com/privacy',
   },
   {
     name: 'Stripe Payments Europe, Ltd.',

@@ -38,7 +38,7 @@ export function initClarity(): void {
 
 /**
  * Associate the current Clarity session with an authenticated user.
- * Call after auth is ready (e.g. Clerk loads).
+ * Call after the session is established (AuthContext resolves /auth/me).
  */
 export function clarityIdentify(userId: string, orgId?: string): void {
   if (!window.clarity) return;

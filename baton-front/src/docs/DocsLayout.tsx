@@ -1,6 +1,6 @@
 /**
  * Baton docs — full-screen reader chrome (top bar, sidebar, on-this-page TOC,
- * breadcrumb, prev/next). Public and auth-agnostic: it renders no API/Clerk
+ * breadcrumb, prev/next). Public and auth-agnostic: it renders no API/auth
  * calls, so the docs work signed-in or signed-out. The active page (or section
  * overview) component is passed as `children`.
  */

@@ -13,13 +13,13 @@ import {
   ShieldAlert,
   BookOpen,
   CircleHelp,
+  LogOut,
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
-import { useAuth, UserButton } from '@clerk/clerk-react';
 import clsx from 'clsx';
 import { NotificationsPanel } from './NotificationsPanel';
-import { OrgSwitcher } from './OrgSwitcher';
-import { setAuthTokenGetter, markAuthReady, setApiErrorHandler } from '@/lib/api';
+import { useAuth } from '@/auth/AuthContext';
+import { setApiErrorHandler } from '@/lib/api';
 import { toast } from 'sonner';
 import { useLayoutStore } from '@/stores/layoutStore';
 import { useFlowStore } from '@/stores/flowStore';
@@ -88,7 +88,7 @@ export function AppLayout() {
   const ccBadge = useControlCenterBadge();
   const { data: connectionsData } = useConnections();
   const hasDocuSign = connectionsData?.connections?.some((c) => c.platform === 'docusign') ?? false;
-  const { getToken, userId, orgId, isLoaded, isSignedIn } = useAuth();
+  const { user, organization, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const clarityIdentified = useRef(false);
@@ -102,31 +102,27 @@ export function AppLayout() {
   const closeActivityLog = useFlowStore((s) => s.closeActivityLog);
   const openLogs = useFlowStore((s) => s.openLogs);
 
-  // Wire Clerk's getToken into the plain API client and unblock all pending
-  // API requests — but only once Clerk has fully loaded AND the user is signed
-  // in. Without the isLoaded+isSignedIn guard, markAuthReady() fires while
-  // getToken() still returns null (Clerk initialising), which causes a wave of
-  // 401s that results in partial/empty data and intermittent blank canvas.
+  // Global API error toasts while the authenticated app is mounted. Requests
+  // are cookie-authed, so there is no token wiring or auth-ready gating —
+  // registered on mount, unregistered on unmount (sign-out).
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
-    setAuthTokenGetter(() => getToken());
-    markAuthReady();
     setApiErrorHandler((err) => {
       if (err.status === 401) {
-        toast.error('Verification failed. Please sign in again.', { id: 'auth-error' });
+        toast.error('Your session has expired. Please sign in again.', { id: 'auth-error' });
       } else {
         toast.error(err.message);
       }
     });
-  }, [isLoaded, isSignedIn, getToken]);
+    return () => setApiErrorHandler(null);
+  }, []);
 
   // Identify user in Clarity once after auth loads.
   useEffect(() => {
-    if (userId && !clarityIdentified.current) {
+    if (user?.id && !clarityIdentified.current) {
       clarityIdentified.current = true;
-      clarityIdentify(userId, orgId ?? undefined);
+      clarityIdentify(user.id, organization?.id);
     }
-  }, [userId, orgId]);
+  }, [user?.id, organization?.id]);
 
   // Tag page views in Clarity on route changes.
   useEffect(() => {
@@ -289,6 +285,48 @@ export function AppLayout() {
             />
             {!collapsed && <span>Collapse</span>}
           </button>
+
+          {/* User menu — name/email + sign out */}
+          {user && (
+            <div
+              className={clsx(
+                'flex items-center gap-2.5 border-t border-gray-100 mt-1 pt-2 px-2 pb-1',
+                collapsed && !mobileSidebarOpen && 'justify-center',
+              )}
+            >
+              <div
+                className="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-semibold shrink-0"
+                title={user.email}
+              >
+                {([user.firstName?.[0], user.lastName?.[0]].filter(Boolean).join('') ||
+                  user.email?.[0] ||
+                  '?').toUpperCase()}
+              </div>
+              {(!collapsed || mobileSidebarOpen) && (
+                <>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {[user.firstName, user.lastName].filter(Boolean).join(' ') || user.email}
+                    </p>
+                    {user.email && (
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={async () => {
+                      await logout();
+                      navigate('/signin', { replace: true });
+                    }}
+                    aria-label="Sign out"
+                    title="Sign out"
+                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 shrink-0"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </aside>
 
@@ -318,8 +356,6 @@ export function AppLayout() {
           </button>
           <div className="hidden md:block" />
           <div className="flex items-center gap-3">
-            <OrgSwitcher />
-            <div className="w-px h-6 bg-gray-200" />
             <a
               href={helpDocForPath(location.pathname)}
               target="_blank"
@@ -344,12 +380,6 @@ export function AppLayout() {
               <Activity className="w-5 h-5" />
             </button>
             <NotificationsPanel />
-            <UserButton
-              afterSignOutUrl="/"
-              appearance={{
-                elements: { avatarBox: 'w-8 h-8' },
-              }}
-            />
           </div>
         </header>
 

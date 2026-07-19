@@ -1,6 +1,8 @@
 /**
  * API Client — Baton Frontend
- * Thin fetch wrapper with auth headers
+ * Thin fetch wrapper. Auth rides the httpOnly `baton_session` cookie set by
+ * the backend (/api/auth/*) — same-origin requests send it automatically, so
+ * no token plumbing is needed here.
  *
  * Fix: VITE_DEV_AUTH=true is now blocked in production builds via a build-time
  * assertion. Previously this flag could accidentally reach staging if the env
@@ -31,56 +33,14 @@ const DEV_HEADERS: Record<string, string> =
       }
     : {};
 
-// ─── Auth token integration ─────────────────────────────────
-// Components call setAuthTokenGetter() to wire in Clerk's getToken.
-// The getter is invoked before every request to obtain a fresh JWT.
-type TokenGetter = () => Promise<string | null>;
-let _getAuthToken: TokenGetter | null = null;
-
-export function setAuthTokenGetter(getter: TokenGetter) {
-  _getAuthToken = getter;
-}
-
-// ─── Auth-ready gate ─────────────────────────────────────────
-// SWR hooks fire before AppLayout's useEffect wires up Clerk (children
-// effects run before parents in React). We gate every request behind this
-// promise so they wait until Clerk is loaded and the token is available.
-let _authReadyResolve: (() => void) | null = null;
-const _authReadyPromise: Promise<void> = new Promise((resolve) => {
-  _authReadyResolve = resolve;
-});
-let _authIsReady = false;
-
-export function markAuthReady() {
-  if (!_authIsReady) {
-    _authIsReady = true;
-    _authReadyResolve?.();
-  }
-}
-
 async function request<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${path}`;
-
-  // Wait for Clerk to finish loading before sending any authenticated request.
-  // Without this gate, SWR fires requests during the first render before the
-  // Bearer token is available, causing a wave of 401s on page load/refresh.
-  if (!_authIsReady) await _authReadyPromise;
-
-  // Build auth header: prefer Clerk token, fall back to dev headers
-  const authHeaders: Record<string, string> = {};
-  if (_getAuthToken) {
-    const token = await _getAuthToken();
-    if (token) {
-      authHeaders['Authorization'] = `Bearer ${token}`;
-    }
-  }
 
   const res = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
       ...DEV_HEADERS,
-      ...authHeaders,
       ...options.headers,
     },
   });
@@ -88,6 +48,13 @@ async function request<T = unknown>(path: string, options: RequestInit = {}): Pr
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
     const err = new ApiError(res.status, body.error || body.message || 'Request failed');
+    // A 401 outside the auth endpoints means the session cookie is gone or
+    // expired — tell the AuthContext so the app flips to the sign-in screen.
+    // /auth/* is excluded: a failed login or an anonymous /auth/me probe is
+    // handled locally by the caller, not treated as a session loss.
+    if (err.status === 401 && !path.startsWith('/auth/')) {
+      _onUnauthorized?.();
+    }
     _onApiError?.(err);
     throw err;
   }
@@ -103,13 +70,24 @@ export class ApiError extends Error {
 }
 
 // ─── Global error handler ────────────────────────────────────
-// Set once from AppLayout after Clerk loads; called for every non-ok response
-// before the error is thrown, so components don't need their own toast calls.
+// Set from AppLayout while the authenticated app is mounted; called for every
+// non-ok response before the error is thrown, so components don't need their
+// own toast calls. Pass null to unregister (AppLayout unmount).
 type ApiErrorHandler = (err: ApiError) => void;
 let _onApiError: ApiErrorHandler | null = null;
 
-export function setApiErrorHandler(handler: ApiErrorHandler) {
+export function setApiErrorHandler(handler: ApiErrorHandler | null) {
   _onApiError = handler;
+}
+
+// ─── Session-expiry handler ──────────────────────────────────
+// Registered by AuthContext. Invoked on any 401 outside /auth/* so the
+// provider can drop the in-memory user and route back to /signin.
+type UnauthorizedHandler = () => void;
+let _onUnauthorized: UnauthorizedHandler | null = null;
+
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null) {
+  _onUnauthorized = handler;
 }
 
 // ─── Typed API methods ───────────────────────────────────────

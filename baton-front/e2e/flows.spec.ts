@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Flow Builder', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/flows');
-    // Wait for the page to settle — Clerk refreshes the JWT, then SWR fetches data
+    // Wait for the page to settle — the session cookie authenticates, then SWR fetches data
     await page.waitForLoadState('networkidle');
   });
 

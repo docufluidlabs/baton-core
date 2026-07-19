@@ -3,10 +3,6 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
-# Build-time env vars (Vite embeds VITE_* at build time)
-ARG VITE_CLERK_PUBLISHABLE_KEY
-ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
-
 # Copy dependency manifests first (layer caching)
 COPY package.json package-lock.json ./
 

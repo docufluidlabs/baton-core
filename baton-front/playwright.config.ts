@@ -20,7 +20,7 @@ export default defineConfig({
   },
 
   projects: [
-    // Auth setup — runs first, does Clerk login, saves session
+    // Auth setup — runs first, signs in via the local auth form, saves session
     {
       name: 'setup',
       testMatch: /global-setup\.ts/,

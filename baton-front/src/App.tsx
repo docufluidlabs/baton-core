@@ -1,24 +1,26 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { SignedIn, SignedOut, SignIn } from '@clerk/clerk-react';
 import { Toaster } from 'sonner';
+import { Loader2 } from 'lucide-react';
 import { AppLayout } from './components/layout/AppLayout';
 import DashboardPage from './pages/DashboardPage';
 import ConnectionsPage from './pages/ConnectionsPage';
 import WorkflowsPage from './pages/WorkflowsPage';
 import FlowBuilderPage from './pages/FlowBuilderPage';
-// import EventsPage from './pages/EventsPage'; // Moved to sidebar in FlowBuilder
 import SettingsPage from './pages/SettingsPage';
 import SalesforceSetupPage from './pages/SalesforceSetupPage';
 import ConnectorSetupPage from './pages/ConnectorSetupPage';
 import NotificationsPage from './pages/NotificationsPage';
 import ControlCenterPage from './pages/ControlCenterPage';
 import OAuthCallbackPage from './pages/OAuthCallbackPage';
-import CreateOrgPage from './pages/CreateOrgPage';
+import SetupPage from './pages/auth/SetupPage';
+import SignInPage from './pages/auth/SignInPage';
+import InvitePage from './pages/auth/InvitePage';
 import DocsApp from './docs/DocsApp';
 import SubprocessorsPage from './pages/legal/SubprocessorsPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useConnections } from './hooks/useApi';
+import { useAuth } from './auth/AuthContext';
 
 function RequiresDocuSign({ children }: { children: React.ReactNode }) {
   const { data, isLoading } = useConnections();
@@ -37,40 +39,63 @@ function ExternalRedirect({ to }: { to: string }) {
   return null;
 }
 
-// Auth-gated portion of the app. Public routes (legal pages, OAuth callback)
-// are matched BEFORE this shell renders, so visitors can read Privacy / Terms /
-// Subprocessors without signing in — required for the AppExchange submission
-// and for inbound marketing links.
-function AuthenticatedApp() {
+// Minimal splash while the AuthProvider probes /auth/status + /auth/me.
+function AuthSplash() {
   return (
-    <>
-      <SignedOut>
-        <div className="flex items-center justify-center min-h-screen bg-gray-50">
-          <SignIn routing="hash" afterSignInUrl="/flows" afterSignUpUrl="/flows" />
-        </div>
-      </SignedOut>
+    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <Loader2 className="w-6 h-6 text-gray-300 animate-spin" />
+    </div>
+  );
+}
 
-      <SignedIn>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<Navigate to="/flows" replace />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/connections" element={<ConnectionsPage />} />
-            <Route path="/apps" element={<Navigate to="/connections" replace />} /> {/* legacy redirect */}
-            <Route path="/platforms" element={<Navigate to="/connections" replace />} />
-            <Route path="/workflows" element={<RequiresDocuSign><WorkflowsPage /></RequiresDocuSign>} />
-            <Route path="/flows" element={<RequiresDocuSign><FlowBuilderPage /></RequiresDocuSign>} />
-            {/* <Route path="/events" element={<EventsPage />} /> */}{/* Moved to sidebar in FlowBuilder */}
-            <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/control-center" element={<RequiresDocuSign><ControlCenterPage /></RequiresDocuSign>} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/salesforce-setup" element={<SalesforceSetupPage />} />
-            <Route path="/setup/:slug" element={<ConnectorSetupPage />} />
-            <Route path="/create-org" element={<CreateOrgPage />} />
-          </Route>
-        </Routes>
-      </SignedIn>
-    </>
+// Auth-gated portion of the app. Public routes (legal pages, docs, OAuth
+// callback, /invite) are matched BEFORE this shell renders, so visitors can
+// reach them without signing in.
+function AuthenticatedApp() {
+  const { loading, needsSetup, user } = useAuth();
+
+  if (loading) return <AuthSplash />;
+
+  // First run: no users exist yet — everything funnels into /setup.
+  if (needsSetup) {
+    return (
+      <Routes>
+        <Route path="/setup" element={<SetupPage />} />
+        <Route path="*" element={<Navigate to="/setup" replace />} />
+      </Routes>
+    );
+  }
+
+  // Signed out: only the sign-in screen (invite links are public, above).
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/signin" element={<SignInPage />} />
+        <Route path="*" element={<Navigate to="/signin" replace />} />
+      </Routes>
+    );
+  }
+
+  // Signed in: the full app. Auth screens bounce to /flows.
+  return (
+    <Routes>
+      <Route path="/signin" element={<Navigate to="/flows" replace />} />
+      <Route path="/setup" element={<Navigate to="/flows" replace />} />
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<Navigate to="/flows" replace />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/connections" element={<ConnectionsPage />} />
+        <Route path="/apps" element={<Navigate to="/connections" replace />} /> {/* legacy redirect */}
+        <Route path="/platforms" element={<Navigate to="/connections" replace />} />
+        <Route path="/workflows" element={<RequiresDocuSign><WorkflowsPage /></RequiresDocuSign>} />
+        <Route path="/flows" element={<RequiresDocuSign><FlowBuilderPage /></RequiresDocuSign>} />
+        <Route path="/notifications" element={<NotificationsPage />} />
+        <Route path="/control-center" element={<RequiresDocuSign><ControlCenterPage /></RequiresDocuSign>} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/salesforce-setup" element={<SalesforceSetupPage />} />
+        <Route path="/setup/:slug" element={<ConnectorSetupPage />} />
+      </Route>
+    </Routes>
   );
 }
 
@@ -92,6 +117,10 @@ export default function App() {
             sidebar has a "Docs" entry pointing here. */}
         <Route path="/docs/*" element={<DocsApp />} />
 
+        {/* Invite acceptance — public by design: the recipient has no account
+            yet. Reads ?token= and signs the new member straight in. */}
+        <Route path="/invite" element={<InvitePage />} />
+
         {/* External redirects — privacy + terms moved to fluidlabs.com. */}
         <Route path="/privacy" element={<ExternalRedirect to="https://fluidlabs.com/privacy-policy" />} />
         <Route path="/terms" element={<ExternalRedirect to="https://fluidlabs.com/terms-of-use" />} />
@@ -105,7 +134,7 @@ export default function App() {
 
         <Route path="/callback" element={<OAuthCallbackPage />} />
 
-        {/* Everything else falls through to the Clerk-gated app. */}
+        {/* Everything else falls through to the session-gated app. */}
         <Route path="/*" element={<AuthenticatedApp />} />
       </Routes>
     </BrowserRouter>
