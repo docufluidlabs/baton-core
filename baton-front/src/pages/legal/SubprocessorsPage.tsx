@@ -19,13 +19,6 @@ const SUBPROCESSORS: Subprocessor[] = [
     url: 'https://aws.amazon.com/compliance/data-privacy/',
   },
   {
-    name: 'Stripe Payments Europe, Ltd.',
-    purpose: 'Subscription billing and payment processing',
-    data: 'Billing contact, payment card details (stored by Stripe, never by Baton), invoice history',
-    location: 'United States, Ireland',
-    url: 'https://stripe.com/privacy',
-  },
-  {
     name: 'Microsoft Clarity',
     purpose: 'In-app product analytics — heatmaps and session replays for UX improvement',
     data: 'Page views, clicks, anonymized user ID, browser/device metadata',

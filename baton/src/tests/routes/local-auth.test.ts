@@ -134,13 +134,12 @@ describe('POST /api/auth/setup', () => {
     const res = makeRes();
     await handler(makeReq(body), res, vi.fn());
 
-    // Org row: id = BATON_ORG_ID, top-tier plan so nothing downstream gates
+    // Org row: id = BATON_ORG_ID
     const orgPut = mockSend.mock.calls[1][0].input;
     expect(orgPut.TableName).toBe('baton-organizations');
     expect(orgPut.Item.id).toBe('default-org');
     expect(orgPut.Item.name).toBe('Acme');
     expect(orgPut.Item.plan).toBe('enterprise');
-    expect(orgPut.Item.exemptFromMeter).toBe(true);
 
     // Owner row: hashed password, owner role
     const userPut = mockSend.mock.calls[2][0].input;

@@ -32,7 +32,6 @@ Workflow orchestration platform — connects business platforms to DocuSign Maes
 | Encryption | AES-256-GCM (tokens at rest) |
 | Scheduling | node-cron (token refresh, cleanup) |
 | Notifications | Resend (email), Slack API, in-app |
-| Payments | Stripe (subscriptions + usage billing) |
 
 ## Quick Start
 
@@ -164,7 +163,7 @@ baton/
 │   │   ├── automations.ts      # Rule + pipeline combo endpoints
 │   │   ├── dashboard.ts        # Aggregated stats
 │   │   ├── notifications.ts    # In-app notifications + prefs
-│   │   ├── settings.ts         # Org/members/billing/audit
+│   │   ├── settings.ts         # Org/members/audit
 │   │   ├── user-activity.ts    # Personal activity feed
 │   │   ├── apps.ts             # App catalog + installed apps
 │   │   ├── webhook-endpoints.ts # Custom webhook endpoint management
@@ -178,8 +177,7 @@ baton/
 │   │       ├── smartsheet.ts
 │   │       ├── clerk.ts
 │   │       ├── app.ts          # Generic app webhooks
-│   │       ├── postwebhook.ts  # Custom POST webhook endpoint
-│   │       └── stripe.ts       # Stripe billing webhooks
+│   │       └── postwebhook.ts  # Custom POST webhook endpoint
 │   ├── services/
 │   │   ├── connection.service.ts    # Connection CRUD + token ops
 │   │   ├── maestro.service.ts       # DocuSign Maestro API client
@@ -188,8 +186,7 @@ baton/
 │   │   ├── rule-engine.service.ts   # Rule matching + conditions
 │   │   ├── webhook-event.service.ts # Webhook event storage
 │   │   ├── audit.service.ts         # Audit log service
-│   │   ├── stripe.service.ts        # Stripe billing integration
-│   │   ├── usage.service.ts         # Usage tracking + metering
+│   │   ├── usage.service.ts         # Usage tracking
 │   │   └── connectors/
 │   │       ├── platform-connector.interface.ts
 │   │       ├── index.ts             # Connector registry
@@ -211,7 +208,6 @@ baton/
 │   ├── delete-dynamodb-tables.ts
 │   ├── setup-docusign-connect.ts
 │   ├── setup-dynamodb-staging.sh
-│   ├── setup-stripe-products.ts
 │   ├── simulate-xero-webhooks.ts
 │   └── test-docusign-webhook.ts
 
@@ -351,7 +347,6 @@ Unmatched webhooks (no active connection) are stored in trigger_pipeline with `o
 - `PATCH /api/settings/org` — Update org
 - `GET /api/settings/members` — List members
 - `PATCH /api/settings/members/:id/role` — Change role
-- `GET /api/settings/billing` — Billing info
 - `GET /api/settings/audit` — Audit log
 
 ### Dashboard
@@ -366,5 +361,4 @@ Unmatched webhooks (no active connection) are stored in trigger_pipeline with `o
 - `POST /api/webhooks/smartsheet`
 - `POST /api/webhooks/clerk`
 - `POST /api/webhooks/app/:webhookKey` — Generic app webhooks
-- `POST /api/webhooks/stripe` — Billing webhooks
 - `POST /api/postwebhook` — Custom POST webhook

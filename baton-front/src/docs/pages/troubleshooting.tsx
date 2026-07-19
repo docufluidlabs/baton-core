@@ -93,18 +93,6 @@ export default function Troubleshooting() {
         </KVRow>
       </KV>
 
-      <h2>Limits &amp; billing</h2>
-      <p>
-        An <strong>Action</strong> is one webhook successfully verified and routed to a Maestro workflow,
-        and it is the unit of billing on metered plans.
-      </p>
-      <KV>
-        <KVRow label="You hit your action limit">
-          On Starter and Growth plans, additional actions are billed at $0.50 each with no hard cap — your
-          automations keep running. To change plans, go to Settings → Billing.
-        </KVRow>
-      </KV>
-
       <Callout type="note" title="Still stuck?">
         Email <a href="mailto:app-support@fluidlabs.com">app-support@fluidlabs.com</a>. Include the{' '}
         <strong>Action ID</strong> and the <strong>Maestro Instance ID</strong> from the relevant Action —

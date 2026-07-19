@@ -1,6 +1,6 @@
 /**
  * Settings Routes — Baton
- * /api/settings — Organization settings, members, billing
+ * /api/settings — Organization settings, members, audit log
  */
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
@@ -9,8 +9,6 @@ import { GetCommand, PutCommand, UpdateCommand, DeleteCommand, QueryCommand } fr
 import {
   UpdateOrgInput,
   UpdateRoleInput,
-  CheckoutInput,
-  HardCapInput,
 } from '../docs/schemas/settings';
 import { requireAuth } from '../middleware/auth';
 import { requireAdmin, requireViewer } from '../middleware/rbac';
@@ -18,15 +16,6 @@ import { getDocClient, TableNames } from '../db/client';
 import { logInfo } from '../lib/logger';
 import { NotFoundError } from '../middleware/error-handler';
 import { createInviteToken, inviteExpiresAt } from '../services/local-auth.service';
-import {
-  PLAN_INFO,
-  CHECKOUTABLE_PLANS,
-  isCheckoutablePlan,
-  planFromPriceId,
-} from '../services/stripe.service';
-import { projectChargeCents } from '../services/billing.service';
-import { requireFeature } from '../lib/feature-flags';
-import type { OrgPlan } from '../lib/types';
 import env from '../env';
 
 const router = Router();
@@ -272,234 +261,9 @@ router.delete('/members/:id', requireAdmin, async (req: Request, res: Response, 
   } catch (e) { next(e); }
 });
 
-// ─── GET /api/settings/billing — Billing info ────────────────
-
-router.get('/billing', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orgId = req.auth!.orgId;
-    const doc = getDocClient();
-
-    const [orgResult, connectionsResult] = await Promise.all([
-      doc.send(new GetCommand({
-        TableName: TableNames.ORGANIZATIONS,
-        Key: { id: orgId },
-      })),
-      doc.send(new QueryCommand({
-        TableName: TableNames.PLATFORM_CONNECTIONS,
-        IndexName: 'orgId-index',
-        KeyConditionExpression: 'orgId = :orgId',
-        ExpressionAttributeValues: { ':orgId': orgId },
-        Select: 'COUNT',
-      })),
-    ]);
-
-    const org = orgResult.Item || {};
-    const plan = (org.plan || 'free_demo') as OrgPlan;
-    const cfg = PLAN_INFO[plan] || PLAN_INFO.free_demo;
-    const executionsUsed = org.executionsUsed || 0;
-    const charge = projectChargeCents(plan, executionsUsed);
-    const includedRelays = Number.isFinite(cfg.includedRelays) ? cfg.includedRelays : null;
-
-    // Backfill trialEndsAt for orgs created before trial tracking was added:
-    // DB.trialEndsAt → derive from DB.createdAt. The relay gate enforces
-    // limits independently — a derived end date is purely cosmetic for the
-    // countdown banner.
-    let trialEndsAt: string | null = org.trialEndsAt || null;
-    if (!trialEndsAt && plan === 'free_demo' && cfg.trialDays > 0 && org.createdAt) {
-      trialEndsAt = new Date(new Date(org.createdAt).getTime() + cfg.trialDays * 86_400_000).toISOString();
-    }
-
-    res.json({
-      billing: {
-        plan,
-        planName: cfg.name,
-        subscriptionStatus: org.subscriptionStatus || (plan === 'free_demo' ? 'trialing' : 'active'),
-        trialEndsAt,
-        currentUsage: {
-          relays: executionsUsed,
-          successfulExecutions: org.successfulExecutions || 0,
-          connections: connectionsResult.Count || 0,
-        },
-        includedRelays,
-        overageEnabled: !!org.overageEnabled,
-        overageRateCents: org.overageRateCents ?? cfg.overageRateCents,
-        basePriceCents: cfg.basePriceCents,
-        projectedCharge: charge,
-        hardCap: org.hardCap ?? null,
-        billingCycleStart: org.billingCycleStart || null,
-        stripeCustomerId: org.stripeCustomerId ? '***' : null,
-        hasStripe: !!org.stripeCustomerId,
-      },
-    });
-  } catch (e) { next(e); }
-});
-
-// ─── GET /api/settings/billing/plans — Available plans ──────────
-
-router.get('/billing/plans', requireViewer, async (_req: Request, res: Response, next: NextFunction) => {
-  try {
-    // Expose all plans for the UI plan-switcher; the checkout endpoint enforces
-    // which ones can actually be purchased (free_demo + enterprise excluded).
-    const plans = (Object.values(PLAN_INFO)).map((cfg) => ({
-      slug: cfg.slug,
-      name: cfg.name,
-      basePriceCents: cfg.basePriceCents,
-      includedRelays: Number.isFinite(cfg.includedRelays) ? cfg.includedRelays : null,
-      overageRateCents: cfg.overageRateCents,
-      checkoutable: CHECKOUTABLE_PLANS.includes(cfg.slug),
-      features: cfg.features,
-    }));
-    res.json({ plans });
-  } catch (e) { next(e); }
-});
-
-// ─── POST /api/settings/billing/portal — Stripe Customer Portal ──
-
-router.post('/billing/portal', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orgId = req.auth!.orgId;
-    const doc = getDocClient();
-
-    const result = await doc.send(new GetCommand({
-      TableName: TableNames.ORGANIZATIONS,
-      Key: { id: orgId },
-    }));
-
-    const org = result.Item;
-    if (!org?.stripeCustomerId) {
-      res.status(400).json({ error: 'No Stripe customer associated with this organization' });
-      return;
-    }
-
-    const { getStripe } = await import('../services/stripe.service');
-    const stripe = getStripe();
-
-    const session = await stripe.billingPortal.sessions.create({
-      customer: org.stripeCustomerId,
-      return_url: `${req.headers.origin || env.FRONTEND_URL}/settings?tab=billing`,
-    });
-
-    res.json({ url: session.url });
-  } catch (e) { next(e); }
-});
-
-// ─── POST /api/settings/billing/checkout — Stripe Checkout ──
-//
-// Accepts either { planSlug } (new) or { priceId } (legacy — one-release shim).
-// Either way, we resolve to the (base, overage) price pair so the subscription
-// always carries both: a licensed flat base + a graduated tiered metered price.
-
-router.post('/billing/checkout', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orgId = req.auth!.orgId;
-    const parsed = CheckoutInput.parse(req.body);
-    const doc = getDocClient();
-
-    // Resolve plan slug — prefer explicit, fall back to legacy priceId lookup.
-    let planSlug = parsed.planSlug;
-    if (!planSlug && parsed.priceId) {
-      const resolved = planFromPriceId(parsed.priceId);
-      if (resolved && isCheckoutablePlan(resolved)) {
-        planSlug = resolved;
-        logInfo('Deprecated priceId-based checkout call — resolve via planSlug going forward', {
-          orgId, priceId: parsed.priceId, resolved,
-        });
-      } else {
-        res.status(400).json({
-          error: 'Unknown priceId. Use planSlug ("starter" | "growth") instead.',
-        });
-        return;
-      }
-    }
-    if (!planSlug) {
-      res.status(400).json({ error: 'Could not resolve plan' });
-      return;
-    }
-
-    const cfg = PLAN_INFO[planSlug];
-    if (!cfg.basePriceId || !cfg.overagePriceId) {
-      res.status(500).json({
-        error: `Stripe price IDs not configured for plan "${planSlug}". Set STRIPE_PRICE_${planSlug.toUpperCase()}_BASE and _OVERAGE.`,
-      });
-      return;
-    }
-
-    const [orgResult, userResult] = await Promise.all([
-      doc.send(new GetCommand({
-        TableName: TableNames.ORGANIZATIONS,
-        Key: { id: orgId },
-      })),
-      doc.send(new GetCommand({
-        TableName: TableNames.USERS,
-        Key: { id: req.auth!.userId },
-      })),
-    ]);
-
-    const org = orgResult.Item;
-    const user = userResult.Item;
-    if (!org) {
-      res.status(404).json({ error: 'Organization not found' });
-      return;
-    }
-
-    const { getStripe } = await import('../services/stripe.service');
-    const stripe = getStripe();
-
-    const frontendUrl = req.headers.origin || env.FRONTEND_URL;
-
-    const session = await stripe.checkout.sessions.create({
-      customer: org.stripeCustomerId || undefined,
-      customer_email: org.stripeCustomerId ? undefined : user?.email,
-      // Two line items: flat licensed base (quantity 1) + metered overage
-      // (no quantity — Stripe pulls usage from the meter at invoice close).
-      line_items: [
-        { price: cfg.basePriceId, quantity: 1 },
-        { price: cfg.overagePriceId },
-      ],
-      mode: 'subscription',
-      // Surface Stripe's native "Add promotion code" field. Coupons + codes
-      // are managed entirely in the Stripe Dashboard — admin adds new codes
-      // without code changes / redeploys.
-      allow_promotion_codes: true,
-      success_url: `${frontendUrl}/settings?tab=billing&checkout=success`,
-      cancel_url: `${frontendUrl}/settings?tab=billing`,
-      metadata: { orgId: org.id, planSlug },
-      subscription_data: {
-        metadata: { orgId: org.id, planSlug },
-      },
-    });
-
-    res.json({ url: session.url });
-  } catch (e) { next(e); }
-});
-
-// ─── PUT /api/settings/billing/hard-cap — set/clear opt-in hard cap ─
-
-router.put('/billing/hard-cap', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orgId = req.auth!.orgId;
-    const { hardCap } = HardCapInput.parse(req.body);
-    const doc = getDocClient();
-
-    await doc.send(new UpdateCommand({
-      TableName: TableNames.ORGANIZATIONS,
-      Key: { id: orgId },
-      UpdateExpression: hardCap === null
-        ? 'REMOVE hardCap SET updatedAt = :now'
-        : 'SET hardCap = :hc, updatedAt = :now',
-      ExpressionAttributeValues: hardCap === null
-        ? { ':now': new Date().toISOString() }
-        : { ':hc': hardCap, ':now': new Date().toISOString() },
-    }));
-
-    logInfo('Hard cap updated', { orgId, hardCap });
-    res.json({ message: 'Hard cap updated', hardCap });
-  } catch (e) { next(e); }
-});
-
 // ─── GET /api/settings/audit — Audit log ─────────────────────
 
-router.get('/audit', requireAdmin, requireFeature('audit_log'), async (req: Request, res: Response, next: NextFunction) => {
+router.get('/audit', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orgId = req.auth!.orgId;
     const limit = Math.min(parseInt(req.query.limit as string) || 50, 100);

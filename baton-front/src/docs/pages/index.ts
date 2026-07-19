@@ -14,7 +14,6 @@ import ControlCenter from './control-center';
 import Logs from './logs';
 import Notifications from './notifications';
 import Settings from './settings';
-import Billing from './billing';
 import Verification from './verification';
 import Catalog from './catalog';
 import Troubleshooting from './troubleshooting';
@@ -36,7 +35,6 @@ export const DOC_COMPONENTS: Record<string, ComponentType> = {
   logs: Logs,
   notifications: Notifications,
   settings: Settings,
-  billing: Billing,
   verification: Verification,
   catalog: Catalog,
   troubleshooting: Troubleshooting,

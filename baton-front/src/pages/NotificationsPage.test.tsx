@@ -52,8 +52,6 @@ vi.mock('@/hooks/useApi', () => ({
     connection_degraded:       { inApp: true,  email: true  },
     connection_created:        { inApp: true,  email: false },
     connection_disconnected:   { inApp: true,  email: true  },
-    execution_quota_exceeded:  { inApp: true,  email: true  },
-    execution_quota_warning:   { inApp: true,  email: true  },
   },
 }));
 
@@ -396,8 +394,6 @@ describe('PreferencesTab', () => {
     expect(screen.getByText('Workflow Launched')).toBeInTheDocument();
     expect(screen.getByText('Automation Failed')).toBeInTheDocument();
     expect(screen.getByText('Connection Degraded')).toBeInTheDocument();
-    expect(screen.getByText('Action Limit Approaching')).toBeInTheDocument();
-    expect(screen.getByText('Action Limit Reached')).toBeInTheDocument();
     expect(screen.getByText('Webhook Failed')).toBeInTheDocument();
   });
 

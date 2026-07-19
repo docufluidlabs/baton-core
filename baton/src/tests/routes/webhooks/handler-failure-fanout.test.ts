@@ -172,7 +172,7 @@ describe('webhook handler — signature-failure fan-out', () => {
     const handler = createWebhookHandler({
       platform: 'bamboohr',
       getSecret: () => 'secret',
-      // No resolveConnection — e.g. Stripe/Clerk style
+      // No resolveConnection — platform-level (non-connection) webhook style
     });
 
     await handler(makeReq({}), makeRes(), vi.fn());

@@ -10,16 +10,13 @@ import { TokenRefreshJob, PlatformConnection, WorkflowInstance, Workflow } from 
 import { logInfo, logError, logDebug } from '../lib/logger';
 import * as maestroService from '../services/maestro.service';
 import * as connectionService from '../services/connection.service';
-import { resetExecutionCount, countCompletionIfNeeded } from '../services/usage.service';
-import { fetchStripeMeterSum } from '../services/billing.service';
+import { countCompletionIfNeeded } from '../services/usage.service';
 import {
   sendNotification,
   workflowCompletedNotification,
   workflowFailedNotification,
-  billingDriftNotification,
 } from '../services/notification.service';
-import { getOrgAdmins, getOrgAdmin } from '../services/user.service';
-import env from '../env';
+import { getOrgAdmins } from '../services/user.service';
 
 // ─── Rate limit backoff ──────────────────────────────────────
 
@@ -66,36 +63,12 @@ export function startScheduledJobs(): void {
     }
   });
 
-  // Daily at 2am UTC: reset execution counts for orgs past billing cycle
-  cron.schedule('0 2 * * *', async () => {
-    try {
-      await resetExpiredBillingCycles();
-    } catch (err) {
-      logError('Billing cycle reset failed', err);
-    }
-  });
-
   // Daily at 3am UTC: cleanup old webhook events (>30 days)
   cron.schedule('0 3 * * *', async () => {
     try {
       await cleanupOldWebhookEvents();
     } catch (err) {
       logError('Webhook event cleanup failed', err);
-    }
-  });
-
-  // Daily at 4am UTC: reconcile local relay counts with Stripe meter totals
-  // and alert on drift. Stripe is the billing source of truth — drift signals
-  // that local emits failed (network, SDK errors) and bills may be wrong.
-  cron.schedule('0 4 * * *', async () => {
-    if (!env.STRIPE_METER_ID) {
-      logDebug('Reconciliation cron skipped — STRIPE_METER_ID not configured');
-      return;
-    }
-    try {
-      await reconcileRelayMeter();
-    } catch (err) {
-      logError('Stripe meter reconciliation failed', err);
     }
   });
 
@@ -429,99 +402,3 @@ async function cleanupOldWebhookEvents(): Promise<void> {
   }
 }
 
-// ─── Monthly Execution Count Reset ──────────────────────────
-
-async function resetExpiredBillingCycles(): Promise<void> {
-  const docClient = getDocClient();
-
-  // Scan for orgs with a billingCycleStart older than 30 days
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-
-  const result = await docClient.send(new ScanCommand({
-    TableName: TableNames.ORGANIZATIONS,
-    FilterExpression: 'attribute_exists(billingCycleStart) AND billingCycleStart <= :cutoff AND (executionsUsed > :zero OR attribute_not_exists(executionsUsed))',
-    ExpressionAttributeValues: {
-      ':cutoff': thirtyDaysAgo,
-      ':zero': 0,
-    },
-    Limit: 100,
-  }));
-
-  const orgs = result.Items || [];
-
-  if (orgs.length === 0) {
-    logDebug('No billing cycles to reset');
-    return;
-  }
-
-  let resetCount = 0;
-  for (const org of orgs) {
-    try {
-      await resetExecutionCount(org.id);
-      resetCount++;
-    } catch (err) {
-      logError('Failed to reset execution count', err, { orgId: org.id });
-    }
-  }
-
-  logInfo('Billing cycle execution counts reset', { total: orgs.length, reset: resetCount });
-}
-
-// ─── Stripe Meter Reconciliation ────────────────────────────
-//
-// For each org with a Stripe customer that isn't exempt, compare local
-// executionsUsed (over the current cycle) against the sum of Stripe meter
-// events for the same window. Alert the org admin when drift exceeds the
-// noise threshold (max of 5 events or 1% of local count).
-
-async function reconcileRelayMeter(): Promise<void> {
-  const docClient = getDocClient();
-
-  // Scan billable orgs only: have Stripe customer, not exempt, and have usage.
-  const result = await docClient.send(new ScanCommand({
-    TableName: TableNames.ORGANIZATIONS,
-    FilterExpression:
-      'attribute_exists(stripeCustomerId) AND stripeCustomerId <> :empty ' +
-      'AND (attribute_not_exists(exemptFromMeter) OR exemptFromMeter = :false)',
-    ExpressionAttributeValues: { ':empty': '', ':false': false },
-    Limit: 500,
-  }));
-
-  const orgs = result.Items || [];
-  if (orgs.length === 0) {
-    logDebug('No billable orgs for meter reconciliation');
-    return;
-  }
-
-  let checked = 0;
-  let drifted = 0;
-  const nowUnix = Math.floor(Date.now() / 1000);
-
-  for (const org of orgs) {
-    const cycleStart = org.billingCycleStart
-      ? Math.floor(new Date(org.billingCycleStart).getTime() / 1000)
-      : nowUnix - 30 * 86_400;
-    try {
-      const stripeSum = await fetchStripeMeterSum(org.stripeCustomerId, cycleStart, nowUnix);
-      const local = org.executionsUsed || 0;
-      const drift = Math.abs(stripeSum - local);
-      const threshold = Math.max(5, Math.floor(local * 0.01));
-
-      checked++;
-      if (drift > threshold) {
-        drifted++;
-        logError('Meter drift detected', null, {
-          orgId: org.id, local, stripe: stripeSum, drift, threshold,
-        });
-        const adminId = await getOrgAdmin(org.id);
-        if (adminId) {
-          await sendNotification(billingDriftNotification(org.id, adminId, local, stripeSum));
-        }
-      }
-    } catch (err) {
-      logError('Reconciliation failed for org', err, { orgId: org.id });
-    }
-  }
-
-  logInfo('Stripe meter reconciliation complete', { checked, drifted });
-}

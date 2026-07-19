@@ -31,7 +31,7 @@ export function buildOpenApiDocument() {
       { name: 'Dashboard', description: 'Org-level aggregate metrics' },
       { name: 'Notifications', description: 'In-app and email notifications' },
       { name: 'User Activity', description: 'Per-user activity log' },
-      { name: 'Settings', description: 'Org and user preferences, billing, members' },
+      { name: 'Settings', description: 'Org and user preferences, members' },
       { name: 'Platforms', description: 'Platform catalog and validation' },
       { name: 'Connections', description: 'OAuth connection state for external platforms' },
       { name: 'Webhook Endpoints', description: 'Org-owned outbound webhook destinations' },
@@ -41,7 +41,7 @@ export function buildOpenApiDocument() {
       {
         name: 'Inbound Webhooks',
         description:
-          'Provider-fired webhooks (Salesforce, HubSpot, Stripe, Slack, etc.) and bootstrap registration. ' +
+          'Provider-fired webhooks (Salesforce, HubSpot, Slack, etc.) and bootstrap registration. ' +
           'Documented for reference only — Try-It-Out is disabled because these endpoints require ' +
           'provider-specific signatures over the exact raw request body.',
       },

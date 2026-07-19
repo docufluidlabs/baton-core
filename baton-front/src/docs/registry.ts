@@ -67,11 +67,10 @@ export const GROUPS: DocGroup[] = [
   },
   {
     slug: 'account',
-    title: 'Account & billing',
-    intro: 'Manage your organization, plan, and usage.',
+    title: 'Account',
+    intro: 'Manage your organization and its members.',
     items: [
-      { slug: 'settings', title: 'Settings', description: 'Organization details, members, billing, and audit log.', keywords: 'organization timezone members audit email slack general' },
-      { slug: 'billing', title: 'Plans & billing', description: 'Plans, what counts as an action, usage, and Stripe billing.', keywords: 'pricing plan starter growth enterprise action usage stripe upgrade' },
+      { slug: 'settings', title: 'Settings', description: 'Organization details, members, and audit log.', keywords: 'organization timezone members audit email slack general' },
     ],
   },
   {

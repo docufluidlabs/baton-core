@@ -11,9 +11,8 @@ import { logError } from '../lib/logger';
 /**
  * Return the first admin or owner userId for an org.
  *
- * #24: Previously duplicated in workflow-launcher.worker.ts, stripe.ts, and
- * connections.ts — each querying only for 'admin' and missing 'owner' role.
- * This shared version includes both roles.
+ * #24: Previously duplicated across workers and routes — each querying only
+ * for 'admin' and missing the 'owner' role. This shared version includes both.
  */
 export async function getOrgAdmin(orgId: string): Promise<string | null> {
   try {

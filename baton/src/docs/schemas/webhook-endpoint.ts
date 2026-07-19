@@ -38,8 +38,8 @@ export const CreateWebhookEndpointInput = registry.register(
     rateLimitPerMinute: z.number().int().min(1).max(10000).optional().openapi({ default: 60 }),
   }).openapi({
     example: {
-      name: 'Stripe → Customer onboarding',
-      platform: 'stripe',
+      name: 'Workday → Customer onboarding',
+      platform: 'workday',
       workflowId: '11111111-2222-3333-4444-555555555555',
       payloadFieldPath: 'data.object.id',
       generateApiKey: true,

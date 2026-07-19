@@ -7,7 +7,6 @@
 
 export type UserRole = 'owner' | 'admin' | 'member' | 'viewer' | 'superuser';
 export type OrgPlan = 'free_demo' | 'starter' | 'growth' | 'enterprise';
-export type SubscriptionStatus = 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused_overcap';
 // Registered connectors: docusign (destination) + salesforce, hubspot, zohocrm,
 // zendesk, bamboohr, powerautomate (inbound). greenhouse/mondaycom/slack are
 // catalog/webhook-only integrations without a connector class.
@@ -39,11 +38,6 @@ export type NotificationEventType =
   | 'connection_disconnected'
   | 'execution_quota_exceeded'
   | 'execution_quota_warning'
-  | 'billing_overage_started'
-  | 'billing_hard_cap'
-  | 'billing_drift'
-  | 'billing_trial_ending'
-  | 'billing_past_due'
   | 'rule_error';
 
 // ─── Entities ────────────────────────────────────────────────
@@ -53,31 +47,8 @@ export interface Organization {
   name: string;
   slug: string;
   plan: OrgPlan;
-  /** Trial expiry for `free_demo` plan; 14 days after org creation. */
-  trialEndsAt?: string;
-  /** Mirror of Stripe subscription.status, mapped to our enum. */
-  subscriptionStatus?: SubscriptionStatus;
-  /** Included relays per cycle, derived from plan. Stored for fast read. */
-  includedRelays?: number;
-  /** True when the plan has a metered overage tier (starter, growth). */
-  overageEnabled?: boolean;
-  /** Cents per relay above includedRelays. */
-  overageRateCents?: number;
-  /** Optional opt-in hard cap. null = off. When exceeded, relays are paused. */
-  hardCap?: number | null;
-  /** Timestamp of last paused_overcap transition (for diagnostics). */
-  hardCapPausedAt?: string | null;
-  /** True for enterprise; skip meter emission for these orgs. */
-  exemptFromMeter?: boolean;
-  /** Once-per-cycle dedupe flag for the "overage started" notification. */
-  overageStartedShownAt?: string | null;
-  /** Once-per-cycle dedupe flag for the "hard cap reached" notification. */
-  hardCapShownAt?: string | null;
   executionsUsed?: number;
   successfulExecutions?: number;
-  billingCycleStart?: string;
-  stripeCustomerId?: string;
-  stripeSubscriptionId?: string;
   createdAt: string;
   updatedAt: string;
 }

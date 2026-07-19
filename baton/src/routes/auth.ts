@@ -6,8 +6,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { GetCommand } from '@aws-sdk/lib-dynamodb';
 import { requireAuth } from '../middleware/auth';
 import { getDocClient, TableNames } from '../db/client';
-import { getFeaturesForPlan } from '../lib/feature-flags';
-import type { OrgPlan } from '../lib/types';
+import { getFeatures } from '../lib/feature-flags';
 
 const router = Router();
 router.use(requireAuth);
@@ -48,14 +47,14 @@ router.get('/me', async (req: Request, res: Response, next: NextFunction) => {
       organization: org ? {
         id: org.id,
         name: org.name,
-        plan: org.plan || 'starter',
+        plan: org.plan || 'enterprise',
         executionsUsed: org.executionsUsed || 0,
-        features: getFeaturesForPlan((org.plan || 'starter') as OrgPlan),
+        features: getFeatures(),
         createdAt: org.createdAt,
       } : {
         id: req.auth!.orgId,
-        plan: 'starter',
-        features: getFeaturesForPlan('starter'),
+        plan: 'enterprise',
+        features: getFeatures(),
       },
     });
   } catch (e) { next(e); }

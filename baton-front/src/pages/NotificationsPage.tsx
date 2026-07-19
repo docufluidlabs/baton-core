@@ -360,8 +360,6 @@ const EVENT_META: Array<{ key: string; label: string; emoji: string; desc: strin
   { key: 'workflow_launched',   label: 'Workflow Launched',          emoji: '🔵', desc: 'A new workflow instance starts running' },
   { key: 'automation_failed',   label: 'Automation Failed',          emoji: '🔴', desc: 'All retry attempts exhausted — needs manual action' },
   { key: 'connection_degraded', label: 'Connection Degraded',        emoji: '🔴', desc: 'Platform connection down — blocks all API requests' },
-  { key: 'execution_quota_warning',  label: 'Action Limit Approaching', emoji: '🟡', desc: 'Approaching monthly action limit' },
-  { key: 'execution_quota_exceeded', label: 'Action Limit Reached',     emoji: '🔴', desc: 'Monthly action limit reached' },
   { key: 'webhook_failed',     label: 'Webhook Failed',             emoji: '🟡', desc: 'Incoming webhook HMAC signature rejected' },
 ];
 
@@ -547,8 +545,6 @@ const EVENT_TYPES: Array<{ key: keyof SlackChannelRouting; label: string; severi
   { key: 'workflow_launched',        label: 'Workflow Launched',            severity: 'info',    emoji: '🔵' },
   { key: 'automation_failed',        label: 'Automation Failed',            severity: 'error',   emoji: '🔴' },
   { key: 'connection_degraded',      label: 'Connection Degraded',          severity: 'error',   emoji: '🔴' },
-  { key: 'execution_quota_warning',  label: 'Execution Limit Approaching',  severity: 'warning', emoji: '🟡' },
-  { key: 'execution_quota_exceeded', label: 'Execution Limit Reached',      severity: 'error',   emoji: '🔴' },
   { key: 'webhook_failed',          label: 'Webhook Failed',               severity: 'warning', emoji: '🟡' },
 ];
 

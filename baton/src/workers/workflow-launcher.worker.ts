@@ -32,11 +32,9 @@ import {
   workflowFailedNotification,
   rulePausedNotification,
   retryExhaustedNotification,
-  executionQuotaExceededNotification,
-  hardCapReachedNotification,
 } from '../services/notification.service';
 import * as usageService from '../services/usage.service';
-import * as billingService from '../services/billing.service';
+import { getRelayGate, getRelayMeter } from '../lib/billing-hooks';
 import { sendMessage, QueueNames } from '../queue/sqs-client';
 
 // ─── Retry Schedule ─────────────────────────────────────────
@@ -124,21 +122,13 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
       connectionId = docusignConnection.id;
     }
 
-    // 2.5 Billing gate — hard cap, trial expiry, canceled subscription.
-    // This is a billing decision, not an error: we mark the pipeline entry
+    // 2.5 Relay gate — billing/licensing seam (see lib/billing-hooks.ts).
+    // The default gate always allows; the hosted edition injects enforcement.
+    // A denial is a policy decision, not an error: we mark the pipeline entry
     // as skipped and bail without throwing (no SQS retry, no DLQ).
-    const cap = await billingService.checkHardCap(orgId);
-    if (cap.exceeded) {
-      const reason = cap.trialExpired
-        ? 'trial_expired'
-        : cap.subscriptionInactive
-          ? 'subscription_canceled'
-          : 'hard_cap_reached';
-      const userMessage = cap.trialExpired
-        ? 'Your free trial has ended. Pick a plan in Settings → Billing to keep automations running.'
-        : cap.subscriptionInactive
-          ? 'Your subscription is canceled. Reactivate in Settings → Billing to resume automations.'
-          : `Hard cap of ${cap.cap} relays reached for this billing cycle.`;
+    const gate = await getRelayGate().check(orgId);
+    if (!gate.allowed) {
+      const reason = gate.reason || 'relay_blocked';
 
       await docClient.send(new UpdateCommand({
         TableName: TableNames.TRIGGER_PIPELINE,
@@ -147,8 +137,8 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
           'SET #st = :status, userMessage = :userMsg, adminMessage = :adminMsg, errorCategory = :cat, userActionable = :act, completedAt = :now',
         ExpressionAttributeValues: {
           ':status': 'skipped',
-          ':userMsg': userMessage,
-          ':adminMsg': `Billing gate: ${reason} (used ${cap.used}${cap.cap ? `/${cap.cap}` : ''})`,
+          ':userMsg': 'This relay was not launched because your organization has reached its usage limit.',
+          ':adminMsg': `Relay gate: ${reason}`,
           ':cat': 'quota',
           ':act': true,
           ':now': now,
@@ -156,33 +146,7 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
         ExpressionAttributeNames: { '#st': 'status' },
       }));
 
-      // Hard cap → flip subscriptionStatus to paused_overcap (once per cycle)
-      // and notify the admin. Trial/canceled need no extra state change.
-      if (reason === 'hard_cap_reached') {
-        await billingService.markPausedOvercap(orgId);
-        try {
-          const adminId = await getOrgAdmin(orgId);
-          if (adminId) {
-            // Dedupe via hardCapShownAt — reset alongside executionsUsed at cycle rollover.
-            await docClient.send(new UpdateCommand({
-              TableName: TableNames.ORGANIZATIONS,
-              Key: { id: orgId },
-              UpdateExpression: 'SET hardCapShownAt = :now',
-              ConditionExpression: 'attribute_not_exists(hardCapShownAt)',
-              ExpressionAttributeValues: { ':now': now },
-            }));
-            await sendNotification(
-              hardCapReachedNotification(orgId, adminId, cap.cap ?? 0, cap.used),
-            );
-          }
-        } catch (err: any) {
-          if (err.name !== 'ConditionalCheckFailedException') {
-            logError('Failed to send hard cap notification', err);
-          }
-        }
-      }
-
-      log.info({ reason, used: cap.used, cap: cap.cap }, 'Relay skipped at billing gate');
+      log.info({ reason }, 'Relay skipped at relay gate');
       return;
     }
 
@@ -281,16 +245,13 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
     // 8. Increment org execution count (local read model)
     await usageService.incrementExecutionCount(orgId);
 
-    // 9. Emit Stripe meter event — non-fatal. Idempotency key = resolvedInstanceId
-    // ensures retries that eventually succeed bill exactly once.
+    // 9. Record relay usage via the metering seam — non-fatal. Idempotency
+    // key = resolvedInstanceId ensures retries that eventually succeed are
+    // recorded exactly once (the default meter is a no-op).
     try {
-      await billingService.emitRelayMeterEvent({
-        orgId,
-        relayId: resolvedInstanceId,
-        timestamp: new Date(now),
-      });
+      await getRelayMeter().record(orgId, 1, resolvedInstanceId);
     } catch (meterErr) {
-      logError('Stripe meter emission failed (non-fatal)', meterErr);
+      logError('Relay meter recording failed (non-fatal)', meterErr);
     }
 
     log.info({
@@ -301,9 +262,8 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
   } catch (error: any) {
     log.error({ err: error, attempt: attemptLabel }, 'Workflow launch failed');
 
-    const isQuotaError = error instanceof usageService.ExecutionLimitError;
     const errorCategory = categorizeError(error.message || '');
-    const isRetryable = !isQuotaError && errorCategory !== 'auth' && errorCategory !== 'validation';
+    const isRetryable = errorCategory !== 'auth' && errorCategory !== 'validation';
 
     // ─── Retry: enqueue next attempt if retryable ───────────
     const currentAttempt = retry?.attempt ?? 0;
@@ -429,11 +389,9 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
     // Update pipeline entry with failure
     try {
       const errorMessage = error.message || 'Unknown error';
-      const userMessage = isQuotaError
-        ? 'Your organization has reached its monthly execution limit. Upgrade your plan in Settings → Billing.'
-        : currentAttempt >= MAX_RETRY_ATTEMPTS
-          ? `All ${MAX_RETRY_ATTEMPTS} retry attempts exhausted. ${categorizeUserMessage(errorMessage)}`
-          : categorizeUserMessage(errorMessage);
+      const userMessage = currentAttempt >= MAX_RETRY_ATTEMPTS
+        ? `All ${MAX_RETRY_ATTEMPTS} retry attempts exhausted. ${categorizeUserMessage(errorMessage)}`
+        : categorizeUserMessage(errorMessage);
       const adminMessage = `Workflow launch failed: ${errorMessage}`;
 
       await docClient.send(new UpdateCommand({
@@ -445,8 +403,8 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
           ':error': errorMessage,
           ':userMsg': userMessage,
           ':adminMsg': adminMessage,
-          ':errCat': isQuotaError ? 'quota' : errorCategory,
-          ':actionable': isQuotaError ? true : isUserActionable(errorMessage),
+          ':errCat': errorCategory,
+          ':actionable': isUserActionable(errorMessage),
           ':now': new Date().toISOString(),
         },
         ExpressionAttributeNames: { '#st': 'status' },
@@ -515,27 +473,8 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
       }
     }
 
-    // Send quota-specific notification (distinct from generic failure)
-    if (isQuotaError && !isRetry) {
-      try {
-        const adminId = await getOrgAdmin(orgId);
-        if (adminId) {
-          const workflowName = (await docClient.send(new GetCommand({
-            TableName: TableNames.WORKFLOWS,
-            Key: { id: workflowId },
-          }))).Item?.name || undefined;
-          await sendNotification(executionQuotaExceededNotification(
-            orgId, adminId, error.used, error.limit, workflowName,
-          ));
-        }
-      } catch (notifErr) {
-        logError('Failed to send quota exceeded notification', notifErr);
-      }
-    }
-
     // Don't re-throw — we handle retries ourselves now.
-    // Only re-throw quota errors for visibility, but don't let SQS retry them.
-    if (!isQuotaError && !isRetryable && currentAttempt === 0) {
+    if (!isRetryable && currentAttempt === 0) {
       // Non-retryable, first attempt, no retry sequence — throw for SQS DLQ
       throw error;
     }

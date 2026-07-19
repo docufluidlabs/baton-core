@@ -30,19 +30,13 @@ vi.mock('../../services/maestro.service', () => ({
 }));
 
 vi.mock('../../services/connection.service', () => ({
+  getConnection: vi.fn().mockResolvedValue({ id: 'conn-1' }),
   getConnectionByOrgAndPlatform: vi.fn(),
 }));
 
-const mockCheckQuota = vi.fn();
 const mockIncrementCount = vi.fn();
 vi.mock('../../services/usage.service', () => ({
-  checkExecutionQuota: (...args: any[]) => mockCheckQuota(...args),
   incrementExecutionCount: (...args: any[]) => mockIncrementCount(...args),
-  ExecutionLimitError: class ExecutionLimitError extends Error {
-    constructor(orgId: string, used: number, limit: number) {
-      super(`Quota exceeded: ${used}/${limit}`);
-    }
-  },
 }));
 
 vi.mock('../../services/notification.service', () => ({
@@ -50,7 +44,6 @@ vi.mock('../../services/notification.service', () => ({
   workflowFailedNotification: vi.fn(() => ({})),
   rulePausedNotification: vi.fn(() => ({})),
   retryExhaustedNotification: vi.fn(() => ({})),
-  executionQuotaExceededNotification: vi.fn(() => ({})),
 }));
 
 vi.mock('../../queue/sqs-client', () => ({
@@ -71,6 +64,7 @@ vi.mock('../../lib/logger', () => ({
 }));
 
 import { processWorkflowLaunchJob } from '../../workers/workflow-launcher.worker';
+import { setRelayGate } from '../../lib/billing-hooks';
 
 // ─── Fixtures ────────────────────────────────────────────────
 
@@ -130,7 +124,9 @@ function findInstancePuts() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockCheckQuota.mockResolvedValue({ allowed: true, used: 3, limit: 500 });
+  mockSend.mockReset(); // also drops queued mockResolvedValueOnce values
+  // Reset the billing-hooks seam to its default allow-all gate.
+  setRelayGate({ check: async () => ({ allowed: true }) });
   mockIncrementCount.mockResolvedValue(undefined);
   mockLaunchWorkflow.mockResolvedValue({
     instanceId: MAESTRO_INSTANCE_ID,
@@ -190,9 +186,8 @@ describe('processWorkflowLaunchJob — triggerActionNumber (retry/failure path)'
   });
 });
 
-describe('processWorkflowLaunchJob — quota check uses updated limit', () => {
-  it('allows launch when usage is below 500', async () => {
-    mockCheckQuota.mockResolvedValue({ allowed: true, used: 499, limit: 500 });
+describe('processWorkflowLaunchJob — relay gate seam', () => {
+  it('launches when the gate allows (default allow-all gate)', async () => {
     setupSuccessMocks();
 
     await processWorkflowLaunchJob(baseJob);
@@ -201,17 +196,22 @@ describe('processWorkflowLaunchJob — quota check uses updated limit', () => {
     expect(puts).toHaveLength(1);
   });
 
-  it('rejects launch when quota.allowed is false (throws ExecutionLimitError)', async () => {
-    mockCheckQuota.mockResolvedValue({ allowed: false, used: 500, limit: 500 });
-    // workflow lookup + pipeline failure updates
+  it('skips launch when an injected gate denies', async () => {
+    setRelayGate({ check: async () => ({ allowed: false, reason: 'hard_cap_reached' }) });
     mockSend
       .mockResolvedValueOnce({ Item: fakeWorkflow })  // GetCommand: workflow
-      .mockResolvedValueOnce({ Item: undefined })      // GetCommand: pipeline entry check
-      .mockResolvedValue({});                          // UpdateCommand: pipeline failure + rule
+      .mockResolvedValueOnce({});                      // UpdateCommand: pipeline skipped
 
     await processWorkflowLaunchJob(baseJob);
 
     // Maestro launch should NOT have been called
     expect(mockLaunchWorkflow).not.toHaveBeenCalled();
+
+    // Pipeline entry marked skipped (policy decision, not an error)
+    const pipelineUpdate = mockSend.mock.calls.find(
+      ([cmd]: any[]) => cmd.input?.TableName?.includes('trigger-pipeline'),
+    );
+    expect(pipelineUpdate?.[0].input.ExpressionAttributeValues[':status']).toBe('skipped');
+    expect(pipelineUpdate?.[0].input.ExpressionAttributeValues[':adminMsg']).toContain('hard_cap_reached');
   });
 });

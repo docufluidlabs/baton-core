@@ -10,10 +10,9 @@ test.describe('Settings Page', () => {
     await expect(page.getByRole('heading', { name: /settings/i })).toBeVisible();
   });
 
-  test('shows all tab buttons — General, Members, Billing, Audit Log', async ({ page }) => {
+  test('shows all tab buttons — General, Members, Audit Log', async ({ page }) => {
     await expect(page.getByRole('button', { name: /general/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /members/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /billing/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /audit log/i })).toBeVisible();
   });
 
@@ -25,11 +24,6 @@ test.describe('Settings Page', () => {
     await page.getByRole('button', { name: /members/i }).click();
     // Members tab should show table or invite button
     await expect(page.getByText(/member|invite|role/i).first()).toBeVisible({ timeout: 5_000 });
-  });
-
-  test('switching to Billing tab shows plan info', async ({ page }) => {
-    await page.getByRole('button', { name: /billing/i }).click();
-    await expect(page.getByText(/plan|subscription|starter|professional/i).first()).toBeVisible({ timeout: 5_000 });
   });
 
   test('switching to Audit Log tab shows log entries', async ({ page }) => {

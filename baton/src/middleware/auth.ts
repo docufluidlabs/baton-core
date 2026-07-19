@@ -29,12 +29,6 @@ declare global {
         orgId: string;
         role: string;
         sessionId?: string;
-        /** Cached org plan — populated by requireFeature / requireActiveSubscription */
-        plan?: string;
-        /** Cached subscription status — populated alongside `plan` */
-        subscriptionStatus?: string;
-        /** Cached trial end timestamp (ISO) — populated for free_demo orgs */
-        trialEndsAt?: string;
       };
     }
   }

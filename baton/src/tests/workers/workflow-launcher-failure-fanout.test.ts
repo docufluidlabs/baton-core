@@ -33,9 +33,7 @@ vi.mock('../../services/connection.service', () => ({
 }));
 
 vi.mock('../../services/usage.service', () => ({
-  checkExecutionQuota: vi.fn().mockResolvedValue({ allowed: true, used: 0, limit: 100 }),
   incrementExecutionCount: vi.fn(),
-  ExecutionLimitError: class ExecutionLimitError extends Error {},
 }));
 
 const mockSendNotification = vi.fn();
@@ -48,7 +46,6 @@ vi.mock('../../services/notification.service', () => ({
   retryExhaustedNotification: vi.fn((orgId, recipientId, workflowName, instanceId, max, extra) => ({
     type: 'retry_exhausted', orgId, recipientId, workflowName, instanceId, max, extra,
   })),
-  executionQuotaExceededNotification: vi.fn(() => ({ type: 'quota' })),
 }));
 
 vi.mock('../../queue/sqs-client', () => ({

@@ -31,10 +31,12 @@ vi.mock('../../services/maestro.service', () => ({
   launchWorkflow: mockLaunchWorkflow,
 }));
 
-const { mockGetConnectionByOrgAndPlatform } = vi.hoisted(() => ({
+const { mockGetConnection, mockGetConnectionByOrgAndPlatform } = vi.hoisted(() => ({
+  mockGetConnection: vi.fn(),
   mockGetConnectionByOrgAndPlatform: vi.fn(),
 }));
 vi.mock('../../services/connection.service', () => ({
+  getConnection: mockGetConnection,
   getConnectionByOrgAndPlatform: mockGetConnectionByOrgAndPlatform,
 }));
 
@@ -44,24 +46,13 @@ vi.mock('../../services/notification.service', () => ({
   workflowFailedNotification: vi.fn((...args: any[]) => ({ type: 'wf_failed', args })),
   rulePausedNotification: vi.fn((...args: any[]) => ({ type: 'rule_paused', args })),
   retryExhaustedNotification: vi.fn((...args: any[]) => ({ type: 'retry_exhausted', args })),
-  executionQuotaExceededNotification: vi.fn((...args: any[]) => ({ type: 'quota_exceeded', args })),
 }));
 
-const { mockCheckQuota, mockIncrementExecution } = vi.hoisted(() => ({
-  mockCheckQuota: vi.fn(),
+const { mockIncrementExecution } = vi.hoisted(() => ({
   mockIncrementExecution: vi.fn(),
 }));
 vi.mock('../../services/usage.service', () => ({
-  checkExecutionQuota: mockCheckQuota,
   incrementExecutionCount: mockIncrementExecution,
-  ExecutionLimitError: class ExecutionLimitError extends Error {
-    orgId: string; used: number; limit: number;
-    constructor(orgId: string, used: number, limit: number) {
-      super(`Organization ${orgId} has reached its execution limit (${used}/${limit})`);
-      this.name = 'ExecutionLimitError';
-      this.orgId = orgId; this.used = used; this.limit = limit;
-    }
-  },
 }));
 
 vi.mock('../../services/user.service', () => ({
@@ -79,7 +70,8 @@ import { processWorkflowLaunchJob } from '../../workers/workflow-launcher.worker
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockCheckQuota.mockResolvedValue({ allowed: true, used: 5, limit: 50 });
+  mockSend.mockReset(); // also drops queued mockResolvedValueOnce values
+  mockGetConnection.mockResolvedValue({ id: 'conn-1' });
   mockIncrementExecution.mockResolvedValue(undefined);
   mockSendMessage.mockResolvedValue('msg-1');
   mockSendNotification.mockResolvedValue(undefined);
@@ -302,8 +294,9 @@ describe('processWorkflowLaunchJob — retry logic', () => {
     // Rule failure
     mockSend.mockResolvedValueOnce({ Item: { id: 'rule-1', orgId: 'org-1', timesTriggered: 10, failureCount: 2 } });
     mockSend.mockResolvedValueOnce({});
-    // Workflow name lookup for notification
+    // Workflow name + pipeline entry lookups for notification
     mockSend.mockResolvedValueOnce({ Item: { name: 'My Workflow' } });
+    mockSend.mockResolvedValueOnce({});
 
     const jobWithRetry = {
       ...baseJob,

@@ -102,8 +102,7 @@ export default function Workflows() {
       </Steps>
 
       <Callout type="warning" title="A test launch counts as one action">
-        Launching a workflow manually fires a real Maestro instance and counts as one action toward your usage
-        — see <DocLink to="billing">Billing & actions</DocLink>.
+        Launching a workflow manually fires a real Maestro instance and counts as one action toward your usage.
       </Callout>
 
       <h2>Where to go next</h2>
@@ -113,9 +112,6 @@ export default function Workflows() {
         </Card>
         <Card to="flow-builder" title="Flow Builder">
           Link a synced workflow to an automation as its Maestro target.
-        </Card>
-        <Card to="billing" title="Billing & actions">
-          How actions are counted, including manual test launches.
         </Card>
       </Cards>
     </>

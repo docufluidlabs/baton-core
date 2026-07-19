@@ -8,9 +8,8 @@ export default function Glossary() {
 
       <KV>
         <KVRow label="Action">
-          One webhook successfully verified <em>and</em> routed to a Maestro workflow. It is the unit of
-          billing on metered plans — see <DocLink to="billing">Billing</DocLink>. (The Notifications page
-          sometimes calls this an "Execution"; they mean the same thing.)
+          One webhook successfully verified <em>and</em> routed to a Maestro workflow. (The Notifications
+          page sometimes calls this an "Execution"; they mean the same thing.)
         </KVRow>
         <KVRow label="Admin">
           The single Baton role. Every signed-in user is an admin and manages the org's connections,

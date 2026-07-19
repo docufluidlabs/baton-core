@@ -303,49 +303,6 @@ export interface NotificationsResponse {
   unreadCount: number;
 }
 
-// ─── Billing ────────────────────────────────────────────────
-
-export type OrgPlanSlug = 'free_demo' | 'starter' | 'growth' | 'enterprise';
-export type SubscriptionStatus =
-  | 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused_overcap';
-
-export interface PlanData {
-  slug: OrgPlanSlug;
-  name: string;
-  basePriceCents: number;
-  /** null = unlimited (free_demo, enterprise) */
-  includedRelays: number | null;
-  overageRateCents: number;
-  /** True for starter/growth — these can be picked via Checkout. */
-  checkoutable: boolean;
-  features: string[];
-}
-
-export interface BillingData {
-  plan: OrgPlanSlug;
-  planName: string;
-  subscriptionStatus: SubscriptionStatus;
-  trialEndsAt: string | null;
-  currentUsage: { relays: number; successfulExecutions: number; connections: number };
-  /** null = unlimited */
-  includedRelays: number | null;
-  overageEnabled: boolean;
-  overageRateCents: number;
-  basePriceCents: number;
-  projectedCharge: { baseCents: number; overageCents: number; totalCents: number };
-  hardCap: number | null;
-  billingCycleStart?: string;
-  hasStripe: boolean;
-}
-
-export interface BillingResponse {
-  billing: BillingData;
-}
-
-export interface BillingPlansResponse {
-  plans: PlanData[];
-}
-
 export interface WebhookEndpoint {
   id: string;
   name: string;
@@ -806,8 +763,6 @@ export interface SlackChannelRouting {
   workflow_launched?: string | null;
   automation_failed?: string | null;
   connection_degraded?: string | null;
-  execution_quota_warning?: string | null;
-  execution_quota_exceeded?: string | null;
   webhook_failed?: string | null;
 }
 
@@ -902,8 +857,6 @@ const DEFAULT_EVENT_PREFS: Record<string, EventChannelPrefs> = {
   workflow_launched:         { inApp: true,  email: false },
   automation_failed:         { inApp: true,  email: true  },
   connection_degraded:       { inApp: true,  email: true  },
-  execution_quota_warning:   { inApp: true,  email: true  },
-  execution_quota_exceeded:  { inApp: true,  email: true  },
   webhook_failed:            { inApp: true,  email: true  },
 };
 
@@ -922,7 +875,7 @@ export async function updateNotificationPreferences(
   await api.put('/notifications/preferences', prefs);
 }
 
-// ─── Auth / Feature Flags ───────────────────────────────────
+// ─── Auth ───────────────────────────────────────────────────
 
 interface MeResponse {
   user: { id: string; email?: string; role: string };
@@ -937,9 +890,4 @@ interface MeResponse {
 
 export function useMe() {
   return useSWR<MeResponse>('/auth/me', fetcher);
-}
-
-export function useFeatureFlag(flag: string): boolean {
-  const { data } = useMe();
-  return data?.organization?.features?.includes(flag) ?? false;
 }

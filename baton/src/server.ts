@@ -34,7 +34,6 @@ import docusignWebhookRoutes from './routes/webhooks/docusign';
 import appWebhookRoutes from './routes/webhooks/app';
 import ruleWebhookRoutes from './routes/webhooks/rule';
 import postwebhookRoutes from './routes/webhooks/postwebhook';
-import stripeWebhookRoutes from './routes/webhooks/stripe';
 import sfRegistrationRoutes from './routes/sf-registration';
 import sfBootstrapTokensRoutes from './routes/sf-bootstrap-tokens';
 import sfRotateSecretRoutes from './routes/sf-rotate-secret';
@@ -84,7 +83,7 @@ if (env.NODE_ENV === 'production') {
         ],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: ["'self'", 'https://api.stripe.com'],
+        connectSrc: ["'self'"],
         frameSrc: ["'none'"],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: [],
@@ -134,7 +133,6 @@ app.use('/api/webhooks/bamboohr', bamboohrWebhookRoutes);
 app.use('/api/webhooks/docusign', docusignWebhookRoutes);
 app.use('/api/webhooks/app', appWebhookRoutes);
 app.use('/api/webhooks/rule', ruleWebhookRoutes);
-app.use('/api/webhooks/stripe', stripeWebhookRoutes);
 app.use('/api/postwebhook', postwebhookRoutes);
 
 // ─── Salesforce Managed Package — bootstrap registration (no auth) ──

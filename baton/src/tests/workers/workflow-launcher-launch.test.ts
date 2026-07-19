@@ -29,19 +29,13 @@ vi.mock('../../services/maestro.service', () => ({
 }));
 
 vi.mock('../../services/connection.service', () => ({
+  getConnection: vi.fn().mockResolvedValue({ id: 'conn-1' }),
   getConnectionByOrgAndPlatform: vi.fn(),
 }));
 
-const mockCheckQuota = vi.fn();
 const mockIncrementCount = vi.fn();
 vi.mock('../../services/usage.service', () => ({
-  checkExecutionQuota: (...args: any[]) => mockCheckQuota(...args),
   incrementExecutionCount: (...args: any[]) => mockIncrementCount(...args),
-  ExecutionLimitError: class ExecutionLimitError extends Error {
-    constructor(orgId: string, used: number, limit: number) {
-      super(`Quota exceeded: ${used}/${limit}`);
-    }
-  },
 }));
 
 vi.mock('../../services/notification.service', () => ({
@@ -49,7 +43,6 @@ vi.mock('../../services/notification.service', () => ({
   workflowFailedNotification: vi.fn(() => ({})),
   rulePausedNotification: vi.fn(() => ({})),
   retryExhaustedNotification: vi.fn(() => ({})),
-  executionQuotaExceededNotification: vi.fn(() => ({})),
 }));
 
 vi.mock('../../queue/sqs-client', () => ({
@@ -138,11 +131,11 @@ function findPipelineUpdate() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockSend.mockReset(); // also drops queued mockResolvedValueOnce values
   mockLaunchWorkflow.mockResolvedValue({
     instanceId: MAESTRO_INSTANCE_ID,
     instanceUrl: MAESTRO_INSTANCE_URL,
   });
-  mockCheckQuota.mockResolvedValue({ allowed: true, used: 3, limit: 100 });
   mockIncrementCount.mockResolvedValue(undefined);
 });
 

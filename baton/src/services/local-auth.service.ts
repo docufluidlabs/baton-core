@@ -17,7 +17,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { PutCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { getDocClient, TableNames } from '../db/client';
 import { logWarn } from '../lib/logger';
-import { getFeaturesForPlan } from '../lib/feature-flags';
+import { getFeatures } from '../lib/feature-flags';
 import type { OrgPlan } from '../lib/types';
 import env from '../env';
 
@@ -187,11 +187,6 @@ export function splitName(fullName: string): { firstName: string; lastName: stri
 
 /**
  * Create the organization + owner user. Caller must have verified needsSetup().
- *
- * The org row mirrors the field shape the old Clerk webhook wrote, but with
- * top-tier values (enterprise, unlimited relays, meter-exempt) so nothing
- * downstream — feature flags, subscription gates, relay metering — blocks a
- * self-hosted install.
  */
 export async function performSetup(input: SetupInput): Promise<{ user: Record<string, any>; org: Record<string, any> }> {
   const doc = getDocClient();
@@ -203,12 +198,6 @@ export async function performSetup(input: SetupInput): Promise<{ user: Record<st
     name: input.orgName,
     slug: input.orgName.toLowerCase().replace(/\s+/g, '-'),
     plan: 'enterprise' as OrgPlan,
-    subscriptionStatus: 'active',
-    includedRelays: null,       // unlimited
-    overageEnabled: false,
-    overageRateCents: 0,
-    exemptFromMeter: true,      // never emit usage to a billing meter
-    billingCycleStart: now,
     executionsUsed: 0,
     createdAt: now,
     updatedAt: now,
@@ -250,14 +239,14 @@ export function buildMeResponse(user: Record<string, any>, org: Record<string, a
     organization: org ? {
       id: org.id,
       name: org.name,
-      plan: org.plan || 'starter',
+      plan: org.plan || 'enterprise',
       executionsUsed: org.executionsUsed || 0,
-      features: getFeaturesForPlan((org.plan || 'starter') as OrgPlan),
+      features: getFeatures(),
       createdAt: org.createdAt,
     } : {
       id: user.orgId || env.BATON_ORG_ID,
-      plan: 'starter',
-      features: getFeaturesForPlan('starter'),
+      plan: 'enterprise',
+      features: getFeatures(),
     },
   };
 }

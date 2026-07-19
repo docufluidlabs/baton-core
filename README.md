@@ -32,7 +32,6 @@ The project consists of two packages:
 - **Database:** DynamoDB (13 tables) + S3
 - **Queue:** AWS SQS (async workers for webhooks, workflow launches, notifications)
 - **Auth:** Clerk (multi-tenant, RBAC)
-- **Payments:** Stripe
 - **Notifications:** Resend (email), Slack, in-app
 - **Security:** AES-256-GCM token encryption, HMAC webhook verification, Helmet, rate limiting
 - **Monitoring:** Sentry, Pino structured logging
@@ -54,7 +53,6 @@ The project consists of two packages:
 - **Visual Flow Builder** — Drag-and-drop canvas showing platform-to-Baton automation-to-workflow relationships. Shows number of Actions routing through each Baton Flow with success indicators, logs for troubleshooting and settings to allow quick editing of the setup.
 - **Async Event Pipeline** — Webhooks are verified, queued to SQS, and processed by background workers
 - **Multi-Tenant** — Organization isolation with RBAC roles (owner, admin, member, viewer)
-- **Billing** — Stripe integration with per-org execution tracking and plan limits
 - **Notifications** — Email, Slack, and in-app notification channels with user preferences
 - **Auto-Pause** — Rules are automatically paused when failure rate exceeds threshold
 

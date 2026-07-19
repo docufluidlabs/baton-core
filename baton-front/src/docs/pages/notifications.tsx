@@ -63,8 +63,8 @@ export default function Notifications() {
         agree.
       </p>
 
-      <h2>The eight event types</h2>
-      <p>Baton fires eight event types, each with a fixed severity:</p>
+      <h2>The six event types</h2>
+      <p>Baton fires six event types, each with a fixed severity:</p>
 
       <TableWrap>
         <table>
@@ -77,8 +77,6 @@ export default function Notifications() {
             <tr><td>Workflow Launched</td><td><Badge color="blue">Info</Badge></td><td>A new workflow instance starts running.</td></tr>
             <tr><td>Automation Failed</td><td><Badge color="red">Error</Badge></td><td>All retry attempts exhausted — needs manual action.</td></tr>
             <tr><td>Connection Degraded</td><td><Badge color="red">Error</Badge></td><td>A platform connection is down — blocks API requests.</td></tr>
-            <tr><td>Action Limit Approaching</td><td><Badge color="amber">Warning</Badge></td><td>Approaching the monthly action limit.</td></tr>
-            <tr><td>Action Limit Reached</td><td><Badge color="red">Error</Badge></td><td>Monthly action quota reached.</td></tr>
             <tr><td>Webhook Failed</td><td><Badge color="amber">Warning</Badge></td><td>An incoming webhook signature was rejected.</td></tr>
           </tbody>
         </table>
@@ -103,7 +101,7 @@ export default function Notifications() {
       <h2>Where to go next</h2>
       <Cards>
         <Card to="control-center" title="Resolution Center">When an Automation Failed alert fires, this is where you go to retry or cancel the broken instance.</Card>
-        <Card to="settings" title="Settings">Manage your org, plan, and the connections that drive Connection Degraded and Action Limit alerts.</Card>
+        <Card to="settings" title="Settings">Manage your org and the connections that drive Connection Degraded alerts.</Card>
       </Cards>
     </>
   );

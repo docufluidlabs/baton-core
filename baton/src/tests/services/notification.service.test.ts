@@ -44,18 +44,11 @@ import {
   workflowCompletedNotification,
   workflowSyncedNotification,
   retryExhaustedNotification,
-  executionQuotaExceededNotification,
-  executionQuotaWarningNotification,
   connectionErrorNotification,
   connectionCreatedNotification,
   connectionDisconnectedNotification,
   rulePausedNotification,
   webhookFailedNotification,
-  overageStartedNotification,
-  hardCapReachedNotification,
-  billingDriftNotification,
-  trialEndingNotification,
-  pastDueNotification,
   _testExports,
   type NotificationPayload,
   type NotificationPreferences,
@@ -834,42 +827,6 @@ describe('retryExhaustedNotification', () => {
   });
 });
 
-describe('executionQuotaExceededNotification', () => {
-  it('returns error severity with execution_quota_exceeded category', () => {
-    const p = executionQuotaExceededNotification('org-1', 'user-1', 100, 100);
-    expect(p.severity).toBe('error');
-    expect(p.category).toBe('execution_quota_exceeded');
-  });
-
-  it('body mentions workflowName when provided', () => {
-    const p = executionQuotaExceededNotification('org-1', 'user-1', 100, 100, 'Daily Sync');
-    expect(p.body).toContain('Daily Sync');
-  });
-
-  it('body excludes workflowName when absent', () => {
-    const p = executionQuotaExceededNotification('org-1', 'user-1', 100, 100);
-    expect(p.body).not.toContain('undefined');
-  });
-});
-
-describe('executionQuotaWarningNotification', () => {
-  it('returns warning severity with execution_quota_warning category', () => {
-    const p = executionQuotaWarningNotification('org-1', 'user-1', 80, 100);
-    expect(p.severity).toBe('warning');
-    expect(p.category).toBe('execution_quota_warning');
-  });
-
-  it('title contains computed percentage', () => {
-    const p = executionQuotaWarningNotification('org-1', 'user-1', 80, 100);
-    expect(p.title).toContain('80%');
-  });
-
-  it('metadata includes pct field', () => {
-    const p = executionQuotaWarningNotification('org-1', 'user-1', 80, 100);
-    expect(p.metadata?.pct).toBe(80);
-  });
-});
-
 describe('connectionCreatedNotification', () => {
   it('returns success severity with connection_created category', () => {
     const p = connectionCreatedNotification('org-1', 'user-1', 'HubSpot', 'My HubSpot');
@@ -898,124 +855,5 @@ describe('connectionDisconnectedNotification', () => {
   it('body uses generic removal text when reason absent', () => {
     const p = connectionDisconnectedNotification('org-1', 'user-1', 'HubSpot', 'My HubSpot');
     expect(p.body).toContain('has been removed');
-  });
-});
-
-// ─── Billing notifications (metered-billing migration) ───────
-
-describe('overageStartedNotification', () => {
-  it('returns info severity with billing_overage_started category', () => {
-    const p = overageStartedNotification('org-1', 'user-1', 100, 50);
-    expect(p.severity).toBe('info');
-    expect(p.category).toBe('billing_overage_started');
-  });
-
-  it('title states how many included relays were exhausted', () => {
-    const p = overageStartedNotification('org-1', 'user-1', 1000, 12);
-    expect(p.title).toContain('1000');
-  });
-
-  it('body shows formatted dollar overage rate', () => {
-    const p = overageStartedNotification('org-1', 'user-1', 100, 50);
-    expect(p.body).toContain('$0.50');
-  });
-
-  it('metadata captures both included and rate in cents', () => {
-    const p = overageStartedNotification('org-1', 'user-1', 1000, 12);
-    expect(p.metadata).toEqual({ includedRelays: 0, overageRateCents: 0 });
-  });
-
-  it('actionUrl points to /settings?tab=billing', () => {
-    const p = overageStartedNotification('org-1', 'user-1', 100, 50);
-    expect(p.actionUrl).toContain('/settings?tab=billing');
-  });
-});
-
-describe('hardCapReachedNotification', () => {
-  it('returns warning severity with billing_hard_cap category', () => {
-    const p = hardCapReachedNotification('org-1', 'user-1', 5000, 5000);
-    expect(p.severity).toBe('warning');
-    expect(p.category).toBe('billing_hard_cap');
-  });
-
-  it('title contains cap value', () => {
-    const p = hardCapReachedNotification('org-1', 'user-1', 5000, 5012);
-    expect(p.title).toContain('5000');
-  });
-
-  it('body mentions automation pause + cycle reset', () => {
-    const p = hardCapReachedNotification('org-1', 'user-1', 5000, 5012);
-    expect(p.body).toMatch(/paused/i);
-    expect(p.body).toMatch(/cycle resets/i);
-  });
-
-  it('metadata includes both cap and used', () => {
-    const p = hardCapReachedNotification('org-1', 'user-1', 5000, 5012);
-    expect(p.metadata).toEqual({ cap: 5000, used: 5012 });
-  });
-});
-
-describe('billingDriftNotification', () => {
-  it('returns warning severity with billing_drift category', () => {
-    const p = billingDriftNotification('org-1', 'user-1', 100, 95);
-    expect(p.severity).toBe('warning');
-    expect(p.category).toBe('billing_drift');
-  });
-
-  it('body shows both local and Stripe counts', () => {
-    const p = billingDriftNotification('org-1', 'user-1', 100, 95);
-    expect(p.body).toContain('100');
-    expect(p.body).toContain('95');
-  });
-
-  it('metadata.drift = abs(local − stripe)', () => {
-    const p1 = billingDriftNotification('org-1', 'user-1', 100, 95);
-    expect(p1.metadata?.drift).toBe(5);
-
-    const p2 = billingDriftNotification('org-1', 'user-1', 95, 100);
-    expect(p2.metadata?.drift).toBe(5);
-
-    const p3 = billingDriftNotification('org-1', 'user-1', 100, 100);
-    expect(p3.metadata?.drift).toBe(0);
-  });
-});
-
-describe('trialEndingNotification', () => {
-  it('returns warning severity with billing_trial_ending category', () => {
-    const p = trialEndingNotification('org-1', 'user-1', 3);
-    expect(p.severity).toBe('warning');
-    expect(p.category).toBe('billing_trial_ending');
-  });
-
-  it('title pluralizes days correctly', () => {
-    expect(trialEndingNotification('org-1', 'user-1', 1).title).toBe(
-      'Free trial ends in 1 day',
-    );
-    expect(trialEndingNotification('org-1', 'user-1', 3).title).toBe(
-      'Free trial ends in 3 days',
-    );
-  });
-
-  it('metadata captures daysRemaining', () => {
-    const p = trialEndingNotification('org-1', 'user-1', 7);
-    expect(p.metadata).toEqual({ daysRemaining: 7 });
-  });
-});
-
-describe('pastDueNotification', () => {
-  it('returns error severity with billing_past_due category', () => {
-    const p = pastDueNotification('org-1', 'user-1');
-    expect(p.severity).toBe('error');
-    expect(p.category).toBe('billing_past_due');
-  });
-
-  it('title mentions payment failure', () => {
-    const p = pastDueNotification('org-1', 'user-1');
-    expect(p.title).toMatch(/payment failed/i);
-  });
-
-  it('actionUrl points users to /settings?tab=billing to update payment', () => {
-    const p = pastDueNotification('org-1', 'user-1');
-    expect(p.actionUrl).toContain('/settings?tab=billing');
   });
 });

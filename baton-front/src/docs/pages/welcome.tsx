@@ -86,7 +86,7 @@ export default function Welcome() {
             <tr><td><DocLink to="workflows"><strong>Workflow Checker</strong></DocLink></td><td>Every Maestro workflow you have, with a button to launch any of them for testing.</td></tr>
             <tr><td><DocLink to="connections"><strong>Connections</strong></DocLink></td><td>Manage your Docusign connection and the platforms sending webhooks to Baton.</td></tr>
             <tr><td><DocLink to="notifications"><strong>Notifications</strong></DocLink></td><td>Choose how you're alerted and read the in-app feed of everything that happened.</td></tr>
-            <tr><td><DocLink to="settings"><strong>Settings</strong></DocLink></td><td>Organization details, billing, and plan management.</td></tr>
+            <tr><td><DocLink to="settings"><strong>Settings</strong></DocLink></td><td>Organization details and member management.</td></tr>
           </tbody>
         </table>
       </TableWrap>

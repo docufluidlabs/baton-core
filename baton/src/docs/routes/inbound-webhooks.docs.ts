@@ -1,7 +1,7 @@
 /**
  * Inbound webhook endpoints — documentation only.
  *
- * These endpoints are fired by external providers (Salesforce, HubSpot, Stripe, etc.)
+ * These endpoints are fired by external providers (Salesforce, HubSpot, etc.)
  * with provider-specific signature verification. They accept raw JSON bodies, NOT
  * the JSON-parsed shapes Try-It-Out would send, so the UI's Try-It-Out button is
  * disabled for this tag via `customCss` in `server.ts`.
@@ -185,27 +185,6 @@ registry.registerPath({
     403: { description: 'Endpoint disabled' },
     404: { description: 'Endpoint not found' },
     429: { description: 'Rate limit exceeded' },
-  },
-});
-
-registry.registerPath({
-  method: 'post',
-  path: '/api/webhooks/stripe',
-  tags: [TAG],
-  summary: 'Stripe webhook (billing events)',
-  description:
-    'Stripe Checkout / subscription / invoice / meter events. Verified via the Stripe-provided ' +
-    '`Stripe-Signature` header.\n\n' +
-    '**Try-It-Out is disabled** — endpoint expects a signed raw-body payload.',
-  request: {
-    headers: z.object({
-      'stripe-signature': z.string().openapi({ description: 'Stripe signature header (`t=…,v1=…`).' }),
-    }),
-    body: genericBody,
-  },
-  responses: {
-    200: { description: 'Accepted' },
-    400: { description: 'Invalid signature or body' },
   },
 });
 

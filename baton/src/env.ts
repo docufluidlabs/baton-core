@@ -35,20 +35,6 @@ const env = {
   // Single-org install: every user belongs to this organization.
   BATON_ORG_ID: process.env.BATON_ORG_ID || 'default-org',
 
-  // Stripe
-  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || '',
-  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || '',
-  // Metered billing — Price IDs for Starter + Growth (base + metered overage).
-  // Each plan = 1 Stripe Product with 2 prices: a licensed flat base and a
-  // graduated tiered metered price. Populate after creating products in Stripe.
-  STRIPE_PRICE_STARTER_BASE: process.env.STRIPE_PRICE_STARTER_BASE || '',
-  STRIPE_PRICE_STARTER_OVERAGE: process.env.STRIPE_PRICE_STARTER_OVERAGE || '',
-  STRIPE_PRICE_GROWTH_BASE: process.env.STRIPE_PRICE_GROWTH_BASE || '',
-  STRIPE_PRICE_GROWTH_OVERAGE: process.env.STRIPE_PRICE_GROWTH_OVERAGE || '',
-  STRIPE_METER_ID: process.env.STRIPE_METER_ID || '',
-  STRIPE_METER_RELAY_EVENT_NAME: process.env.STRIPE_METER_RELAY_EVENT_NAME || 'relay.routed',
-  STRIPE_GROWTH_OVERAGE_RATE_CENTS: parseInt(process.env.STRIPE_GROWTH_OVERAGE_RATE_CENTS || '12', 10),
-
   // DocuSign
   DOCUSIGN_INTEGRATION_KEY: process.env.DOCUSIGN_INTEGRATION_KEY || '',
   DOCUSIGN_SECRET_KEY: process.env.DOCUSIGN_SECRET_KEY || '',
@@ -100,8 +86,6 @@ const env = {
 const productionSchema = z.object({
   TOKEN_ENCRYPTION_KEY: z.string().min(32, 'TOKEN_ENCRYPTION_KEY must be at least 32 chars'),
   AUTH_JWT_SECRET: z.string().min(32, 'AUTH_JWT_SECRET must be at least 32 chars — generate with `openssl rand -hex 32`'),
-  STRIPE_SECRET_KEY: z.string().optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().optional(),
   DOCUSIGN_INTEGRATION_KEY: z.string().optional(),
   DOCUSIGN_CONNECT_HMAC_KEY: z.string().optional(),
   FRONTEND_URL: z.string().url('FRONTEND_URL must be a valid URL'),

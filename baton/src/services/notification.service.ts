@@ -242,11 +242,6 @@ const DEFAULT_EVENT_PREFS: Record<string, EventChannelPrefs> = {
   execution_quota_warning:   { inApp: true,  email: true  },
   execution_quota_exceeded:  { inApp: true,  email: true  },
   webhook_failed:            { inApp: true,  email: true  },
-  billing_overage_started:   { inApp: true,  email: true  },
-  billing_hard_cap:          { inApp: true,  email: true  },
-  billing_drift:             { inApp: true,  email: false },
-  billing_trial_ending:      { inApp: true,  email: true  },
-  billing_past_due:          { inApp: true,  email: true  },
 };
 
 /** MVP: preferences are per-org, not per-user */
@@ -420,44 +415,6 @@ export function rulePausedNotification(
 
 // ─── New Event Types ─────────────────────────────────────────
 
-export function executionQuotaExceededNotification(
-  orgId: string,
-  recipientId: string,
-  used: number,
-  limit: number,
-  workflowName?: string,
-): NotificationPayload {
-  return {
-    orgId,
-    recipientId,
-    title: 'Execution limit reached',
-    body: `Your organization has used all ${limit} workflow executions this billing cycle.${workflowName ? ` "${workflowName}" could not be launched.` : ''} Upgrade your plan or wait for the next billing cycle.`,
-    severity: 'error',
-    category: 'execution_quota_exceeded',
-    actionUrl: `${env.FRONTEND_URL}/settings`,
-    metadata: { used, limit, workflowName },
-  };
-}
-
-export function executionQuotaWarningNotification(
-  orgId: string,
-  recipientId: string,
-  used: number,
-  limit: number,
-): NotificationPayload {
-  const pct = Math.round((used / limit) * 100);
-  return {
-    orgId,
-    recipientId,
-    title: `${pct}% of execution quota used`,
-    body: `Your organization has used ${used} of ${limit} workflow executions this billing cycle. Consider upgrading to avoid disruption.`,
-    severity: 'warning',
-    category: 'execution_quota_warning',
-    actionUrl: `${env.FRONTEND_URL}/settings`,
-    metadata: { used, limit, pct },
-  };
-}
-
 export function workflowSyncedNotification(
   orgId: string,
   recipientId: string,
@@ -511,93 +468,6 @@ export function webhookFailedNotification(
     category: 'webhook_failed',
     actionUrl: `${env.FRONTEND_URL}/connections`,
     metadata: { platform, reason },
-  };
-}
-
-export function overageStartedNotification(
-  orgId: string,
-  recipientId: string,
-  includedRelays: number,
-  overageRateCents: number,
-): NotificationPayload {
-  const rate = (overageRateCents / 100).toFixed(2);
-  return {
-    orgId,
-    recipientId,
-    title: `You've used all ${includedRelays} included relays`,
-    body: `Additional relays this cycle will bill at $${rate} each. Your subscription continues — no action required.`,
-    severity: 'info',
-    category: 'billing_overage_started',
-    actionUrl: `${env.FRONTEND_URL}/settings?tab=billing`,
-    metadata: { includedRelays, overageRateCents },
-  };
-}
-
-export function hardCapReachedNotification(
-  orgId: string,
-  recipientId: string,
-  cap: number,
-  used: number,
-): NotificationPayload {
-  return {
-    orgId,
-    recipientId,
-    title: `Hard cap of ${cap} relays reached`,
-    body: `New relays are paused until the cycle resets or you raise your cap. ${used} relays processed this cycle.`,
-    severity: 'warning',
-    category: 'billing_hard_cap',
-    actionUrl: `${env.FRONTEND_URL}/settings?tab=billing`,
-    metadata: { cap, used },
-  };
-}
-
-export function billingDriftNotification(
-  orgId: string,
-  recipientId: string,
-  localCount: number,
-  stripeCount: number,
-): NotificationPayload {
-  return {
-    orgId,
-    recipientId,
-    title: 'Billing meter drift detected',
-    body: `Local relay count (${localCount}) differs from Stripe meter (${stripeCount}). Reconcile before invoice close.`,
-    severity: 'warning',
-    category: 'billing_drift',
-    actionUrl: `${env.FRONTEND_URL}/settings?tab=billing`,
-    metadata: { localCount, stripeCount, drift: Math.abs(localCount - stripeCount) },
-  };
-}
-
-export function trialEndingNotification(
-  orgId: string,
-  recipientId: string,
-  daysRemaining: number,
-): NotificationPayload {
-  return {
-    orgId,
-    recipientId,
-    title: `Free trial ends in ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}`,
-    body: `Pick a plan in Settings → Billing to keep your automations running after the trial expires.`,
-    severity: 'warning',
-    category: 'billing_trial_ending',
-    actionUrl: `${env.FRONTEND_URL}/settings?tab=billing`,
-    metadata: { daysRemaining },
-  };
-}
-
-export function pastDueNotification(
-  orgId: string,
-  recipientId: string,
-): NotificationPayload {
-  return {
-    orgId,
-    recipientId,
-    title: 'Payment failed — update billing',
-    body: `Your latest invoice could not be charged. Update your payment method in Settings → Billing to avoid service interruption.`,
-    severity: 'error',
-    category: 'billing_past_due',
-    actionUrl: `${env.FRONTEND_URL}/settings?tab=billing`,
   };
 }
 

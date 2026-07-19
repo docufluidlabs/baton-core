@@ -47,7 +47,7 @@ export default function Concepts() {
       <p>These two terms describe what actually happens when a webhook arrives and a workflow launches.</p>
 
       <KV>
-        <KVRow label="Action">One webhook that was successfully verified <em>and</em> routed to a Maestro workflow. On metered plans, the action is the unit of billing.</KVRow>
+        <KVRow label="Action">One webhook that was successfully verified <em>and</em> routed to a Maestro workflow.</KVRow>
         <KVRow label="Instance">A single execution (run) of a Maestro workflow. Baton can monitor instances and shows their status as Running, Completed, Failed, or Cancelled.</KVRow>
       </KV>
 
