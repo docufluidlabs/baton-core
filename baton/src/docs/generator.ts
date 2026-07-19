@@ -36,7 +36,6 @@ export function buildOpenApiDocument() {
       { name: 'Connections', description: 'OAuth connection state for external platforms' },
       { name: 'Webhook Endpoints', description: 'Org-owned outbound webhook destinations' },
       { name: 'Slack', description: 'Slack configuration for the org' },
-      { name: 'Support', description: 'Support tickets and feedback' },
       { name: 'Flow Layout', description: 'Persisted graph layout for workflow editor' },
       { name: 'Salesforce', description: 'Salesforce managed-package bootstrap and rotation' },
       {

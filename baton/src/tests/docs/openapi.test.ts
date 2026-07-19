@@ -21,7 +21,7 @@ describe('OpenAPI spec', () => {
       'Workflows', 'Webhook Endpoints', 'Connections', 'Automations',
       'Platforms', 'Settings', 'Slack', 'Flow Layout', 'Salesforce',
       'Auth', 'Instances', 'Events', 'Dashboard', 'Notifications',
-      'User Activity', 'Support',
+      'User Activity',
     ];
     const seen = new Set<string>();
     for (const path of Object.values(spec.paths || {})) {
