@@ -6,8 +6,8 @@
  * GSIs are added for common query patterns.
  * 
  * Key access patterns:
- * - Organizations: by id, by clerkOrgId
- * - Users: by id, by clerkUserId, by orgId
+ * - Organizations: by id, by slug
+ * - Users: by id, by orgId, by orgId+email
  * - Connections: by id, by orgId, by orgId+platform
  * - Workflows: by id, by orgId
  * - Instances: by id, by orgId, by workflowId, by status
@@ -31,16 +31,9 @@ export const tableDefinitions: CreateTableCommandInput[] = [
     ],
     AttributeDefinitions: [
       { AttributeName: 'id', AttributeType: 'S' },
-      { AttributeName: 'clerkOrgId', AttributeType: 'S' },
       { AttributeName: 'slug', AttributeType: 'S' },
     ],
     GlobalSecondaryIndexes: [
-      {
-        IndexName: 'clerkOrgId-index',
-        KeySchema: [{ AttributeName: 'clerkOrgId', KeyType: 'HASH' }],
-        Projection: { ProjectionType: 'ALL' },
-        ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 },
-      },
       {
         IndexName: 'slug-index',
         KeySchema: [{ AttributeName: 'slug', KeyType: 'HASH' }],
@@ -59,17 +52,10 @@ export const tableDefinitions: CreateTableCommandInput[] = [
     ],
     AttributeDefinitions: [
       { AttributeName: 'id', AttributeType: 'S' },
-      { AttributeName: 'clerkUserId', AttributeType: 'S' },
       { AttributeName: 'orgId', AttributeType: 'S' },
       { AttributeName: 'email', AttributeType: 'S' },
     ],
     GlobalSecondaryIndexes: [
-      {
-        IndexName: 'clerkUserId-index',
-        KeySchema: [{ AttributeName: 'clerkUserId', KeyType: 'HASH' }],
-        Projection: { ProjectionType: 'ALL' },
-        ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 },
-      },
       {
         IndexName: 'orgId-index',
         KeySchema: [{ AttributeName: 'orgId', KeyType: 'HASH' }],

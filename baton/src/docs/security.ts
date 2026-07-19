@@ -5,8 +5,8 @@ registry.registerComponent('securitySchemes', 'bearerAuth', {
   scheme: 'bearer',
   bearerFormat: 'JWT',
   description:
-    'Clerk session JWT. Obtain via Clerk frontend SDK and send as `Authorization: Bearer <token>`. ' +
-    'Cookie fallback: the `__session` cookie set by Clerk is also accepted.',
+    'Session JWT issued by POST /api/auth/login (or /setup, /accept-invite). ' +
+    'Sent automatically as the httpOnly `baton_session` cookie — no header needed from browsers.',
 });
 
 registry.registerComponent('securitySchemes', 'devBypass', {
@@ -18,13 +18,3 @@ registry.registerComponent('securitySchemes', 'devBypass', {
     'Pair with `X-Dev-OrgId` and optionally `X-Dev-Role` (owner/admin/member/viewer/superuser).',
 });
 
-// Reusable header parameter — referenced from operations that support org switching.
-// Most endpoints already resolve `orgId` from the Clerk JWT; this header overrides it
-// for users who belong to multiple orgs (see POST /api/auth/switch-org).
-registry.registerComponent('parameters', 'XClerkOrgId', {
-  name: 'X-Clerk-Org-Id',
-  in: 'header',
-  required: false,
-  description: 'Optional override for the active organization (must be a member).',
-  schema: { type: 'string' },
-});

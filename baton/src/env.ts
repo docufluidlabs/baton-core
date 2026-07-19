@@ -29,10 +29,11 @@ const env = {
   // Encryption
   TOKEN_ENCRYPTION_KEY: process.env.TOKEN_ENCRYPTION_KEY || '',
 
-  // Clerk
-  CLERK_PUBLISHABLE_KEY: process.env.CLERK_PUBLISHABLE_KEY || '',
-  CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY || '',
-  CLERK_WEBHOOK_SECRET: process.env.CLERK_WEBHOOK_SECRET || '',
+  // Local auth (self-contained email/password sessions)
+  // Generate with: openssl rand -hex 32
+  AUTH_JWT_SECRET: process.env.AUTH_JWT_SECRET || '',
+  // Single-org install: every user belongs to this organization.
+  BATON_ORG_ID: process.env.BATON_ORG_ID || 'default-org',
 
   // Stripe
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || '',
@@ -98,8 +99,7 @@ const env = {
 
 const productionSchema = z.object({
   TOKEN_ENCRYPTION_KEY: z.string().min(32, 'TOKEN_ENCRYPTION_KEY must be at least 32 chars'),
-  CLERK_SECRET_KEY: z.string().startsWith('sk_', 'CLERK_SECRET_KEY must start with sk_'),
-  CLERK_WEBHOOK_SECRET: z.string().optional(),
+  AUTH_JWT_SECRET: z.string().min(32, 'AUTH_JWT_SECRET must be at least 32 chars — generate with `openssl rand -hex 32`'),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   DOCUSIGN_INTEGRATION_KEY: z.string().optional(),

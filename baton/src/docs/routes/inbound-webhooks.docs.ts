@@ -34,16 +34,6 @@ type ProviderSpec = {
 
 const providerWebhooks: ProviderSpec[] = [
   {
-    path: '/api/webhooks/clerk',
-    provider: 'Clerk',
-    description: 'Clerk user/org lifecycle events (user.created, organization.created, etc.). Verified via `svix` signature.',
-    headers: z.object({
-      'svix-id': z.string().openapi({ description: 'Unique Svix message id.' }),
-      'svix-timestamp': z.string().openapi({ description: 'Unix epoch seconds (replay-protected).' }),
-      'svix-signature': z.string().openapi({ description: 'Svix HMAC signature.' }),
-    }),
-  },
-  {
     path: '/api/webhooks/salesforce',
     provider: 'Salesforce',
     description: 'Generic Salesforce platform events. Verified via the connection\'s `webhookSecret`.',
@@ -265,7 +255,7 @@ registry.registerPath({
   method: 'post',
   path: '/api/salesforce/webhook-registrations',
   tags: [TAG],
-  summary: 'SF managed-package bootstrap registration (no Clerk auth)',
+  summary: 'SF managed-package bootstrap registration (no session auth)',
   description:
     'Called by the Salesforce managed package (Apex `BatonDispatcher`) on its first webhook dispatch. ' +
     'Exchanges a one-time `bootstrapToken` for a persisted HMAC secret keyed by `sfOrgId`. ' +

@@ -84,8 +84,9 @@ router.post('/switch-org', async (req: Request, res: Response, next: NextFunctio
       return;
     }
 
-    // Check membership (stored in Clerk, or in user record)
-    // For now, just verify the org exists
+    // Verify the org exists. Local auth is single-org (BATON_ORG_ID) — the
+    // active org always comes from the user row, so this endpoint only
+    // confirms the target org is valid.
     const orgResult = await doc.send(new GetCommand({
       TableName: TableNames.ORGANIZATIONS,
       Key: { id: orgId },
@@ -96,8 +97,7 @@ router.post('/switch-org', async (req: Request, res: Response, next: NextFunctio
       return;
     }
 
-    // Client should set x-clerk-org-id header on subsequent requests
-    res.json({ message: 'Switch organization by setting x-clerk-org-id header', orgId });
+    res.json({ message: 'Organization verified', orgId });
   } catch (e) { next(e); }
 });
 

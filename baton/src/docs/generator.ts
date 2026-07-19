@@ -11,11 +11,11 @@ export function buildOpenApiDocument() {
       version: '1.0.0',
       description:
         'Workflow orchestration platform — internal API.\n\n' +
-        'Authentication is handled by Clerk: send the session JWT as `Authorization: Bearer <token>` ' +
-        '(or rely on the `__session` cookie if calling from the embedded frontend).\n\n' +
+        'Authentication is self-contained: log in via POST /api/auth/login and rely on the ' +
+        'httpOnly `baton_session` cookie set by the server.\n\n' +
         'Webhook endpoints (`/api/webhooks/*`, `/api/postwebhook`, `/api/slack/events`, ' +
         '`/api/salesforce/webhook-registrations`) are intentionally excluded — they accept raw bodies ' +
-        'and are authenticated via provider-specific signature schemes, not Clerk.',
+        'and are authenticated via provider-specific signature schemes, not sessions.',
     },
     servers: [
       { url: env.API_URL, description: env.NODE_ENV },

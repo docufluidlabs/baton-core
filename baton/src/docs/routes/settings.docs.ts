@@ -58,11 +58,13 @@ registry.registerPath({
             members: z.array(
               z.object({
                 id: z.string(),
-                clerkId: z.string().optional(),
                 email: z.string().email().optional(),
                 firstName: z.string().optional(),
                 lastName: z.string().optional(),
+                fullName: z.string().optional(),
                 role: z.enum(['owner', 'admin', 'member', 'viewer']),
+                status: z.enum(['active', 'invited']),
+                inviteExpiresAt: z.string().optional(),
                 createdAt: z.string().optional(),
                 lastActiveAt: z.string().optional(),
               }),
@@ -77,10 +79,50 @@ registry.registerPath({
 });
 
 registry.registerPath({
+  method: 'post',
+  path: '/api/settings/members/invites',
+  tags: [TAG],
+  summary: 'Invite a member — returns a 72h invite link (admin+)',
+  security: SECURITY,
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            email: z.string().email(),
+            role: z.enum(['admin', 'member', 'viewer']),
+          }),
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      description: 'Invite created',
+      content: {
+        'application/json': {
+          schema: z.object({
+            inviteUrl: z.string().url(),
+            memberId: z.string(),
+            email: z.string().email(),
+            role: z.string(),
+            expiresAt: z.string(),
+          }),
+        },
+      },
+    },
+    400: commonErrorResponses[400],
+    401: commonErrorResponses[401],
+    403: commonErrorResponses[403],
+    409: { description: 'Member with this email already exists', content: { 'application/json': { schema: z.object({ error: z.string() }) } } },
+  },
+});
+
+registry.registerPath({
   method: 'patch',
   path: '/api/settings/members/{id}/role',
   tags: [TAG],
-  summary: 'Change a member\'s role (cannot change own role)',
+  summary: 'Change a member\'s role (org-scoped; cannot change own role)',
   security: SECURITY,
   request: {
     params: z.object({ id: z.string() }),
@@ -94,6 +136,26 @@ registry.registerPath({
     400: commonErrorResponses[400],
     401: commonErrorResponses[401],
     403: commonErrorResponses[403],
+    404: commonErrorResponses[404],
+  },
+});
+
+registry.registerPath({
+  method: 'delete',
+  path: '/api/settings/members/{id}',
+  tags: [TAG],
+  summary: 'Remove a member (org-scoped; cannot remove yourself or the last owner)',
+  security: SECURITY,
+  request: { params: z.object({ id: z.string() }) },
+  responses: {
+    200: {
+      description: 'Removed',
+      content: { 'application/json': { schema: z.object({ message: z.string(), memberId: z.string() }) } },
+    },
+    400: commonErrorResponses[400],
+    401: commonErrorResponses[401],
+    403: commonErrorResponses[403],
+    404: commonErrorResponses[404],
   },
 });
 

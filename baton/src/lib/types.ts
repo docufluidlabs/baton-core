@@ -50,7 +50,6 @@ export type NotificationEventType =
 
 export interface Organization {
   id: string;
-  clerkOrgId: string;
   name: string;
   slug: string;
   plan: OrgPlan;
@@ -85,11 +84,21 @@ export interface Organization {
 
 export interface User {
   id: string;
-  clerkUserId: string;
   orgId: string;
   email: string;
   fullName: string;
+  firstName?: string;
+  lastName?: string;
+  imageUrl?: string;
   role: UserRole;
+  /** bcrypt hash — absent on pending-invite rows until the invite is accepted. */
+  passwordHash?: string;
+  /** Pending invite token (crypto-random hex). Cleared on accept. */
+  inviteToken?: string;
+  /** ISO expiry for inviteToken (72h). Cleared on accept. */
+  inviteExpiresAt?: string;
+  invitedBy?: string;
+  lastActiveAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -546,7 +555,7 @@ export interface DocOverride {
   /** Markdown body (may contain `::demo[...]` / `:::callout` directive shortcodes). */
   contentMarkdown: string;
   status: 'published';
-  /** Clerk user id of the last editor. */
+  /** User id of the last editor. */
   updatedBy: string;
   /** Editor's email at save time (audit trail). */
   updatedByEmail: string;

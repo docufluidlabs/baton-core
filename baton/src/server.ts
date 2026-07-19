@@ -9,6 +9,7 @@ import env from './env';
 
 // Routes
 import authRoutes from './routes/auth';
+import localAuthRoutes from './routes/local-auth';
 import connectionRoutes from './routes/connections';
 import workflowRoutes from './routes/workflows';
 import instanceRoutes from './routes/instances';
@@ -25,7 +26,6 @@ import webhookEndpointRoutes from './routes/webhook-endpoints';
 import flowLayoutRoutes from './routes/flow-layout';
 
 // Webhook routes (no auth)
-import clerkWebhookRoutes from './routes/webhooks/clerk';
 import salesforceWebhookRoutes from './routes/webhooks/salesforce';
 import hubspotWebhookRoutes from './routes/webhooks/hubspot';
 import zohocrmWebhookRoutes from './routes/webhooks/zohocrm';
@@ -67,7 +67,7 @@ app.set('trust proxy', 1);
 // CSP setup (#28):
 // - Development: CSP disabled entirely so Vite HMR and React DevTools inline
 //   scripts are not blocked (they don't carry nonce attributes).
-// - Production: nonce-based CSP; Clerk officially supports this pattern.
+// - Production: nonce-based CSP.
 if (env.NODE_ENV === 'production') {
   app.use((_req, res, next) => {
     res.locals.cspNonce = randomBytes(16).toString('base64');
@@ -80,14 +80,11 @@ if (env.NODE_ENV === 'production') {
         defaultSrc: ["'self'"],
         scriptSrc: [
           "'self'",
-          // Allow Clerk's inline scripts via per-request nonce
           (_req: any, res: any) => `'nonce-${res.locals.cspNonce}'`,
-          'https://clerk.iambaton.com',
-          'https://*.clerk.accounts.dev',
         ],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", 'data:', 'https:'],
-        connectSrc: ["'self'", 'https://*.clerk.accounts.dev', 'https://api.stripe.com'],
+        connectSrc: ["'self'", 'https://api.stripe.com'],
         frameSrc: ["'none'"],
         objectSrc: ["'none'"],
         upgradeInsecureRequests: [],
@@ -130,7 +127,6 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ─── Webhook Routes (no session auth, signature verification only) ──
-app.use('/api/webhooks/clerk', clerkWebhookRoutes);
 app.use('/api/webhooks/salesforce', salesforceWebhookRoutes);
 app.use('/api/webhooks/hubspot', hubspotWebhookRoutes);
 app.use('/api/webhooks/zohocrm', zohocrmWebhookRoutes);
@@ -149,6 +145,11 @@ app.use('/api/salesforce/webhook-registrations', sfRegistrationRoutes);
 // ─── Client Error Reporting (no auth — frontend may not have a session) ──
 import errorReportRoutes from './routes/errors';
 app.use('/api/errors', errorReportRoutes);
+
+// ─── Local Auth (public: setup/login/logout/accept-invite) ──────────
+// Mounted BEFORE the requireAuth apiRouter. Paths it does not handle
+// (e.g. GET /api/auth/me) fall through to the authenticated /api router.
+app.use('/api/auth', localAuthRoutes);
 
 // ─── OAuth Callbacks (no session auth — called by external providers) ──
 app.use('/api/connections', connectionRoutes);
@@ -187,7 +188,7 @@ app.use('/api/public/platforms-catalog', publicCatalogRoutes);
 
 // ─── OpenAPI / Swagger UI (basic-auth gated) ─────────────────
 // Mounted BEFORE `app.use('/api', apiRouter)` so /api/docs* takes precedence
-// over apiRouter (which would otherwise require a Clerk session). The /api
+// over apiRouter (which would otherwise require a session). The /api
 // prefix matches the existing ALB ingress rule, so no extra ingress entries
 // are needed. Both BATON_DOCS_USER and BATON_DOCS_PASS must be set to enable.
 if (env.BATON_DOCS_USER && env.BATON_DOCS_PASS) {

@@ -1,14 +1,23 @@
 /**
  * Auth Middleware — Baton
- * Validates Clerk sessions and populates req.auth
+ * Validates local sessions and populates req.auth
  *
- * Production: Verifies Clerk JWT tokens from Authorization header
- * Development: Bypass with X-Dev-UserId / X-Dev-OrgId headers
+ * Production: verifies the `baton_session` JWT cookie (see local-auth.service)
+ * Development: bypass with X-Dev-UserId / X-Dev-OrgId headers
+ *
+ * The AuthProvider seam lets alternative providers (e.g. a hosted-cloud SSO
+ * build) replace session verification without touching route code.
  */
 import { Request, Response, NextFunction } from 'express';
+import { GetCommand } from '@aws-sdk/lib-dynamodb';
 import { UnauthorizedError } from './error-handler';
 import { logger } from '../lib/logger';
 import { requestContext } from '../lib/context';
+import { getDocClient, TableNames } from '../db/client';
+import {
+  getSessionTokenFromRequest,
+  verifySession,
+} from '../services/local-auth.service';
 import env from '../env';
 
 // Extend Express Request to include auth context
@@ -31,52 +40,77 @@ declare global {
   }
 }
 
-// Clerk client — eagerly initialized in production to fail loudly on startup (#33)
-let clerkClient: any = null;
-
-// In production: initialize immediately and crash if it fails.
-// In development: lazy-init so the server starts without valid Clerk credentials.
-if (env.NODE_ENV === 'production') {
-  try {
-    // Synchronous top-level init: we import the ESM module via require at this
-    // point because the file is compiled to CJS by tsc. Dynamic import is used
-    // below for development where we want lazy behavior.
-    const { createClerkClient } = require('@clerk/express');
-    clerkClient = createClerkClient({ secretKey: env.CLERK_SECRET_KEY });
-    logger.info('Clerk SDK initialized');
-  } catch (err) {
-    // Crash immediately — auth is non-functional without Clerk (#33)
-    logger.error({ err }, 'Clerk SDK failed to initialize — refusing to start');
-    process.exit(1);
-  }
-}
-
-export async function getClerkClient() {
-  if (!clerkClient) {
-    try {
-      const { createClerkClient } = await import('@clerk/express');
-      clerkClient = createClerkClient({ secretKey: env.CLERK_SECRET_KEY });
-    } catch {
-      // Development-only: log and continue without Clerk
-      logger.warn('Clerk SDK not available — auth will fall back to dev bypass mode');
-    }
-  }
-  return clerkClient;
-}
-
-// Lazy-loaded verifyToken function
-let _verifyToken: any = null;
-
-async function getVerifyToken() {
-  if (!_verifyToken) {
-    const { verifyToken } = await import('@clerk/express');
-    _verifyToken = verifyToken;
-  }
-  return _verifyToken;
+export interface AuthContext {
+  userId: string;
+  orgId: string;
+  role: string;
+  sessionId?: string;
 }
 
 /**
- * Clerk session validation middleware
+ * Pluggable auth provider seam. authenticate() must resolve to the auth
+ * context or throw — requireAuth converts any throw into a 401.
+ */
+export interface AuthProvider {
+  name: string;
+  authenticate(req: Request): Promise<AuthContext>;
+}
+
+/**
+ * Default provider: verifies the `baton_session` JWT cookie and loads the
+ * user row so orgId/role always reflect the database (revoking a user or
+ * changing their role takes effect on the next request, not at token expiry).
+ */
+export class LocalAuthProvider implements AuthProvider {
+  name = 'local';
+
+  async authenticate(req: Request): Promise<AuthContext> {
+    const token = getSessionTokenFromRequest(req);
+    if (!token) {
+      throw new Error('No session token found');
+    }
+
+    const session = verifySession(token);
+    if (!session) {
+      throw new Error('Invalid or expired session token');
+    }
+
+    const doc = getDocClient();
+    const result = await doc.send(new GetCommand({
+      TableName: TableNames.USERS,
+      Key: { id: session.userId },
+    }));
+
+    const user = result.Item;
+    if (!user) {
+      throw new Error('Session user no longer exists');
+    }
+    if (!user.passwordHash) {
+      // Pending invite rows have no password — they cannot hold a session.
+      throw new Error('User has not completed account setup');
+    }
+
+    return {
+      userId: user.id,
+      orgId: user.orgId || env.BATON_ORG_ID,
+      role: user.role || 'member',
+    };
+  }
+}
+
+let authProvider: AuthProvider = new LocalAuthProvider();
+
+/** Swap the active auth provider (used by closed-source cloud builds). */
+export function setAuthProvider(provider: AuthProvider): void {
+  authProvider = provider;
+}
+
+export function getAuthProvider(): AuthProvider {
+  return authProvider;
+}
+
+/**
+ * Session validation middleware
  */
 export function requireAuth(req: Request, _res: Response, next: NextFunction): void {
   // Development bypass
@@ -102,8 +136,7 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
     }
   }
 
-  // Production: verify Clerk JWT token from Authorization header or __session cookie
-  verifyClerkSession(req)
+  authProvider.authenticate(req)
     .then((auth) => {
       req.auth = auth;
       const store = requestContext.getStore();
@@ -111,7 +144,7 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
         store.userId = auth.userId;
         store.orgId = auth.orgId;
       }
-      logger.debug({ path: req.path }, 'Auth success');
+      logger.debug({ path: req.path, provider: authProvider.name }, 'Auth success');
       next();
     })
     .catch((error) => {
@@ -120,125 +153,12 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
           err: error,
           path: req.path,
           method: req.method,
-          hasAuthHeader: !!req.headers.authorization,
-          hasSessionCookie: !!req.cookies?.__session,
+          provider: authProvider.name,
+          hasCookieHeader: !!req.headers.cookie,
           nodeEnv: env.NODE_ENV,
         },
         'Auth verification failed',
       );
       next(new UnauthorizedError('No valid session found'));
     });
-}
-
-async function verifyClerkSession(req: Request): Promise<{
-  userId: string;
-  orgId: string;
-  role: string;
-  sessionId?: string;
-}> {
-  // Extract session token from Authorization header or cookie
-  const authHeader = req.headers.authorization;
-  const sessionToken = authHeader?.startsWith('Bearer ')
-    ? authHeader.slice(7)
-    : (req.cookies?.__session as string);
-
-  if (!sessionToken) {
-    logger.warn({ path: req.path }, 'Auth: no session token in request');
-    throw new Error('No session token found');
-  }
-
-  logger.debug({ tokenLength: sessionToken.length, path: req.path }, 'Auth: verifying token');
-
-  // Verify the JWT token with Clerk
-  const verifyToken = await getVerifyToken();
-  let payload: any;
-  try {
-    payload = await verifyToken(sessionToken, {
-      secretKey: env.CLERK_SECRET_KEY,
-    });
-  } catch (err) {
-    logger.warn({ err, path: req.path, secretKeySet: !!env.CLERK_SECRET_KEY }, 'Auth: verifyToken threw');
-    throw err;
-  }
-
-  if (!payload || !payload.sub) {
-    logger.warn({ payload: payload ? Object.keys(payload) : null, path: req.path }, 'Auth: invalid payload');
-    throw new Error('Invalid session');
-  }
-
-  const userId = payload.sub;
-  const sessionId = payload.sid;
-
-  // Get active organization from JWT claims; fall back to X-Clerk-Org-Id header
-  // but ONLY after verifying the user is actually a member of that org (#20).
-  // Clerk v5+ uses short claim names: `o` = { id, rol, per } instead of org_id/org_role
-  const orgIdFromToken = payload.org_id || payload.o?.id;
-  const orgIdFromHeader = req.headers['x-clerk-org-id'] as string | undefined;
-
-  let orgId: string | undefined = orgIdFromToken;
-
-  if (!orgId && orgIdFromHeader) {
-    // Header fallback: verify the user actually belongs to the claimed org (#20)
-    try {
-      const clerk = await getClerkClient();
-      if (clerk) {
-        const memberships = await clerk.organizations.getOrganizationMembershipList({
-          organizationId: orgIdFromHeader,
-        });
-        const isMember = memberships.data?.some(
-          (m: any) => m.publicUserData?.userId === userId,
-        );
-        if (isMember) {
-          orgId = orgIdFromHeader;
-        } else {
-          logger.warn({ userId, orgIdFromHeader, path: req.path }, 'Auth: X-Clerk-Org-Id header rejected — user is not a member');
-          throw new Error('User is not a member of the claimed organization');
-        }
-      }
-    } catch (membershipErr: any) {
-      throw membershipErr;
-    }
-  }
-
-  logger.debug({
-    userId,
-    orgId,
-    orgFromHeader: !!req.headers['x-clerk-org-id'],
-    orgFromToken: !!payload.org_id,
-    orgFromShortClaim: !!payload.o?.id,
-    oClaimValue: payload.o,
-  }, 'Auth: extracted claims');
-
-  if (!orgId) {
-    logger.warn({ userId, path: req.path, tokenClaims: Object.keys(payload), oClaim: payload.o }, 'Auth: no orgId in token or header');
-    throw new Error('No active organization. Please select an organization.');
-  }
-
-  // Get user's role from token claims or Clerk API
-  // Clerk v5+ uses `o.rol` instead of `org_role`, and returns roles as "org:owner", "org:admin" etc.
-  // Normalize to strip the "org:" prefix so RBAC checks work correctly.
-  let role = (payload.org_role || payload.o?.rol || 'member').replace(/^org:/, '');
-
-  // If role not in token, fetch from Clerk API
-  if (!payload.org_role && !payload.o?.rol) {
-    try {
-      const clerk = await getClerkClient();
-      if (clerk) {
-        const memberships = await clerk.organizations.getOrganizationMembershipList({
-          organizationId: orgId,
-        });
-        const membership = memberships.data?.find((m: any) => m.publicUserData?.userId === userId);
-        role = (membership?.role || 'member').replace(/^org:/, '');
-      }
-    } catch {
-      // Fall back to default role
-    }
-  }
-
-  return {
-    userId,
-    orgId,
-    role,
-    sessionId,
-  };
 }

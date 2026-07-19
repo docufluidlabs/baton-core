@@ -20,7 +20,7 @@ export type FeatureFlag =
   | 'audit_log'             // Full audit trail access
   | 'priority_support'      // Priority support channel
   | 'unlimited_connections' // No connection cap
-  | 'sso';                  // SAML/SSO via Clerk
+  | 'sso';                  // SAML/SSO (enterprise)
 
 export const PLAN_FEATURES: Record<OrgPlan, FeatureFlag[]> = {
   // Free Demo unlocks everything for 14 days so prospects can fully evaluate.

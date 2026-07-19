@@ -3,18 +3,21 @@
  * /api/settings — Organization settings, members, billing
  */
 import { Router, Request, Response, NextFunction } from 'express';
-import { GetCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { z } from 'zod';
+import { v4 as uuidv4 } from 'uuid';
+import { GetCommand, PutCommand, UpdateCommand, DeleteCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import {
   UpdateOrgInput,
   UpdateRoleInput,
   CheckoutInput,
   HardCapInput,
 } from '../docs/schemas/settings';
-import { requireAuth, getClerkClient } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth';
 import { requireAdmin, requireViewer } from '../middleware/rbac';
 import { getDocClient, TableNames } from '../db/client';
-import { logInfo, logError } from '../lib/logger';
+import { logInfo } from '../lib/logger';
 import { NotFoundError } from '../middleware/error-handler';
+import { createInviteToken, inviteExpiresAt } from '../services/local-auth.service';
 import {
   PLAN_INFO,
   CHECKOUTABLE_PLANS,
@@ -108,16 +111,73 @@ router.get('/members', requireViewer, async (req: Request, res: Response, next: 
 
     const members = (result.Items || []).map((user: any) => ({
       id: user.id,
-      clerkId: user.clerkId,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
+      fullName: user.fullName,
       role: user.role || 'member',
+      // Rows created by an invite have no passwordHash until it is accepted.
+      status: user.passwordHash ? 'active' : 'invited',
+      inviteExpiresAt: user.inviteExpiresAt,
       createdAt: user.createdAt,
       lastActiveAt: user.lastActiveAt,
     }));
 
     res.json({ members, total: members.length });
+  } catch (e) { next(e); }
+});
+
+// ─── POST /api/settings/members/invites — Invite a member ────
+
+const InviteMemberInput = z.object({
+  email: z.string().email(),
+  role: z.enum(['admin', 'member', 'viewer']),
+});
+
+router.post('/members/invites', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, role } = InviteMemberInput.parse(req.body);
+    const orgId = req.auth!.orgId;
+    const doc = getDocClient();
+
+    // Reject duplicates within the org (also refreshes nothing — the admin
+    // should delete the pending row to re-invite).
+    const existing = await doc.send(new QueryCommand({
+      TableName: TableNames.USERS,
+      IndexName: 'orgId-email-index',
+      KeyConditionExpression: 'orgId = :orgId AND email = :email',
+      ExpressionAttributeValues: { ':orgId': orgId, ':email': email.toLowerCase() },
+    }));
+    if (existing.Items && existing.Items.length > 0) {
+      res.status(409).json({ error: 'A member with this email already exists' });
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const token = createInviteToken();
+    const expiresAt = inviteExpiresAt();
+    const member = {
+      id: uuidv4(),
+      orgId,
+      email: email.toLowerCase(),
+      role,
+      inviteToken: token,
+      inviteExpiresAt: expiresAt,
+      invitedBy: req.auth!.userId,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await doc.send(new PutCommand({ TableName: TableNames.USERS, Item: member }));
+
+    logInfo('Member invited', { orgId, memberId: member.id, role, invitedBy: req.auth!.userId });
+    res.status(201).json({
+      inviteUrl: `${env.FRONTEND_URL}/invite?token=${token}`,
+      memberId: member.id,
+      email: member.email,
+      role,
+      expiresAt,
+    });
   } catch (e) { next(e); }
 });
 
@@ -135,20 +195,80 @@ router.patch('/members/:id/role', requireAdmin, async (req: Request, res: Respon
       return;
     }
 
-    await doc.send(new UpdateCommand({
-      TableName: TableNames.USERS,
-      Key: { id: memberId },
-      UpdateExpression: 'SET #role = :role, updatedAt = :updatedAt',
-      ExpressionAttributeValues: {
-        ':role': role,
-        ':updatedAt': new Date().toISOString(),
-      },
-      ExpressionAttributeNames: { '#role': 'role' },
-      ConditionExpression: 'attribute_exists(id)',
-    }));
+    try {
+      await doc.send(new UpdateCommand({
+        TableName: TableNames.USERS,
+        Key: { id: memberId },
+        UpdateExpression: 'SET #role = :role, updatedAt = :updatedAt',
+        ExpressionAttributeValues: {
+          ':role': role,
+          ':updatedAt': new Date().toISOString(),
+          ':orgId': req.auth!.orgId,
+        },
+        ExpressionAttributeNames: { '#role': 'role' },
+        // Org-scoped: an admin must never be able to change roles in another
+        // org by guessing user ids (previously only attribute_exists(id)).
+        ConditionExpression: 'attribute_exists(id) AND orgId = :orgId',
+      }));
+    } catch (err: any) {
+      if (err?.name === 'ConditionalCheckFailedException') {
+        throw new NotFoundError('Member');
+      }
+      throw err;
+    }
 
     logInfo('Member role updated', { memberId, role, updatedBy: req.auth!.userId });
     res.json({ message: 'Role updated', memberId, role });
+  } catch (e) { next(e); }
+});
+
+// ─── DELETE /api/settings/members/:id — Remove member ────────
+
+router.delete('/members/:id', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const memberId = req.params.id;
+    const orgId = req.auth!.orgId;
+    const doc = getDocClient();
+
+    if (memberId === req.auth!.userId) {
+      res.status(400).json({ error: 'Cannot remove yourself' });
+      return;
+    }
+
+    const memberResult = await doc.send(new GetCommand({
+      TableName: TableNames.USERS,
+      Key: { id: memberId },
+    }));
+    const member = memberResult.Item;
+    if (!member || member.orgId !== orgId) {
+      throw new NotFoundError('Member');
+    }
+
+    if (member.role === 'owner') {
+      // Never delete the last owner — the org would become unmanageable.
+      const owners = await doc.send(new QueryCommand({
+        TableName: TableNames.USERS,
+        IndexName: 'orgId-index',
+        KeyConditionExpression: 'orgId = :orgId',
+        FilterExpression: '#r = :owner',
+        ExpressionAttributeValues: { ':orgId': orgId, ':owner': 'owner' },
+        ExpressionAttributeNames: { '#r': 'role' },
+      }));
+      if ((owners.Items || []).length <= 1) {
+        res.status(400).json({ error: 'Cannot remove the last owner' });
+        return;
+      }
+    }
+
+    await doc.send(new DeleteCommand({
+      TableName: TableNames.USERS,
+      Key: { id: memberId },
+      ConditionExpression: 'orgId = :orgId',
+      ExpressionAttributeValues: { ':orgId': orgId },
+    }));
+
+    logInfo('Member removed', { memberId, orgId, removedBy: req.auth!.userId });
+    res.json({ message: 'Member removed', memberId });
   } catch (e) { next(e); }
 });
 
@@ -180,41 +300,13 @@ router.get('/billing', requireAdmin, async (req: Request, res: Response, next: N
     const charge = projectChargeCents(plan, executionsUsed);
     const includedRelays = Number.isFinite(cfg.includedRelays) ? cfg.includedRelays : null;
 
-    // Backfill trialEndsAt for orgs created before trial tracking was added.
-    // Source order: DB.trialEndsAt → derive from DB.createdAt → derive from
-    // Clerk org createdAt (self-heal: persist back so next call is fast).
-    // The relay gate enforces limits independently — a derived end date is
-    // purely cosmetic for the countdown banner.
+    // Backfill trialEndsAt for orgs created before trial tracking was added:
+    // DB.trialEndsAt → derive from DB.createdAt. The relay gate enforces
+    // limits independently — a derived end date is purely cosmetic for the
+    // countdown banner.
     let trialEndsAt: string | null = org.trialEndsAt || null;
-    if (!trialEndsAt && plan === 'free_demo' && cfg.trialDays > 0) {
-      let createdAt: string | undefined = org.createdAt;
-
-      // Clerk org id: prefer stored field, fall back to the request orgId which
-      // is itself a Clerk id (DynamoDB primary key equals Clerk org id in this app).
-      const clerkOrgId = org.clerkOrgId || orgId;
-      if (!createdAt && clerkOrgId) {
-        try {
-          const clerk = await getClerkClient();
-          if (clerk) {
-            const clerkOrg = await clerk.organizations.getOrganization({ organizationId: clerkOrgId });
-            if (clerkOrg?.createdAt) {
-              createdAt = new Date(clerkOrg.createdAt).toISOString();
-              await doc.send(new UpdateCommand({
-                TableName: TableNames.ORGANIZATIONS,
-                Key: { id: orgId },
-                UpdateExpression: 'SET createdAt = if_not_exists(createdAt, :ca)',
-                ExpressionAttributeValues: { ':ca': createdAt },
-              }));
-            }
-          }
-        } catch (err) {
-          logError('Clerk org createdAt backfill failed', err as Error, { orgId });
-        }
-      }
-
-      if (createdAt) {
-        trialEndsAt = new Date(new Date(createdAt).getTime() + cfg.trialDays * 86_400_000).toISOString();
-      }
+    if (!trialEndsAt && plan === 'free_demo' && cfg.trialDays > 0 && org.createdAt) {
+      trialEndsAt = new Date(new Date(org.createdAt).getTime() + cfg.trialDays * 86_400_000).toISOString();
     }
 
     res.json({
