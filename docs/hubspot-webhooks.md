@@ -108,25 +108,13 @@ HubSpot uses this client secret to sign webhooks (HMAC-SHA256 v3).
 
 HubSpot documentation: https://developers.hubspot.com/docs/api/webhooks/validating-requests
 
-### Step 3: Create a Connection Record
+### Step 3: Connection Matching
 
-Since there is no OAuth, you need to manually create a connection so Baton can match incoming webhooks to your org:
+Baton resolves each incoming event to your org by matching the `portalId` in the payload against the `accountId` of a HubSpot record in the `platform-connections` table. Find your Portal ID in HubSpot under **Settings → Account Defaults → Account Info**.
 
-```bash
-# Find your Portal ID: HubSpot → Settings → Account Defaults → Account Info
-# Create a connection:
-curl -X POST https://your-domain.com/api/connections \
-  -H "Content-Type: application/json" \
-  -H "X-Dev-UserId: dev-user-1" \
-  -H "X-Dev-OrgId: dev-org-1" \
-  -d '{
-    "platform": "hubspot",
-    "displayName": "HubSpot Portal 12345678",
-    "accountId": "12345678"
-  }'
-```
+Since HubSpot has no OAuth flow in Baton, there is currently no API endpoint to create this connection record — it must be inserted directly into the `baton-platform-connections` table (with `platform: "hubspot"` and `accountId` set to your portal ID). Events arriving without a matching connection are stored as **unmatched** and are visible in the Events UI.
 
-The `accountId` must match the `portalId` that HubSpot sends in webhook payloads.
+For this reason, **Method 1 (App Webhook) is the recommended path** unless you specifically need Private App subscriptions.
 
 ### Step 4: Test
 

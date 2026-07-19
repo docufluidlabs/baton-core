@@ -1,169 +1,83 @@
 # Baton
 
-Baton is a workflow orchestration platform that connects business platforms listed on Docusign App Center (https://apps.docusign.com/app-center/extensionapps) to **DocuSign Maestro** workflows. It automates various processes with main focus on document signing processes triggered by events from external systems via webhooks and configurable automation rules.
+**Baton is a self-hostable webhook → Docusign Maestro automation platform.** It listens for events from the business platforms you already use — Salesforce, HubSpot, Zendesk, BambooHR, and more — verifies them, and launches the matching **Docusign Maestro** workflow automatically, with a visual flow builder to create, watch, and troubleshoot every automation.
 
-## Architecture
+Maintained by [FluidLabs](https://fluidlabs.com) under the fair-code [Sustainable Use License](LICENSE.md): free to self-host, modify, and use for your own business.
 
-The project consists of two packages:
+## Quickstart (Docker)
+
+Prerequisites: Docker with Compose.
+
+```bash
+git clone https://github.com/docufluidlabs/baton-core.git
+cd baton-core
+cp baton/.env.example baton/.env
+
+# generate the two secrets Baton needs
+# (paste the values into baton/.env as TOKEN_ENCRYPTION_KEY and AUTH_JWT_SECRET)
+openssl rand -hex 32
+openssl rand -hex 32
+
+docker compose up -d --build
+cd baton && npm install && npm run setup   # creates DynamoDB tables + SQS queues (LocalStack)
+```
+
+Open **http://localhost** — the first visit walks you through creating your organization and owner account. No external auth or billing service is required.
+
+To receive real webhooks from external platforms, expose the app on a public URL (reverse proxy or tunnel) and set `APP_URL`/`API_URL` accordingly. To launch real workflows, add your Docusign developer app credentials (`DOCUSIGN_*` in `baton/.env` — the defaults point at Docusign's free developer sandbox).
+
+## How it works
+
+```
+┌──────────────────┐        ┌───────────────────────┐        ┌─────────────────┐
+│  Your platforms  │──────▶ │  Baton                │──────▶ │  Docusign       │
+│  Salesforce,     │webhooks│  verify (HMAC/Basic)  │ launch │  Maestro        │
+│  HubSpot, Zendesk│        │  → rules → SQS queue  │        │  workflows      │
+└──────────────────┘        │  → Maestro launcher   │        └─────────────────┘
+                            └──────────┬────────────┘
+                                       │
+                            ┌──────────┴───────────┐
+                            │  Flow Builder UI     │
+                            │  build · watch · fix │
+                            └──────────────────────┘
+```
 
 | Package | Description | Port |
 |---------|-------------|------|
-| [baton/](baton/) | Express.js backend API | 3001 |
-| [baton-front/](baton-front/) | React SPA frontend | 3002 |
+| [baton/](baton/) | Express + TypeScript API, SQS workers, rule engine | 3001 |
+| [baton-front/](baton-front/) | React 18 + Vite SPA (flow builder, resolution center, docs) | 3002 (dev) / 80 (Docker) |
 
-```
-┌─────────────────┐       ┌──────────────┐       ┌─────────────────┐
-│  External Apps   │──────▶│   Backend    │◀─────▶│  DocuSign       │
-│  (Procore, Xero, │ hooks │  (Express)   │ API   │  Maestro        │
-│   BambooHR, ...) │       └──────┬───────┘       └─────────────────┘
-│                  │              │
-└──────────────────┘              │
-                           ┌──────┴───────┐
-                           │   Frontend   │
-                           │   (React)    │
-                           └──────────────┘
-```
+## Supported platforms
 
-## Tech Stack
+**Destination:** Docusign Maestro (OAuth).
 
-### Backend (`baton/`)
+**Sources:** Salesforce, HubSpot, Zoho CRM, Zendesk, BambooHR, Microsoft Power Automate, Greenhouse, monday.com — plus **custom POST webhooks** for any system that can send JSON. Every source is verified with HMAC signatures or Basic Auth; secrets are stored encrypted (AES-256-GCM).
 
-- **Runtime:** Node.js + TypeScript (Express.js)
-- **Database:** DynamoDB (13 tables) + S3
-- **Queue:** AWS SQS (async workers for webhooks, workflow launches, notifications)
-- **Auth:** Clerk (multi-tenant, RBAC)
-- **Notifications:** Resend (email), Slack, in-app
-- **Security:** AES-256-GCM token encryption, HMAC webhook verification, Helmet, rate limiting
-- **Monitoring:** Sentry, Pino structured logging
-
-### Frontend (`baton-front/`)
-
-- **Framework:** React 18 + TypeScript
-- **Build:** Vite
-- **Styling:** Tailwind CSS
-- **Data Fetching:** SWR
-- **Auth:** Clerk
-- **Flow Canvas:** ReactFlow (@xyflow/react) for visual rule builder
-- **Icons:** Lucide React
+Adding a platform is one connector class + one catalog entry — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Features
 
-- **Docusign OAuth** — Connect and manage OAuth credentials for Docusign as a main connection that allows us to work with workflows in user's Docusign Maestro account.
-- **Webhook Management** — Checks incoming webhook events by platform, event type, tokens, then launch Docusign Maestro workflows while passing over the main Parameter's value.
-- **Visual Flow Builder** — Drag-and-drop canvas showing platform-to-Baton automation-to-workflow relationships. Shows number of Actions routing through each Baton Flow with success indicators, logs for troubleshooting and settings to allow quick editing of the setup.
-- **Async Event Pipeline** — Webhooks are verified, queued to SQS, and processed by background workers
-- **Multi-Tenant** — Organization isolation with RBAC roles (owner, admin, member, viewer)
-- **Notifications** — Email, Slack, and in-app notification channels with user preferences
-- **Auto-Pause** — Rules are automatically paused when failure rate exceeds threshold
+- **Visual Flow Builder** — a live canvas of platform → automation → workflow with per-automation relay counts, logs, and inline editing
+- **Resolution Center** — every failed workflow run in one queue: retry, cancel, postpone
+- **Async pipeline** — webhooks are verified, stored idempotently, queued to SQS, and processed by background workers with retries
+- **Self-contained auth** — first-run owner setup, email/password sessions, member invites via copyable links (no SMTP required), owner/admin/member/viewer roles
+- **Notifications** — in-app, email (Resend), and Slack, with per-user preferences
+- **Auto-pause** — automations pause automatically when their failure rate spikes
 
-## Prerequisites
+## Tech stack
 
-- Node.js >= 18.x
-- AWS account or [LocalStack](https://localstack.cloud/) (DynamoDB + SQS)
-- [Clerk](https://clerk.com/) account
-- [DocuSign](https://developers.docusign.com/) developer account
+Node 20 + Express + TypeScript · DynamoDB + SQS (AWS or LocalStack) · React 18 + Vite + Tailwind · ReactFlow canvas · Vitest + Playwright · Pino logging · Helmet + per-IP rate limiting
 
-## Quick Start
+## Local development
 
-### 1. Clone & Install
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev-server setup, test commands, and the connector-contribution guide. Detailed environment reference: [baton/docs/SETUP.md](baton/docs/SETUP.md).
 
-```bash
-cd baton && npm install
-cd ../baton-front && npm install
-```
+## Deploying on AWS
 
-### 2. Configure Environment
+The compose file uses LocalStack for local infrastructure. For a real AWS deployment, CloudFormation templates for the DynamoDB tables, SQS queues, and IAM roles live in [baton/infrastructure/](baton/infrastructure/); point `DYNAMODB_ENDPOINT`/`SQS_ENDPOINT` at AWS (leave empty) and supply IAM credentials.
 
-```bash
-# Backend
-cp baton/.env.example baton/.env
-# Edit baton/.env with your credentials (Clerk, DocuSign, AWS, encryption key, etc.)
+## License & hosted edition
 
-# Frontend
-cp baton-front/.env.example baton-front/.env
-# Set VITE_CLERK_PUBLISHABLE_KEY
-```
+This repository is licensed under the [Sustainable Use License](LICENSE.md) (fair-code): use it freely inside your business; don't resell it as a hosted service. FluidLabs offers a managed cloud edition with multi-org management, SSO, and the Salesforce AppExchange package — the core you see here is the same engine.
 
-### 3. Set Up Infrastructure
-
-```bash
-# Option A: Docker Compose (recommended — includes LocalStack with persistent storage)
-docker compose up -d --build
-
-# First time only: create DynamoDB tables and SQS queues
-cd baton && npm run setup
-```
-
-> See [docs/docker-compose-setup.md](docs/docker-compose-setup.md) for full Docker Compose instructions.
-
-### 4. Start Development
-
-```bash
-# Terminal 1 — Backend (port 3001)
-cd baton && npm run dev
-
-# Terminal 2 — Frontend (port 3002, proxies /api to backend)
-cd baton-front && npm run dev
-```
-
-The app is available at `http://localhost:3002`. In development mode, you can bypass Clerk auth with headers:
-
-```
-X-Dev-UserId: dev-user-1
-X-Dev-OrgId: dev-org-1
-X-Dev-Role: admin
-```
-
-## Scripts
-
-### Backend (`baton/`)
-
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start with hot-reload (tsx watch) |
-| `npm run build` | Compile TypeScript to `dist/` |
-| `npm run start` | Run compiled build |
-| `npm run setup` | Create DynamoDB tables + SQS queues |
-| `npm run test` | Run tests (Vitest) |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run lint` | Lint with ESLint |
-| `npm run typecheck` | TypeScript type checking |
-
-### Frontend (`baton-front/`)
-
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Vite dev server (port 3002) |
-| `npm run build` | TypeScript check + production build |
-| `npm run preview` | Preview production build |
-| `npm run build:preview` | Single-file HTML preview (mock auth, sample data) |
-| `npm run test` | Run tests (Vitest) |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run lint` | Lint with ESLint |
-
-## Deployment
-
-Both packages include Dockerfiles for production builds:
-
-```bash
-# Backend
-docker build -t baton-api baton/
-docker run -p 3001:3001 --env-file baton/.env baton-api
-
-# Frontend
-docker build -t baton-front \
-  --build-arg VITE_CLERK_PUBLISHABLE_KEY=pk_live_xxx \
-  baton-front/
-docker run -p 3002:3002 baton-front
-```
-
-The frontend Docker image uses Nginx to serve the SPA with `/api` proxy routing to the backend.
-
-## Documentation
-
-Detailed setup instructions and architecture diagrams are available in [baton/docs/](baton/docs/):
-
-- `SETUP.md` — Step-by-step setup guide
-- `docker-compose-setup.md` — Docker Compose + LocalStack persistent storage guide
-- `c4-*.mermaid` — C4 architecture diagrams (context, container, component)
-- `uml-*.mermaid` — UML diagrams (domain model, deployment, OAuth flow, event pipeline, state machine)
+Security reports: see [SECURITY.md](SECURITY.md).

@@ -2,12 +2,13 @@
 
 ## Prerequisites
 
-- **Node.js** ≥ 18.x
+- **Node.js** ≥ 20.x
 - **npm** ≥ 9.x
-- **AWS CLI** v2 (для DynamoDB та SQS)
-- **AWS Account** або [LocalStack](https://localstack.cloud/) для локальної розробки
-- **Clerk Account** — https://clerk.com (auth provider)
-- **DocuSign Developer Account** — https://developers.docusign.com
+- **Docker** — for [LocalStack](https://localstack.cloud/) (local DynamoDB + SQS), or a real **AWS account**
+- **AWS CLI** v2 — optional, for inspecting tables/queues and enabling TTL
+- **Docusign Developer Account** — https://developers.docusign.com (only needed to sync/launch real Maestro workflows)
+
+No external auth provider is required — Baton ships with self-contained email/password auth.
 
 ---
 
@@ -15,11 +16,11 @@
 
 ```bash
 # Backend
-cd docusignapps/baton
+cd baton
 npm install
 
 # Frontend
-cd docusignapps/baton-front
+cd baton-front
 npm install
 ```
 
@@ -33,36 +34,38 @@ npm install
 cp .env.example .env
 ```
 
-Мінімальний набір для локального запуску:
+Minimal set for a local run:
 
 ```env
 # App
 NODE_ENV=development
 PORT=3001
-APP_URL=https://your-ngrok-domain.ngrok-free.app
+APP_URL=http://localhost:3001        # public URL — use your tunnel domain for inbound webhooks
+API_URL=http://localhost:3001
 FRONTEND_URL=http://localhost:3002
+RATE_LIMIT_PER_MINUTE=300
 
-# AWS (LocalStack або реальний акаунт)
+# AWS (LocalStack accepts any credentials)
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=test
 AWS_SECRET_ACCESS_KEY=test
 
 # DynamoDB
 DYNAMODB_REGION=us-east-1
-DYNAMODB_ENDPOINT=http://localhost:4566   # LocalStack
+DYNAMODB_ENDPOINT=http://localhost:4566   # LocalStack — leave empty for real AWS
 DYNAMODB_TABLE_PREFIX=baton-
 
 # SQS
 SQS_REGION=us-east-1
-SQS_ENDPOINT=http://localhost:4566        # LocalStack
+SQS_ENDPOINT=http://localhost:4566        # LocalStack — leave empty for real AWS
 SQS_QUEUE_PREFIX=baton-
 
-# Encryption (generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+# Encryption (generate: openssl rand -hex 32)
 TOKEN_ENCRYPTION_KEY=your-random-hex-string-here
 
-# Clerk
-CLERK_PUBLISHABLE_KEY=pk_test_xxxxx
-CLERK_SECRET_KEY=sk_test_xxxxx
+# Auth (self-contained sessions; generate: openssl rand -hex 32)
+AUTH_JWT_SECRET=your-random-hex-string-here
+BATON_ORG_ID=default-org
 
 # DocuSign (required for workflow sync/launch)
 DOCUSIGN_INTEGRATION_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
@@ -72,64 +75,87 @@ DOCUSIGN_OAUTH_BASE=https://account-d.docusign.com
 DOCUSIGN_MAESTRO_API_BASE=https://api-d.docusign.com
 ```
 
-Решту OAuth credentials (Procore, Xero, BambooHR, Zoho, Smartsheet) додайте по мірі підключення платформ — без них бекенд стартує, просто ці конектори не працюватимуть.
+Add the remaining OAuth credentials (BambooHR, Zoho CRM) as you connect those platforms — the backend starts without them, those connectors just won't work. Other variables of note:
+
+| Variable | Purpose |
+|----------|---------|
+| `AUTH_JWT_SECRET` | Signs the `baton_session` JWT cookie — required in production |
+| `BATON_ORG_ID` | Single-org install: every user belongs to this org (default `default-org`) |
+| `BATON_OWNER_EMAIL` / `BATON_OWNER_PASSWORD` / `BATON_OWNER_NAME` / `BATON_ORG_NAME` | Only for headless `npm run seed` (see step 5) |
+| `RATE_LIMIT_PER_MINUTE` | Max authenticated API requests per minute per client IP (default 300) |
+| `ZOHO_ACCOUNTS_BASE` | Zoho regional accounts server (`.com`, `.eu`, `.in`, …) |
+| `HUBSPOT_WEBHOOK_SECRET` | HubSpot Private App client secret for webhook signature verification |
+| `RESEND_API_KEY` | Email notifications (optional) |
+| `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` / `SLACK_SIGNING_SECRET` | Slack notifications (optional) |
+| `BATON_DOCS_USER` / `BATON_DOCS_PASS` | Both set → enables Swagger UI at `/api/docs` (basic auth) |
 
 ### Frontend (`baton-front/.env`)
 
-```bash
-cp .env.example .env
-```
+No `.env` is required for local development — the Vite proxy handles API routing and auth uses cookies. Optional variables (see `baton-front/.env.example`):
 
 ```env
-VITE_CLERK_PUBLISHABLE_KEY=pk_test_xxxxx
+# VITE_API_URL=http://localhost:3001   # only if not using the Vite proxy
+VITE_CLARITY_PROJECT_ID=xxxxxx         # Microsoft Clarity (optional)
 ```
 
 ---
 
 ## 3. Infrastructure Setup
 
-### Option A: LocalStack (рекомендовано для локальної розробки)
+### Option A: LocalStack (recommended for local development)
+
+The simplest path is the Docker Compose file at the repo root (starts LocalStack with persistence):
 
 ```bash
-# Запуск LocalStack
+# from the repo root
+docker compose up -d localstack
+```
+
+Or run LocalStack standalone:
+
+```bash
 docker run -d --name localstack \
   -p 4566:4566 \
   -e SERVICES=dynamodb,sqs \
   -e DEFAULT_REGION=us-east-1 \
   localstack/localstack
 
-# Перевірка
+# Verify
 aws --endpoint-url=http://localhost:4566 dynamodb list-tables
 ```
 
+Both DynamoDB and SQS are served from the single LocalStack endpoint `http://localhost:4566` — the `.env.example` defaults already point there.
+
 ### Option B: AWS (dev account)
 
-Переконайтесь що AWS CLI налаштований:
+Make sure the AWS CLI is configured:
 
 ```bash
 aws configure
-# або встановіть AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY в .env
+# or set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY in .env
 ```
 
-### Створення таблиць та черг
+Leave `DYNAMODB_ENDPOINT` and `SQS_ENDPOINT` empty to use real AWS.
+
+### Create tables and queues
 
 ```bash
 cd baton
 
-# Створити 13 DynamoDB таблиць
+# Create the 18 DynamoDB tables
 npm run db:create-tables
 
-# Створити SQS черги
+# Create the 6 SQS queues
 npm run sqs:create-queues
 
-# Або обидва разом
+# Or both together
 npm run setup
 ```
 
-Очікуваний output:
+Expected output:
 
 ```
-🗄️  Creating 13 DynamoDB tables...
+🗄️  Creating 18 DynamoDB tables...
 
   🆕 baton-organizations — created
   🆕 baton-users — created
@@ -143,18 +169,30 @@ npm run setup
   🆕 baton-user-platform-identities — created
   🆕 baton-notification-preferences — created
   🆕 baton-notifications — created
+  🆕 baton-org-apps — created
   🆕 baton-oauth-states — created
+  🆕 baton-bootstrap-tokens — created
+  🆕 baton-slack-configs — created
+  🆕 baton-queued-webhooks — created
+  🆕 baton-webhook-endpoints — created
 
 ✨ Done!
 ```
 
-### Увімкнення TTL на oauth-states
+Both scripts are idempotent — existing tables/queues are skipped.
+
+### Enable TTL on the TTL-based tables
 
 ```bash
 aws dynamodb update-time-to-live \
   --table-name baton-oauth-states \
   --time-to-live-specification Enabled=true,AttributeName=ttl \
-  --endpoint-url http://localhost:4566  # прибрати якщо AWS
+  --endpoint-url http://localhost:4566   # drop this flag on real AWS
+
+aws dynamodb update-time-to-live \
+  --table-name baton-bootstrap-tokens \
+  --time-to-live-specification Enabled=true,AttributeName=expiresAt \
+  --endpoint-url http://localhost:4566   # drop this flag on real AWS
 ```
 
 ---
@@ -168,13 +206,13 @@ cd baton
 npm run dev
 ```
 
-Запускає Express на порту **3001** з hot-reload (`tsx watch`).
+Starts Express on port **3001** with hot-reload (`tsx watch`).
 
-Лог при старті:
+Startup log:
 
 ```
 🚀 Baton API running on port 3001
-📡 ngrok domain: https://your-ngrok-domain.ngrok-free.app
+📡 ngrok domain: http://localhost:3001
 🌍 Environment: development
 ```
 
@@ -185,16 +223,41 @@ cd baton-front
 npm run dev
 ```
 
-Запускає Vite dev server на порту **3002**.  
-Proxy `/api/*` → `http://localhost:3001` налаштований у `vite.config.ts`.
+Starts the Vite dev server on port **3002**.
+The `/api/*` proxy → `http://localhost:3001` is configured in `vite.config.ts`.
 
-Відкрити: **http://localhost:3002**
+Open: **http://localhost:3002**
 
 ---
 
-## 5. Dev Mode Auth Bypass
+## 5. First-Run Owner Setup
 
-В `NODE_ENV=development` бекенд приймає dev-заголовки замість Clerk session:
+Baton's auth is self-contained (email/password + JWT session cookie). On a fresh database there are no users yet, so:
+
+### Option A: Setup screen (UI)
+
+Open the app — the first visit walks you through **/setup**: it creates the organization and the **owner** account in one step. After that, the setup route locks itself (returns "already completed").
+
+### Option B: Headless seed
+
+```bash
+BATON_OWNER_EMAIL=owner@example.com \
+BATON_OWNER_PASSWORD=change-me-please \
+BATON_ORG_NAME="My Company" \
+npm run seed
+```
+
+Uses the exact same code path as the setup screen. Idempotent — exits cleanly when any user already exists.
+
+### Inviting members
+
+Owners/admins invite members from **Settings → Members**: Baton generates a **copyable invite link** (no SMTP needed). The invitee opens the link and sets their password. Roles: `owner`, `admin`, `member`, `viewer`.
+
+---
+
+## 6. Dev Mode Auth Bypass
+
+In `NODE_ENV=development` the backend accepts dev headers instead of a session cookie:
 
 ```
 X-Dev-UserId: dev-user-1
@@ -202,11 +265,11 @@ X-Dev-OrgId: dev-org-1
 X-Dev-Role: admin
 ```
 
-Frontend автоматично додає ці заголовки через `api.ts` коли `import.meta.env.DEV === true`.
+The frontend adds these headers automatically via `api.ts` when `import.meta.env.DEV === true`.
 
-Це означає що для локальної розробки **Clerk не обов'язковий** — можна тестувати API без реальної автентифікації.
+This means real login is **not required for local development** — you can hit the API without a session. Note that `X-Dev-Role` defaults to `viewer` when omitted, so pass it explicitly for admin-level testing.
 
-### Тест:
+### Test:
 
 ```bash
 curl http://localhost:3001/api/dashboard \
@@ -217,29 +280,31 @@ curl http://localhost:3001/api/dashboard \
 
 ---
 
-## 6. Webhook Tunneling (ngrok)
+## 7. Webhook Tunneling (ngrok)
 
-Для отримання webhooks від зовнішніх платформ потрібен публічний URL:
+Receiving webhooks from external platforms requires a public URL:
 
 ```bash
 ngrok http 3001 --domain=your-ngrok-domain.ngrok-free.app
 ```
 
-Webhook URLs для платформ:
+Set `APP_URL` to the tunnel domain so generated webhook URLs are correct.
 
-| Platform   | Webhook URL                                                |
-|------------|-----------------------------------------------------------|
+Dedicated webhook routes:
+
+| Platform   | Webhook URL                                                  |
+|------------|--------------------------------------------------------------|
 | DocuSign   | `https://your-domain.ngrok-free.app/api/webhooks/docusign`   |
-| Procore    | `https://your-domain.ngrok-free.app/api/webhooks/procore`    |
-| Xero       | `https://your-domain.ngrok-free.app/api/webhooks/xero`       |
-| BambooHR   | `https://your-domain.ngrok-free.app/api/webhooks/bamboohr`   |
+| Salesforce | `https://your-domain.ngrok-free.app/api/webhooks/salesforce` |
+| HubSpot    | `https://your-domain.ngrok-free.app/api/webhooks/hubspot`    |
 | Zoho CRM   | `https://your-domain.ngrok-free.app/api/webhooks/zohocrm`    |
-| Smartsheet | `https://your-domain.ngrok-free.app/api/webhooks/smartsheet` |
-| Clerk      | `https://your-domain.ngrok-free.app/api/webhooks/clerk`      |
+| BambooHR   | `https://your-domain.ngrok-free.app/api/webhooks/bamboohr`   |
+
+Catalog apps installed from the UI (Zoho CRM, Power Automate, Zendesk, Greenhouse, monday.com, …) receive webhooks at their generated per-app URL `/api/webhooks/app/:webhookKey`, and each automation gets a permanent per-rule URL `/api/webhooks/rule/:webhookKey`. Custom JSON senders can use `/api/postwebhook`. See the platform guides in [../../docs/](../../docs/).
 
 ---
 
-## 7. Common Scripts
+## 8. Common Scripts
 
 ### Backend (`baton/`)
 
@@ -250,11 +315,12 @@ Webhook URLs для платформ:
 | `npm start` | Run compiled production build |
 | `npm run typecheck` | TypeScript check without emit |
 | `npm run lint` | ESLint |
-| `npm test` | Run tests (vitest) |
+| `npm test` | Run tests (Vitest) |
 | `npm run db:create-tables` | Create all DynamoDB tables |
 | `npm run db:delete-tables` | Delete all DynamoDB tables |
 | `npm run sqs:create-queues` | Create all SQS queues |
 | `npm run setup` | Create tables + queues |
+| `npm run seed` | Headless org + owner setup from env vars |
 
 ### Frontend (`baton-front/`)
 
@@ -267,14 +333,14 @@ Webhook URLs для платформ:
 
 ---
 
-## 8. Testing the Full Pipeline
+## 9. Testing the Full Pipeline
 
 ### Step 1: Connect a Platform
 
 1. Open http://localhost:3002/connections
-2. Click "Connect" on any platform (e.g., Procore)
-3. Complete OAuth flow
-4. Verify connection shows "Healthy" status
+2. Click "Connect" on an OAuth platform (e.g., DocuSign), or install a webhook app from the **Apps** page (e.g., Zoho CRM)
+3. Complete the flow
+4. Verify the connection shows "Healthy" status
 
 ### Step 2: Sync Workflows
 
@@ -287,57 +353,61 @@ Webhook URLs для платформ:
 1. Go to http://localhost:3002/flows
 2. Click "Add Rule"
 3. Select: source platform → event type → target workflow
-4. Save
+4. Save — the automation panel shows its **Permanent Webhook URL**
 
 ### Step 4: Trigger a Webhook
 
-Send a test webhook:
+Send a test webhook to the automation's permanent URL. The request is verified with the credentials of the app the automation belongs to — for a Basic Auth app (e.g., Zoho CRM, Power Automate) send the username/password you chose during install:
 
 ```bash
-curl -X POST http://localhost:3001/api/webhooks/procore \
+curl -X POST http://localhost:3001/api/webhooks/rule/YOUR_WEBHOOK_KEY \
   -H "Content-Type: application/json" \
-  -d '{"event_type":"vendors.create","resource_id":12345,"project_id":67890}'
+  -H "Authorization: Basic $(printf 'your-username:your-password' | base64)" \
+  -d '{"event":"deal.created","recordId":"12345"}'
 ```
+
+(HMAC-verified apps require the platform's signature header instead — see the per-platform guides in [../../docs/](../../docs/).)
 
 ### Step 5: Verify the Pipeline
 
 1. Check http://localhost:3002/events — inbound event + rule match should appear
-2. Check http://localhost:3002/workflows — new instance should be launched
-3. Check SQS queues processed (backend logs)
+2. Check http://localhost:3002/workflows — a new instance should be launched
+3. Check the SQS queues processed (backend logs)
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 ### "Cannot connect to DynamoDB"
 
-- Перевірте що LocalStack запущений: `docker ps | grep localstack`
-- Перевірте `DYNAMODB_ENDPOINT` у `.env`
-- Для AWS — перевірте `aws sts get-caller-identity`
+- Check that LocalStack is running: `docker ps | grep localstack`
+- Check `DYNAMODB_ENDPOINT` in `.env` (LocalStack default: `http://localhost:4566`)
+- For AWS — check `aws sts get-caller-identity`
 
 ### "No healthy DocuSign connection"
 
-- Підключіть DocuSign на сторінці Connections
-- Для тесту workflow sync потрібен живий DocuSign account з Maestro workflows
+- Connect DocuSign on the Connections page
+- Workflow sync requires a live DocuSign account with Maestro workflows
 
-### "Clerk session error" (production)
+### 401 "No valid session found"
 
-- Перевірте що `CLERK_SECRET_KEY` валідний
-- В dev mode використовуйте X-Dev-* заголовки
+- In dev mode, send the `X-Dev-*` headers (see section 6)
+- In production, check that `AUTH_JWT_SECRET` is set (min 32 chars) and hasn't changed since login — rotating it invalidates all sessions
+- Sessions live in the `baton_session` cookie: the frontend and API must share an origin (or the proxy must forward cookies)
 
-### Frontend показує 502/504
+### Frontend shows 502/504
 
-- Перевірте що backend працює на порту 3001
-- Перевірте proxy у `baton-front/vite.config.ts`
+- Check that the backend is running on port 3001
+- Check the proxy in `baton-front/vite.config.ts`
 
 ### "Token encryption failed"
 
-- Встановіть `TOKEN_ENCRYPTION_KEY` у `.env`
-- Генерація: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+- Set `TOKEN_ENCRYPTION_KEY` in `.env`
+- Generate: `openssl rand -hex 32`
 
 ---
 
-## 10. Project Architecture
+## 11. Project Architecture
 
 ```
 Request Flow:
@@ -347,8 +417,8 @@ Request Flow:
        ▼
   POST /api/webhooks/{platform}
        │
-       ├── 1. Signature verification (HMAC)
-       ├── 2. Store in webhook_events table
+       ├── 1. Signature verification (HMAC / Basic Auth)
+       ├── 2. Store in webhook-events table
        ├── 3. Queue to SQS (webhook-processing)
        │
        ▼
@@ -365,7 +435,7 @@ Request Flow:
   Workflow Launcher Worker
        │
        ├── 10. Call Maestro API to launch workflow
-       ├── 11. Track instance in workflow_instances
+       ├── 11. Track instance in workflow-instances
        ├── 12. Update pipeline entry status
        │
        ▼
@@ -377,28 +447,33 @@ Request Flow:
 | Schedule | Job |
 |----------|-----|
 | Every 5 min | Refresh expiring OAuth tokens |
-| Every hour | Sync running workflow instance statuses |
+| Every 30 sec | Sync running workflow instance statuses (rate-limit aware) |
 | Daily 3 AM UTC | Clean up old webhook events (>30 days) |
 
-### DynamoDB Tables (13)
+### DynamoDB Tables (18)
 
 | Table | Primary Access Pattern |
 |-------|----------------------|
-| organizations | by id, by clerkOrgId |
-| users | by id, by orgId |
+| organizations | by id, by slug |
+| users | by id, by orgId, by orgId+email |
 | platform-connections | by orgId, by orgId+platform |
 | workflows | by orgId |
 | workflow-instances | by workflowId+startedAt |
-| automation-rules | by orgId |
+| automation-rules | by orgId, by webhookKey |
 | trigger-pipeline | by orgId+triggeredAt |
 | audit-log | by orgId+createdAt |
 | webhook-events | by platform+receivedAt |
 | user-platform-identities | by orgId+platform+email |
 | notification-preferences | by userId |
 | notifications | by recipientId+createdAt |
+| org-apps | by orgId, by webhookKey |
 | oauth-states | by state (TTL enabled) |
+| bootstrap-tokens | by tokenId (TTL enabled) |
+| slack-configs | by orgId |
+| queued-webhooks | by ruleId+queuedAt |
+| webhook-endpoints | by orgId |
 
-### SQS Queues (4 active)
+### SQS Queues (4 active consumers)
 
 | Queue | Consumer |
 |-------|----------|
@@ -406,3 +481,5 @@ Request Flow:
 | baton-workflow-launcher | workflow-launcher.worker.ts |
 | baton-token-refresh | token-refresh.worker.ts |
 | baton-notification-sender | notification-sender.worker.ts |
+
+(`identity-sync` and `cleanup` queues are created by `npm run setup` for scheduled/async jobs.)

@@ -1,32 +1,45 @@
 # Docker Compose Setup (with Persistent LocalStack)
 
-This guide explains how to run the full Baton stack locally using Docker Compose with LocalStack for DynamoDB, SQS, and S3. Data is persisted in a Docker named volume and survives container restarts.
+This guide explains how to run the full Baton stack locally using Docker Compose with LocalStack for DynamoDB and SQS. Data is persisted in a Docker named volume and survives container restarts.
 
 ## Services
 
 | Service | Description | Port |
 |---------|-------------|------|
-| `localstack` | AWS services emulator (DynamoDB, SQS, S3) | 4566 |
+| `localstack` | AWS services emulator (DynamoDB, SQS) | 4566 |
 | `baton-api` | Express.js backend | 3001 (internal) |
 | `baton-front` | React SPA + Nginx | 80 |
 
 ## First-Time Setup
 
-### 1. Build and start all containers
+### 1. Create the backend `.env` and generate secrets
+
+```bash
+cp baton/.env.example baton/.env
+
+# generate the two secrets Baton needs and paste the values into baton/.env
+# as TOKEN_ENCRYPTION_KEY and AUTH_JWT_SECRET
+openssl rand -hex 32
+openssl rand -hex 32
+```
+
+The `.env.example` defaults already point DynamoDB and SQS at LocalStack (`http://localhost:4566`), so nothing else is required to start.
+
+### 2. Build and start all containers
 
 ```bash
 docker compose up -d --build
 ```
 
-### 2. Wait ~5 seconds for LocalStack to initialize, then create tables and queues
+### 3. Wait ~5 seconds for LocalStack to initialize, then create tables and queues
 
 ```bash
-cd baton && npm run setup
+cd baton && npm install && npm run setup
 ```
 
-This runs `db:create-tables` + `sqs:create-queues` — creates all DynamoDB tables and SQS queues in LocalStack.
+This runs `db:create-tables` + `sqs:create-queues` — creates all 18 DynamoDB tables and 6 SQS queues in LocalStack.
 
-That's it. The app is now running at `http://localhost`.
+That's it. The app is now running at `http://localhost` — the first visit walks you through the `/setup` screen, which creates your organization and owner account (no external auth service involved). Alternatively, seed the owner headlessly with `npm run seed` (set `BATON_OWNER_EMAIL` / `BATON_OWNER_PASSWORD`).
 
 ## Subsequent Starts
 

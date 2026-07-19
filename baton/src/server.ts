@@ -280,7 +280,7 @@ const PORT = env.PORT;
 
 const server = app.listen(PORT, () => {
   logger.info(`🚀 Baton API running on port ${PORT}`);
-  logger.info(`📡 ngrok domain: ${env.APP_URL}`);
+  logger.info(`📡 Public URL: ${env.APP_URL}`);
   logger.info(`🌍 Environment: ${env.NODE_ENV}`);
 
   // Ensure SQS queues exist before starting workers (idempotent — safe on every boot)
