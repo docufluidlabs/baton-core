@@ -325,15 +325,20 @@ describe('connection.service', () => {
   // ─── deleteConnection ──────────────────────────────────────
 
   describe('deleteConnection', () => {
-    it('should call mockSend with DeleteCommand', async () => {
+    it('fetches the connection then deletes it (Get + Delete)', async () => {
       mockSend.mockResolvedValue({});
 
       await deleteConnection('conn-1');
 
-      expect(mockSend).toHaveBeenCalledTimes(1);
-      const call = mockSend.mock.calls[0][0];
-      expect(call.constructor.name).toBe('DeleteCommand');
-      expect(call.input.Key).toEqual({ id: 'conn-1' });
+      // deleteConnection first loads the connection (for notification context),
+      // then issues the DeleteCommand.
+      expect(mockSend).toHaveBeenCalledTimes(2);
+      const getCall = mockSend.mock.calls[0][0];
+      expect(getCall.constructor.name).toBe('GetCommand');
+      expect(getCall.input.Key).toEqual({ id: 'conn-1' });
+      const deleteCall = mockSend.mock.calls[1][0];
+      expect(deleteCall.constructor.name).toBe('DeleteCommand');
+      expect(deleteCall.input.Key).toEqual({ id: 'conn-1' });
     });
   });
 });

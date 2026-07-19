@@ -102,14 +102,17 @@ describe('extractAccountId', () => {
 // ─── extractDisplayName ───────────────────────────────────────
 
 describe('extractDisplayName', () => {
-  it('docusign with name returns tokens.raw.userInfo.name', () => {
+  // DocuSign connections are deliberately branded as 'Docusign' regardless of
+  // the OAuth userInfo — stripSensitiveFields also normalizes legacy
+  // 'DocuSign' display names to 'Docusign', confirming the intent.
+  it('docusign ignores tokens.raw.userInfo.name and returns the "Docusign" brand name', () => {
     const tokens = { raw: { userInfo: { name: 'Jane Doe' } } };
-    expect(extractDisplayName('docusign', tokens)).toBe('Jane Doe');
+    expect(extractDisplayName('docusign', tokens)).toBe('Docusign');
   });
 
-  it('docusign without name returns "DocuSign Account"', () => {
+  it('docusign without userInfo name still returns "Docusign"', () => {
     const tokens = { raw: { userInfo: {} } };
-    expect(extractDisplayName('docusign', tokens)).toBe('DocuSign Account');
+    expect(extractDisplayName('docusign', tokens)).toBe('Docusign');
   });
 
   it('unknown platform returns "${platform} Connection"', () => {

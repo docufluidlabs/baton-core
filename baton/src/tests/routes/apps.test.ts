@@ -10,6 +10,8 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
+import { ZodError } from 'zod';
+import { ValidationError, NotFoundError, ConflictError } from '../../middleware/error-handler';
 
 // ─── Hoisted mocks ────────────────────────────────────────────
 
@@ -53,6 +55,7 @@ vi.mock('../../middleware/auth', () => ({
 
 vi.mock('../../middleware/rbac', () => ({
   requireSuperUser: (_req: any, _res: any, next: any) => next(),
+  requireAdmin: (_req: any, _res: any, next: any) => next(),
   requireViewer: (_req: any, _res: any, next: any) => next(),
 }));
 
@@ -168,7 +171,7 @@ describe('POST /api/apps/preflight', () => {
     expect(res._body.webhookUrl).toContain(res._body.webhookKey);
   });
 
-  it('returns 400 for unknown appSlug', async () => {
+  it('rejects unknown appSlug with a ValidationError (400)', async () => {
     mockGetAppTemplate.mockReturnValue(undefined);
 
     const handler = getRoute('post', '/preflight');
@@ -176,7 +179,9 @@ describe('POST /api/apps/preflight', () => {
     const res = makeRes();
     await handler(req, res);
 
-    expect(res._status).toBe(400);
+    // Errors flow through next() to the central error handler
+    expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+    expect(res._status).toBeUndefined();
   });
 });
 
@@ -190,8 +195,8 @@ describe('GET /api/apps', () => {
     const res = makeRes();
     await handler(authReq({ query: {} } as any), res);
 
-    expect(res._body.apps).toHaveLength(1);
-    const app = res._body.apps[0];
+    expect(res._body.platforms).toHaveLength(1);
+    const app = res._body.platforms[0];
 
     // secretKeyEnc must never appear
     expect(app).not.toHaveProperty('secretKeyEnc');
@@ -239,12 +244,12 @@ describe('POST /api/apps (install)', () => {
     await handler(req, res);
 
     expect(res._status).toBe(201);
-    expect(res._body.app).not.toHaveProperty('secretKeyEnc');
-    expect(res._body.app.webhookUrl).toContain('/api/webhooks/app/');
-    expect(res._body.app.status).toBe('active');
+    expect(res._body.platform).not.toHaveProperty('secretKeyEnc');
+    expect(res._body.platform.webhookUrl).toContain('/api/webhooks/app/');
+    expect(res._body.platform.status).toBe('active');
     expect(mockEncryptToken).toHaveBeenCalledWith('super-secret-from-procore');
     expect(mockLogAudit).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'app.installed' }),
+      expect.objectContaining({ action: 'platform.installed' }),
     );
   });
 
@@ -264,10 +269,10 @@ describe('POST /api/apps (install)', () => {
     const res = makeRes();
     await handler(req, res);
 
-    expect(res._body.app.webhookKey).toBe(WEBHOOK_KEY);
+    expect(res._body.platform.webhookKey).toBe(WEBHOOK_KEY);
   });
 
-  it('returns 409 when app is already installed (active duplicate)', async () => {
+  it('rejects an active duplicate installation with a ConflictError (409)', async () => {
     mockDocSend.mockResolvedValueOnce({ Items: [installedApp] });
 
     const handler = getRoute('post', '/');
@@ -275,11 +280,11 @@ describe('POST /api/apps (install)', () => {
     const res = makeRes();
     await handler(req, res);
 
-    expect(res._status).toBe(409);
+    expect(next).toHaveBeenCalledWith(expect.any(ConflictError));
     expect(mockEncryptToken).not.toHaveBeenCalled();
   });
 
-  it('returns 400 for unknown appSlug', async () => {
+  it('rejects unknown appSlug with a ValidationError (400)', async () => {
     mockGetAppTemplate.mockReturnValue(undefined);
 
     const handler = getRoute('post', '/');
@@ -287,16 +292,20 @@ describe('POST /api/apps (install)', () => {
     const res = makeRes();
     await handler(req, res);
 
-    expect(res._status).toBe(400);
+    expect(next).toHaveBeenCalledWith(expect.any(ValidationError));
+    expect(res._status).toBeUndefined();
   });
 
-  it('returns 400 when secretKey is empty', async () => {
+  it('rejects empty secretKey with a ZodError (400)', async () => {
     const handler = getRoute('post', '/');
     const req = authReq({ body: { appSlug: 'procore', secretKey: '' } });
     const res = makeRes();
     await handler(req, res);
 
-    expect(res._status).toBe(400); // Zod validation
+    // secretKey is optional, but when provided it must be non-empty
+    expect(next).toHaveBeenCalledWith(expect.any(ZodError));
+    expect(res._status).toBeUndefined();
+    expect(mockEncryptToken).not.toHaveBeenCalled();
   });
 });
 
@@ -314,7 +323,7 @@ describe('DELETE /api/apps/:id', () => {
     const res = makeRes();
     await handler(req, res);
 
-    expect(res._body).toEqual({ message: 'App removed', id: APP_ID });
+    expect(res._body).toEqual({ message: 'Platform removed', id: APP_ID });
     expect(mockDocSend).toHaveBeenCalledWith(
       expect.objectContaining({
         input: expect.objectContaining({
@@ -323,11 +332,11 @@ describe('DELETE /api/apps/:id', () => {
       }),
     );
     expect(mockLogAudit).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'app.removed' }),
+      expect.objectContaining({ action: 'platform.removed' }),
     );
   });
 
-  it('returns 409 when active automation rules reference the app', async () => {
+  it('rejects removal with a ConflictError (409) when active automation rules reference the app', async () => {
     mockDocSend
       .mockResolvedValueOnce({ Item: installedApp })
       .mockResolvedValueOnce({
@@ -339,11 +348,13 @@ describe('DELETE /api/apps/:id', () => {
     const res = makeRes();
     await handler(req, res);
 
-    expect(res._status).toBe(409);
-    expect(res._body.message).toContain('My Rule');
+    expect(next).toHaveBeenCalledWith(expect.any(ConflictError));
+    const err = (next as any).mock.calls.find((c: any[]) => c[0] instanceof ConflictError)[0];
+    expect(err.message).toContain('My Rule');
+    expect(res._status).toBeUndefined();
   });
 
-  it('returns 404 when app belongs to different org', async () => {
+  it('rejects removal with a NotFoundError (404) when app belongs to different org', async () => {
     mockDocSend.mockResolvedValueOnce({
       Item: { ...installedApp, orgId: 'org-other' },
     });
@@ -353,10 +364,11 @@ describe('DELETE /api/apps/:id', () => {
     const res = makeRes();
     await handler(req, res);
 
-    expect(res._status).toBe(404);
+    expect(next).toHaveBeenCalledWith(expect.any(NotFoundError));
+    expect(res._status).toBeUndefined();
   });
 
-  it('returns 404 when app is already inactive', async () => {
+  it('rejects removal with a NotFoundError (404) when app is already inactive', async () => {
     mockDocSend.mockResolvedValueOnce({
       Item: { ...installedApp, status: 'inactive' },
     });
@@ -366,6 +378,7 @@ describe('DELETE /api/apps/:id', () => {
     const res = makeRes();
     await handler(req, res);
 
-    expect(res._status).toBe(404);
+    expect(next).toHaveBeenCalledWith(expect.any(NotFoundError));
+    expect(res._status).toBeUndefined();
   });
 });

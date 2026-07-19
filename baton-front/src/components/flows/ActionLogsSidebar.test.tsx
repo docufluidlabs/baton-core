@@ -11,9 +11,13 @@ import type { AutomationAction } from '@/hooks/useApi';
 // ─── Mocks ──────────────────────────────────────────────────
 
 const mockUseAutomationActions = vi.fn();
+const mockUseAutomationQueue = vi.fn();
 vi.mock('@/hooks/useApi', () => ({
   useAutomationActions: (...args: any[]) => mockUseAutomationActions(...args),
+  useAutomationQueue: (...args: any[]) => mockUseAutomationQueue(...args),
   retryInstance: vi.fn(),
+  releaseQueuedWebhook: vi.fn(),
+  cancelQueuedWebhook: vi.fn(),
 }));
 
 vi.mock('sonner', () => ({
@@ -52,7 +56,7 @@ function makeAction(overrides: Partial<AutomationAction> = {}): AutomationAction
 }
 
 function renderSidebar(actions: AutomationAction[] = [makeAction()]) {
-  mockUseAutomationActions.mockReturnValue({ data: { actions }, isLoading: false });
+  mockUseAutomationActions.mockReturnValue({ data: { actions }, isLoading: false, mutate: vi.fn() });
   render(
     <ActionLogsSidebar
       open={true}
@@ -63,15 +67,10 @@ function renderSidebar(actions: AutomationAction[] = [makeAction()]) {
   );
 }
 
-/** Opens the first action card by clicking its header row */
-// function expandFirstCard() {
-//   const card = screen.getByText('Action 1').closest('[class*=cursor-pointer]') ||
-//     screen.getByText('Action 1').parentElement!.parentElement!;
-//   fireEvent.click(card);
-// }
-
 beforeEach(() => {
   vi.clearAllMocks();
+  // Queue hook is only active when the rule is paused; default to no queue data
+  mockUseAutomationQueue.mockReturnValue({ data: undefined, mutate: vi.fn() });
   // Mock clipboard
   Object.assign(navigator, {
     clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
@@ -82,7 +81,7 @@ beforeEach(() => {
 
 describe('ActionLogsSidebar', () => {
   it('shows loading spinner when isLoading — no action cards rendered', () => {
-    mockUseAutomationActions.mockReturnValue({ data: undefined, isLoading: true });
+    mockUseAutomationActions.mockReturnValue({ data: undefined, isLoading: true, mutate: vi.fn() });
     render(
       <ActionLogsSidebar open={true} ruleId="rule-1" ruleName="Test" onClose={vi.fn()} />,
     );
@@ -93,7 +92,7 @@ describe('ActionLogsSidebar', () => {
   });
 
   it('shows empty state when no actions', () => {
-    mockUseAutomationActions.mockReturnValue({ data: { actions: [] }, isLoading: false });
+    mockUseAutomationActions.mockReturnValue({ data: { actions: [] }, isLoading: false, mutate: vi.fn() });
     render(
       <ActionLogsSidebar open={true} ruleId="rule-1" ruleName="Test" onClose={vi.fn()} />,
     );
@@ -117,9 +116,11 @@ describe('ActionLogsSidebar', () => {
       makeAction({ status: 'running', pipelineEntryId: 'p2' }),
       makeAction({ status: 'failed', pipelineEntryId: 'p3' }),
     ]);
-    expect(screen.getByText(/1 Launched/i)).toBeInTheDocument();
-    expect(screen.getByText(/1 Running/i)).toBeInTheDocument();
-    expect(screen.getByText(/1 Failed/i)).toBeInTheDocument();
+    // 'launched' actions display as Completed; 'running' as Running/Queued
+    expect(screen.getByText('1 Completed')).toBeInTheDocument();
+    expect(screen.getByText('1 Running/Queued')).toBeInTheDocument();
+    expect(screen.getByText('1 Failed')).toBeInTheDocument();
+    expect(screen.getByText('0 Cancelled')).toBeInTheDocument();
   });
 
   it('filters actions when a filter chip is clicked', () => {
@@ -128,7 +129,7 @@ describe('ActionLogsSidebar', () => {
       makeAction({ actionNumber: 2, pipelineEntryId: 'p2', status: 'failed' }),
     ]);
 
-    fireEvent.click(screen.getByText(/1 Failed/i));
+    fireEvent.click(screen.getByText('1 Failed'));
 
     expect(screen.queryByText('Relay 1')).toBeNull();
     expect(screen.getByText('Relay 2')).toBeInTheDocument();
@@ -137,20 +138,31 @@ describe('ActionLogsSidebar', () => {
   it('shows "no matches" when filter yields no results', () => {
     renderSidebar([makeAction({ status: 'launched' })]);
 
-    fireEvent.click(screen.getByText(/0 Failed/i));
+    fireEvent.click(screen.getByText('0 Failed'));
 
     expect(screen.getByText(/no matches/i)).toBeInTheDocument();
   });
 
-  it('calls onClose when backdrop is clicked', () => {
+  // There is deliberately no backdrop — the canvas stays interactive while the
+  // sidebar is open. Closing happens via the Escape key or the X button.
+  it('calls onClose when Escape is pressed', () => {
     const onClose = vi.fn();
-    mockUseAutomationActions.mockReturnValue({ data: { actions: [] }, isLoading: false });
+    mockUseAutomationActions.mockReturnValue({ data: { actions: [] }, isLoading: false, mutate: vi.fn() });
     render(
       <ActionLogsSidebar open={true} ruleId="rule-1" ruleName="Test" onClose={onClose} />,
     );
-    // Click the backdrop overlay
-    const backdrop = document.querySelector('.fixed.inset-0.bg-black\\/30');
-    if (backdrop) fireEvent.click(backdrop);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('calls onClose when the X button is clicked', () => {
+    const onClose = vi.fn();
+    mockUseAutomationActions.mockReturnValue({ data: { actions: [] }, isLoading: false, mutate: vi.fn() });
+    render(
+      <ActionLogsSidebar open={true} ruleId="rule-1" ruleName="Test" onClose={onClose} />,
+    );
+    // With no actions, the header close (X) button is the only button rendered
+    fireEvent.click(screen.getByRole('button'));
     expect(onClose).toHaveBeenCalled();
   });
 });
@@ -225,12 +237,28 @@ describe('ActionLogsSidebar — stage indicators', () => {
     });
   });
 
-  it('shows Launched for launched action', async () => {
+  it('shows Completed for the Maestro Trigger stage when an instance exists', async () => {
     renderSidebar([makeAction({ status: 'launched' })]);
     fireEvent.click(screen.getByText('Relay 1'));
 
     await waitFor(() => {
-      expect(screen.getByText('Launched')).toBeInTheDocument();
+      expect(screen.getByText('Maestro Trigger')).toBeInTheDocument();
     });
+    // Instance exists → the trigger stage reads "Completed"
+    const stageRow = screen.getByText('Maestro Trigger').closest('div');
+    expect(stageRow?.textContent).toContain('Completed');
+  });
+
+  it('shows a pending Maestro Trigger stage when no instance exists', async () => {
+    renderSidebar([makeAction({ status: 'launched', instance: null })]);
+    fireEvent.click(screen.getByText('Relay 1'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Maestro Trigger')).toBeInTheDocument();
+    });
+    // No instance → the trigger stage is pending: em-dash placeholder, no "Completed"
+    const stageRow = screen.getByText('Maestro Trigger').closest('div');
+    expect(stageRow?.textContent).toContain('—');
+    expect(screen.queryByText('Completed')).toBeNull();
   });
 });

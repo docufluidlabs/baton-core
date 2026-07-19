@@ -14,7 +14,7 @@
  * 10. invalid JSON body → 400
  */
 import * as crypto from 'crypto';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Request, Response } from 'express';
 
 // ─── Hoisted mocks ────────────────────────────────────────────
@@ -43,7 +43,12 @@ vi.mock('../../lib/logger', () => ({
 }));
 
 vi.mock('../../db/client', () => ({
-  getDocClient: () => ({ send: (cmd: any) => mockQuery(cmd) }),
+  getDocClient: () => ({
+    // Route reads (QueryCommand) to mockQuery and the post-response
+    // webhookCount UpdateCommand to mockUpdate.
+    send: (cmd: any) =>
+      cmd?.constructor?.name === 'UpdateCommand' ? mockUpdate(cmd) : mockQuery(cmd),
+  }),
   TableNames: { ORG_APPS: 'baton-org-apps' },
 }));
 
@@ -174,6 +179,12 @@ beforeEach(() => {
   mockStoreWebhookEvent.mockResolvedValue({ id: 'evt-001' });
 });
 
+afterEach(async () => {
+  // Drain any post-response setImmediate work scheduled by the handler so it
+  // cannot leak into the next test's mock call records.
+  await flushImmediate();
+});
+
 // ─── Tests ───────────────────────────────────────────────────
 
 describe('POST /api/webhooks/app/:webhookKey', () => {
@@ -199,7 +210,7 @@ describe('POST /api/webhooks/app/:webhookKey', () => {
     await getHandler()(makeReq({ test: 1 }), res);
 
     expect(res._status).toBe(403);
-    expect(res._body).toEqual({ error: 'App is inactive' });
+    expect(res._body).toEqual({ error: 'Platform is inactive' });
     expect(mockStoreWebhookEvent).not.toHaveBeenCalled();
   });
 
@@ -219,7 +230,7 @@ describe('POST /api/webhooks/app/:webhookKey', () => {
     await getHandler()(req, res);
 
     expect(res._status).toBe(400);
-    expect(res._body).toEqual({ error: 'Invalid JSON' });
+    expect(res._body).toEqual({ error: 'Invalid request body' });
   });
 
   // ── 9. Missing secretKeyEnc → 500 ────────────────────────
@@ -232,7 +243,7 @@ describe('POST /api/webhooks/app/:webhookKey', () => {
     await getHandler()(makeReq({ x: 1 }), res);
 
     expect(res._status).toBe(500);
-    expect(res._body).toEqual({ error: 'Webhook secret not configured for this app' });
+    expect(res._body).toEqual({ error: 'Webhook secret not configured for this platform' });
   });
 
   // ── 3. Missing signature header → 401 ───────────────────

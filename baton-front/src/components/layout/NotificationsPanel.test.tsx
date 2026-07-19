@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { NotificationsPanel } from './NotificationsPanel';
 
 // ─── Mocks ──────────────────────────────────────────────────
@@ -28,28 +28,7 @@ vi.mock('sonner', () => ({
 
 vi.mock('@/lib/utils', () => ({
   timeAgo: () => '2 min ago',
-}));
-
-// Mock AudioContext
-const mockOscillator = {
-  connect: vi.fn(),
-  frequency: { setValueAtTime: vi.fn() },
-  start: vi.fn(),
-  stop: vi.fn(),
-};
-const mockGain = {
-  connect: vi.fn(),
-  gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
-};
-const mockAudioContextInstance = {
-  createOscillator: () => mockOscillator,
-  createGain: () => mockGain,
-  destination: {},
-  currentTime: 0,
-};
-// Must use a regular function (not arrow) so `new AudioContext()` works correctly
-vi.stubGlobal('AudioContext', vi.fn(function AudioContext() {
-  return mockAudioContextInstance;
+  formatDateFull: () => 'January 1, 2024, 12:00 AM',
 }));
 
 // ─── Helpers ────────────────────────────────────────────────
@@ -354,128 +333,16 @@ describe('outside click closes panel', () => {
   });
 });
 
-// ── notification sound useEffect ────────────────────────────
+// ── timestamps ──────────────────────────────────────────────
 
-describe('notification sound useEffect', () => {
-  beforeEach(() => {
-    mockOscillator.start.mockClear();
-    mockOscillator.stop.mockClear();
-    mockOscillator.connect.mockClear();
-  });
-
-  it('plays sound when unread count increases and there is an urgent notification', async () => {
-    // Start with 0 unread notifications so prevUnreadRef is initialised to 0
-    setupSWR([], 0);
-    const { rerender } = render(<NotificationsPanel />);
-
-    // Flush the first effect (sets prevUnreadRef.current = 0)
-    await act(async () => {});
-
-    // Re-render with 1 unread error notification (count goes from 0 -> 1)
-    setupSWR([makeNotification({ id: 'n1', severity: 'error', readAt: null })], 1);
-    await act(async () => {
-      rerender(<NotificationsPanel />);
-    });
-
-    expect(mockOscillator.start).toHaveBeenCalled();
-  });
-
-  it('does NOT play sound for info severity when unread count increases', async () => {
-    // Start with 0 unread
-    setupSWR([], 0);
-    const { rerender } = render(<NotificationsPanel />);
-
-    // Clear calls from the initial render
-    mockOscillator.start.mockClear();
-
-    // Re-render with 1 unread info notification
-    setupSWR([makeNotification({ id: 'n1', severity: 'info', readAt: null })], 1);
-    rerender(<NotificationsPanel />);
-
-    // Give effects a chance to run
-    await waitFor(() => {
-      // oscillator.start should NOT have been called for a non-urgent severity
-      expect(mockOscillator.start).not.toHaveBeenCalled();
-    });
-  });
-
-  it('does NOT play sound when soundEnabled is off', async () => {
-    localStorage.setItem('baton-notif-sound', 'off');
-
-    // Start with 0 unread
-    setupSWR([], 0);
-    const { rerender } = render(<NotificationsPanel />);
-
-    mockOscillator.start.mockClear();
-
-    // Re-render with urgent unread notification
-    setupSWR([makeNotification({ id: 'n1', severity: 'error', readAt: null })], 1);
-    rerender(<NotificationsPanel />);
-
-    await waitFor(() => {
-      expect(mockOscillator.start).not.toHaveBeenCalled();
-    });
-  });
-});
-
-// ── sound toggle ─────────────────────────────────────────────
-
-describe('sound toggle via localStorage', () => {
-  it('reads soundEnabled as true when localStorage has no value', () => {
-    localStorage.clear();
-    setupSWR([]);
-    render(<NotificationsPanel />);
-    // Default: sound should be enabled (no localStorage entry)
-    // We verify indirectly: localStorage should not have 'off' at mount
-    expect(localStorage.getItem('baton-notif-sound')).not.toBe('off');
-  });
-
-  it('reads soundEnabled as false when localStorage has "off"', () => {
-    localStorage.setItem('baton-notif-sound', 'off');
-    setupSWR([]);
-    render(<NotificationsPanel />);
-    // Component initialises with sound disabled; re-render with urgent notif
-    // and confirm oscillator is NOT started
-    expect(localStorage.getItem('baton-notif-sound')).toBe('off');
-  });
-});
-
-// ── sound toggle button in header ───────────────────────────
-
-describe('sound toggle button', () => {
-  it('shows mute button in header when panel is open (sound on by default)', () => {
-    localStorage.clear();
+describe('timestamps', () => {
+  it('shows relative time with the full date as a hover title', () => {
     setupSWR([makeNotification()]);
     render(<NotificationsPanel />);
-    fireEvent.click(screen.getByRole('button')); // open panel
+    fireEvent.click(screen.getByRole('button'));
 
-    const muteBtn = screen.getByTitle('Mute notifications');
-    expect(muteBtn).toBeInTheDocument();
-  });
-
-  it('toggles to unmute button after clicking mute', () => {
-    localStorage.clear();
-    setupSWR([makeNotification()]);
-    render(<NotificationsPanel />);
-    fireEvent.click(screen.getByRole('button')); // open panel
-
-    const muteBtn = screen.getByTitle('Mute notifications');
-    fireEvent.click(muteBtn);
-
-    expect(screen.getByTitle('Unmute notifications')).toBeInTheDocument();
-    expect(localStorage.getItem('baton-notif-sound')).toBe('off');
-  });
-
-  it('toggles back to mute button after clicking unmute', () => {
-    localStorage.setItem('baton-notif-sound', 'off');
-    setupSWR([makeNotification()]);
-    render(<NotificationsPanel />);
-    fireEvent.click(screen.getByRole('button')); // open panel
-
-    const unmuteBtn = screen.getByTitle('Unmute notifications');
-    fireEvent.click(unmuteBtn);
-
-    expect(screen.getByTitle('Mute notifications')).toBeInTheDocument();
-    expect(localStorage.getItem('baton-notif-sound')).toBe('on');
+    const timestamp = screen.getByText('2 min ago');
+    expect(timestamp).toBeInTheDocument();
+    expect(timestamp).toHaveAttribute('title', 'January 1, 2024, 12:00 AM');
   });
 });

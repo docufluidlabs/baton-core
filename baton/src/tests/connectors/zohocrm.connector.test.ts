@@ -110,22 +110,40 @@ describe('extractEventInfo', () => {
 // ─── verifyWebhookSignature ──────────────────────────────────
 
 describe('verifyWebhookSignature', () => {
-  it('always returns { valid: true } since Zoho has no HMAC verification', () => {
-    const body = Buffer.from('any-payload');
+  const body = Buffer.from('{"module":"Deals"}');
 
-    const result = connector.verifyWebhookSignature(body, {}, '');
+  it('rejects when no secret is configured for the connection', () => {
+    const result = connector.verifyWebhookSignature(body, { 'x-zoho-token': 'tok' }, '');
 
-    expect(result).toEqual({ valid: true });
+    expect(result.valid).toBe(false);
+    expect(result.reason).toMatch(/secret not configured/i);
   });
 
-  it('returns valid regardless of headers or secret values', () => {
-    const body = Buffer.from('{"module":"Deals"}');
+  it('rejects when the X-Zoho-Token header is missing', () => {
+    const result = connector.verifyWebhookSignature(body, {}, 'configured-secret');
 
-    const result = connector.verifyWebhookSignature(body, {
-      'x-some-header': 'value',
-    }, 'any-secret');
+    expect(result.valid).toBe(false);
+    expect(result.reason).toMatch(/Missing X-Zoho-Token/i);
+  });
 
-    expect(result.valid).toBe(true);
+  it('accepts when the provided token matches the configured secret (either header name)', () => {
+    expect(
+      connector.verifyWebhookSignature(body, { 'x-zoho-token': 'shared-token' }, 'shared-token').valid,
+    ).toBe(true);
+    expect(
+      connector.verifyWebhookSignature(body, { 'x-zoho-webhook-token': 'shared-token' }, 'shared-token').valid,
+    ).toBe(true);
+  });
+
+  it('rejects when the provided token does not match the configured secret', () => {
+    const result = connector.verifyWebhookSignature(
+      body,
+      { 'x-zoho-token': 'wrong-token!' },
+      'right-token!!',
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBeTruthy();
   });
 });
 

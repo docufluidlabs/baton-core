@@ -99,6 +99,7 @@ describe('getValidAccessToken', () => {
       platform: 'docusign',
       accountId: 'acc-123',
       tokenExpiresAt: pastDate,
+      refreshTokenEnc: 'enc-refresh-blob',
     });
     mockGetRefreshToken.mockResolvedValue('refresh-tok');
 
@@ -126,6 +127,21 @@ describe('getValidAccessToken', () => {
       accountId: 'acc-123',
       apiBase: 'https://api-d.docusign.com',
     });
+  });
+
+  it('throws when token is expired and no refresh token is stored', async () => {
+    const pastDate = new Date(Date.now() - 60000).toISOString();
+    mockGetConnection.mockResolvedValue({
+      platform: 'docusign',
+      accountId: 'acc-123',
+      tokenExpiresAt: pastDate,
+      // no refreshTokenEnc
+    });
+
+    await expect(getValidAccessToken('conn-1')).rejects.toThrow(
+      'no refresh token available',
+    );
+    expect(mockRefreshToken).not.toHaveBeenCalled();
   });
 
   it('returns existing accessToken when token is still valid', async () => {
@@ -324,6 +340,7 @@ describe('getInstances', () => {
             ended_at: '2025-01-01T01:00:00Z',
             started_by_name: 'User A',
             total_steps: 3,
+            instance_url: 'https://apps-d.docusign.com/maestro/accounts/acc-123/instances/inst-1',
           },
         ],
       }),
@@ -351,7 +368,7 @@ describe('getInstances', () => {
     ]);
   });
 
-  it('normalizes "In Progress" status to "in_progress"', async () => {
+  it('normalizes "In Progress" status to "running"', async () => {
     setupValidConnection();
     mockFetch.mockResolvedValue(
       okJsonResponse({
@@ -369,7 +386,31 @@ describe('getInstances', () => {
 
     const result = await getInstances('conn-1', 'wf-1');
 
-    expect(result[0].status).toBe('in_progress');
+    expect(result[0].status).toBe('running');
+  });
+
+  it('normalizes "Canceled" status to "cancelled" and leaves instanceUrl undefined when absent', async () => {
+    setupValidConnection();
+    mockFetch.mockResolvedValue(
+      okJsonResponse({
+        instances: [
+          {
+            id: 'inst-3',
+            name: 'Cancelled Instance',
+            workflow_id: 'wf-1',
+            workflow_status: 'Canceled',
+            started_at: '2025-01-01T00:00:00Z',
+            canceled_at: '2025-01-01T00:30:00Z',
+          },
+        ],
+      }),
+    );
+
+    const result = await getInstances('conn-1', 'wf-1');
+
+    expect(result[0].status).toBe('cancelled');
+    expect(result[0].endDate).toBe('2025-01-01T00:30:00Z');
+    expect(result[0].instanceUrl).toBeUndefined();
   });
 
   it('throws on non-ok response', async () => {
@@ -395,6 +436,7 @@ describe('getInstance', () => {
         ended_at: '2025-01-01T02:00:00Z',
         started_by_name: 'User B',
         total_steps: 5,
+        instance_url: 'https://apps-d.docusign.com/maestro/accounts/acc-123/instances/inst-1',
       }),
     );
 
@@ -445,9 +487,16 @@ describe('cancelInstance', () => {
     );
   });
 
-  it('throws on non-ok response', async () => {
+  it('resolves silently on 409 (instance already in terminal state)', async () => {
     setupValidConnection();
     mockFetch.mockResolvedValue(errorResponse(409, 'Conflict'));
+
+    await expect(cancelInstance('conn-1', 'wf-1', 'inst-1')).resolves.toBeUndefined();
+  });
+
+  it('throws on non-ok response', async () => {
+    setupValidConnection();
+    mockFetch.mockResolvedValue(errorResponse(500, 'Server Error'));
 
     await expect(cancelInstance('conn-1', 'wf-1', 'inst-1')).rejects.toThrow(
       'Failed to cancel instance',

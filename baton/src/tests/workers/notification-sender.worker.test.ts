@@ -1,7 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { processNotificationJob } from '../../workers/notification-sender.worker';
 
-vi.mock('../../lib/logger', () => ({ logInfo: vi.fn(), logError: vi.fn() }));
+// The worker uses createLogger() to build a child logger with bound context
+// (worker, recipientId, category); log lines go through that child logger.
+const { mockLog, mockCreateLogger } = vi.hoisted(() => {
+  const mockLog = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  };
+  return { mockLog, mockCreateLogger: vi.fn(() => mockLog) };
+});
+
+vi.mock('../../lib/logger', () => ({
+  createLogger: mockCreateLogger,
+  logInfo: vi.fn(),
+  logError: vi.fn(),
+  logWarn: vi.fn(),
+  logDebug: vi.fn(),
+}));
 
 const mockSendNotification = vi.fn();
 vi.mock('../../services/notification.service', () => ({
@@ -44,14 +62,13 @@ describe('processNotificationJob', () => {
     expect(mockSendNotification).toHaveBeenCalledTimes(1);
     expect(mockSendNotification).toHaveBeenCalledWith(makePayload());
 
-    const { logInfo } = await import('../../lib/logger');
-    expect(logInfo).toHaveBeenCalledWith(
-      'Notification delivered',
+    expect(mockCreateLogger).toHaveBeenCalledWith(
       expect.objectContaining({
         recipientId: 'user-1',
         category: 'workflow_failed',
       }),
     );
+    expect(mockLog.info).toHaveBeenCalledWith('Notification delivered');
   });
 
   it('does NOT re-throw when sendNotification fails', async () => {
@@ -86,14 +103,16 @@ describe('processNotificationJob', () => {
 
     await processNotificationJob(makeJob());
 
-    const { logError } = await import('../../lib/logger');
-    expect(logError).toHaveBeenCalledWith(
-      'Notification delivery failed (will not retry)',
-      expect.any(Error),
+    // recipientId/category are bound onto the child logger at creation
+    expect(mockCreateLogger).toHaveBeenCalledWith(
       expect.objectContaining({
         recipientId: 'user-1',
         category: 'workflow_failed',
       }),
+    );
+    expect(mockLog.error).toHaveBeenCalledWith(
+      expect.objectContaining({ err: expect.any(Error) }),
+      'Notification delivery failed (will not retry)',
     );
   });
 
@@ -111,13 +130,12 @@ describe('processNotificationJob', () => {
 
     await processNotificationJob({ type: 'notification', payload });
 
-    const { logInfo } = await import('../../lib/logger');
-    expect(logInfo).toHaveBeenCalledWith(
-      'Notification delivered',
+    expect(mockCreateLogger).toHaveBeenCalledWith(
       expect.objectContaining({
         recipientId: 'user-50',
         category: 'rule_paused',
       }),
     );
+    expect(mockLog.info).toHaveBeenCalledWith('Notification delivered');
   });
 });

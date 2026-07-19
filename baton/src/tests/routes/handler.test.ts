@@ -1,7 +1,7 @@
 /**
  * Webhook Handler Tests
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
 import { createWebhookHandler } from '../../routes/webhooks/handler';
 
@@ -12,11 +12,12 @@ vi.mock('../../lib/logger', () => ({
   logDebug: vi.fn(),
 }));
 
-const { mockStoreWebhookEvent, mockSendMessage, mockGetConnector, mockHasConnector } = vi.hoisted(() => ({
+const { mockStoreWebhookEvent, mockSendMessage, mockGetConnector, mockHasConnector, mockDdbSend } = vi.hoisted(() => ({
   mockStoreWebhookEvent: vi.fn(),
   mockSendMessage: vi.fn(),
   mockGetConnector: vi.fn(),
   mockHasConnector: vi.fn(),
+  mockDdbSend: vi.fn(),
 }));
 
 vi.mock('../../services/webhook-event.service', () => ({
@@ -33,9 +34,36 @@ vi.mock('../../services/connectors', () => ({
   hasConnector: mockHasConnector,
 }));
 
+// Post-response work writes a TriggerPipelineEntry via the doc client.
+vi.mock('../../db/client', () => ({
+  getDocClient: () => ({ send: mockDdbSend }),
+  TableNames: { TRIGGER_PIPELINE: 'baton-trigger-pipeline' },
+}));
+
+vi.mock('../../services/notification.service', () => ({
+  sendNotification: vi.fn(),
+  webhookFailedNotification: vi.fn(),
+}));
+
+vi.mock('../../services/user.service', () => ({
+  getOrgAdmins: vi.fn(async () => []),
+}));
+
 beforeEach(() => {
   vi.clearAllMocks();
+  mockDdbSend.mockResolvedValue({});
 });
+
+afterEach(async () => {
+  // Drain any post-response setImmediate work scheduled by the handler so it
+  // cannot leak into the next test's mock call records.
+  await flushImmediate();
+});
+
+/** Flush all setImmediate callbacks (post-response async work) */
+async function flushImmediate(): Promise<void> {
+  await new Promise<void>((resolve) => setImmediate(resolve));
+}
 
 // ─── Helpers ──────────────────────────────────────────────────
 
@@ -130,6 +158,9 @@ describe('createWebhookHandler', () => {
 
     await handler(req, res, vi.fn());
 
+    // The SQS enqueue happens in post-response setImmediate work
+    await flushImmediate();
+
     expect(mockSendMessage).toHaveBeenCalledWith(
       'webhook-proc',
       expect.objectContaining({
@@ -154,6 +185,9 @@ describe('createWebhookHandler', () => {
     });
 
     await handler(mockReq({ data: 'x' }), mockRes(), vi.fn());
+
+    // Even after the post-response work completes, nothing must be enqueued
+    await flushImmediate();
 
     expect(mockSendMessage).not.toHaveBeenCalled();
   });

@@ -400,12 +400,14 @@ describe('resolveTemplate', () => {
 // ─── mapFieldsToTriggerInputs ───────────────────────────────
 
 describe('mapFieldsToTriggerInputs', () => {
-  it('no actionConfig returns empty object', () => {
-    expect(mapFieldsToTriggerInputs(undefined, {})).toEqual({});
+  it('no actionConfig passes the raw payload through as __rawPayload for auto-mapping', () => {
+    const payload = { project_id: 'p-1' };
+    expect(mapFieldsToTriggerInputs(undefined, payload)).toEqual({ __rawPayload: payload });
   });
 
-  it('no fieldMapping key returns empty object', () => {
-    expect(mapFieldsToTriggerInputs({}, {})).toEqual({});
+  it('no fieldMapping key passes the raw payload through as __rawPayload for auto-mapping', () => {
+    const payload = { deal: 42 };
+    expect(mapFieldsToTriggerInputs({}, payload)).toEqual({ __rawPayload: payload });
   });
 
   it('path mapping with $. prefix', () => {

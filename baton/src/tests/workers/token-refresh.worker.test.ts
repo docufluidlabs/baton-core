@@ -1,7 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { processTokenRefreshJob } from '../../workers/token-refresh.worker';
 
-vi.mock('../../lib/logger', () => ({ logInfo: vi.fn(), logError: vi.fn(), logDebug: vi.fn() }));
+// The worker uses createLogger() to build a child logger with bound context
+// (worker, connectionId, orgId, platform); log lines go through that child.
+const { mockLog, mockCreateLogger } = vi.hoisted(() => {
+  const mockLog = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  };
+  return { mockLog, mockCreateLogger: vi.fn(() => mockLog) };
+});
+
+vi.mock('../../lib/logger', () => ({
+  createLogger: mockCreateLogger,
+  logInfo: vi.fn(),
+  logError: vi.fn(),
+  logWarn: vi.fn(),
+  logDebug: vi.fn(),
+}));
 vi.mock('../../lib/types', () => ({}));
 
 const mockGetConnection = vi.fn();
@@ -22,6 +40,18 @@ vi.mock('../../services/connectors', () => ({
   hasConnector: (...args: any[]) => mockHasConnector(...args),
 }));
 
+const mockGetOrgAdmin = vi.fn();
+vi.mock('../../services/user.service', () => ({
+  getOrgAdmin: (...args: any[]) => mockGetOrgAdmin(...args),
+}));
+
+const mockSendNotification = vi.fn();
+const mockConnectionDisconnectedNotification = vi.fn((...args: any[]) => ({ kind: 'disconnected', args }));
+vi.mock('../../services/notification.service', () => ({
+  sendNotification: (...args: any[]) => mockSendNotification(...args),
+  connectionDisconnectedNotification: (...args: any[]) => mockConnectionDisconnectedNotification(...args),
+}));
+
 // ─── Helpers ─────────────────────────────────────────────────
 
 function makeJob() {
@@ -39,6 +69,7 @@ function makeConnection(overrides: Record<string, any> = {}) {
     platform: 'procore',
     displayName: 'Procore Main',
     status: 'healthy',
+    refreshTokenEnc: 'enc-refresh-blob',
     tokenExpiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 min from now
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -50,6 +81,8 @@ function makeConnection(overrides: Record<string, any> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGetOrgAdmin.mockResolvedValue(null);
+  mockSendNotification.mockResolvedValue(undefined);
 });
 
 describe('processTokenRefreshJob', () => {
@@ -68,11 +101,11 @@ describe('processTokenRefreshJob', () => {
 
     await processTokenRefreshJob(makeJob());
 
-    const { logError } = await import('../../lib/logger');
-    expect(logError).toHaveBeenCalledWith(
-      'Connection not found for token refresh',
+    // connectionId is bound onto the child logger at creation
+    expect(mockCreateLogger).toHaveBeenCalledWith(
       expect.objectContaining({ connectionId: 'conn-1' }),
     );
+    expect(mockLog.error).toHaveBeenCalledWith('Connection not found for token refresh');
     expect(mockRefreshToken).not.toHaveBeenCalled();
   });
 
@@ -86,11 +119,7 @@ describe('processTokenRefreshJob', () => {
     expect(mockRefreshToken).not.toHaveBeenCalled();
     expect(mockUpdateTokens).not.toHaveBeenCalled();
 
-    const { logDebug } = await import('../../lib/logger');
-    expect(logDebug).toHaveBeenCalledWith(
-      'Token still valid, skipping refresh',
-      expect.objectContaining({ connectionId: 'conn-1' }),
-    );
+    expect(mockLog.debug).toHaveBeenCalledWith('Token still valid, skipping refresh');
   });
 
   it('refreshes token when it is expired', async () => {
@@ -110,6 +139,26 @@ describe('processTokenRefreshJob', () => {
       refreshToken: 'new-rt',
       expiresAt: '2099-01-01',
     });
+  });
+
+  it('marks connection as warning and notifies admin (without throwing) when no refresh token is stored', async () => {
+    const expired = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    mockHasConnector.mockReturnValue(true);
+    mockGetConnection.mockResolvedValue(makeConnection({ tokenExpiresAt: expired, refreshTokenEnc: undefined }));
+    mockUpdateConnectionStatus.mockResolvedValue(undefined);
+    mockGetOrgAdmin.mockResolvedValue('admin-1');
+
+    // Permanent failure: must NOT throw (retrying won't help)
+    await expect(processTokenRefreshJob(makeJob())).resolves.toBeUndefined();
+
+    expect(mockUpdateConnectionStatus).toHaveBeenCalledWith(
+      'conn-1',
+      'warning',
+      'No refresh token available. Please reconnect.',
+    );
+    expect(mockGetOrgAdmin).toHaveBeenCalledWith('org-1');
+    expect(mockSendNotification).toHaveBeenCalledTimes(1);
+    expect(mockRefreshToken).not.toHaveBeenCalled();
   });
 
   it('updates status to warning and re-throws on refresh failure', async () => {

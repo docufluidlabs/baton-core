@@ -1,7 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { processWebhookJob } from '../../workers/webhook.worker';
 
-vi.mock('../../lib/logger', () => ({ logInfo: vi.fn(), logError: vi.fn(), logWarn: vi.fn() }));
+// The worker uses createLogger() to build a child logger with bound context
+// (worker, eventId, platform, orgId, requestId); log lines go through that child.
+const { mockLog, mockCreateLogger } = vi.hoisted(() => {
+  const mockLog = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  };
+  return { mockLog, mockCreateLogger: vi.fn(() => mockLog) };
+});
+
+vi.mock('../../lib/logger', () => ({
+  createLogger: mockCreateLogger,
+  logInfo: vi.fn(),
+  logError: vi.fn(),
+  logWarn: vi.fn(),
+  logDebug: vi.fn(),
+}));
 vi.mock('../../lib/types', () => ({}));
 
 const mockGetWebhookEvent = vi.fn();
@@ -81,11 +99,36 @@ describe('processWebhookJob', () => {
     expect(mockMarkProcessed).not.toHaveBeenCalled();
     expect(mockProcessEvent).not.toHaveBeenCalled();
 
-    const { logWarn } = await import('../../lib/logger');
-    expect(logWarn).toHaveBeenCalledWith(
-      'Webhook event not found, skipping',
+    // eventId is bound onto the child logger at creation
+    expect(mockCreateLogger).toHaveBeenCalledWith(
       expect.objectContaining({ eventId: 'evt-1' }),
     );
+    expect(mockLog.warn).toHaveBeenCalledWith('Webhook event not found, skipping');
+  });
+
+  it('skips duplicate delivery when event is already processed without error (idempotency guard)', async () => {
+    mockGetWebhookEvent.mockResolvedValue(makeEvent({ processed: true }));
+
+    await processWebhookJob(makeJob());
+
+    expect(mockProcessEvent).not.toHaveBeenCalled();
+    expect(mockMarkProcessed).not.toHaveBeenCalled();
+    expect(mockLog.warn).toHaveBeenCalledWith(
+      'Webhook event already processed, skipping duplicate delivery',
+    );
+  });
+
+  it('re-processes an event that was processed with an error', async () => {
+    mockGetWebhookEvent.mockResolvedValue(makeEvent({ processed: true, error: 'previous failure' }));
+    mockHasConnector.mockReturnValue(true);
+    mockExtractEventInfo.mockReturnValue(makeEventInfo());
+    mockProcessEvent.mockResolvedValue(makeProcessResult());
+    mockMarkProcessed.mockResolvedValue(undefined);
+
+    await processWebhookJob(makeJob());
+
+    expect(mockProcessEvent).toHaveBeenCalledTimes(1);
+    expect(mockMarkProcessed).toHaveBeenCalledWith('evt-1');
   });
 
   it('uses generic extraction when no connector exists for platform (app-based)', async () => {
@@ -162,6 +205,9 @@ describe('processWebhookJob', () => {
       eventInfo,
       rawPayload: event.payload,
       webhookEventId: 'evt-1',
+      requestId: undefined,
+      ruleId: undefined,
+      sfDispatchId: undefined,
     });
   });
 
@@ -175,13 +221,12 @@ describe('processWebhookJob', () => {
 
     await processWebhookJob(makeJob());
 
-    const { logInfo } = await import('../../lib/logger');
-    expect(logInfo).toHaveBeenCalledWith(
-      'Webhook event fully processed',
+    expect(mockLog.info).toHaveBeenCalledWith(
       expect.objectContaining({
         matchedRules: 3,
         launchedWorkflows: 2,
       }),
+      'Webhook event fully processed',
     );
   });
 
@@ -198,7 +243,7 @@ describe('processWebhookJob', () => {
     expect(mockMarkProcessed).toHaveBeenCalledWith('evt-1');
   });
 
-  it('marks processed with error message and re-throws on failure', async () => {
+  it('does NOT mark processed and re-throws on failure so SQS can retry', async () => {
     const error = new Error('Rule engine exploded');
     mockGetWebhookEvent.mockResolvedValue(makeEvent());
     mockHasConnector.mockReturnValue(true);
@@ -208,6 +253,12 @@ describe('processWebhookJob', () => {
 
     await expect(processWebhookJob(makeJob())).rejects.toThrow('Rule engine exploded');
 
-    expect(mockMarkProcessed).toHaveBeenCalledWith('evt-1', 'Rule engine exploded');
+    // Marking processed on failure would make the retry a no-op (idempotency
+    // guard would skip it) — the worker must leave the event unprocessed.
+    expect(mockMarkProcessed).not.toHaveBeenCalled();
+    expect(mockLog.error).toHaveBeenCalledWith(
+      expect.objectContaining({ err: error }),
+      'Webhook processing failed',
+    );
   });
 });
