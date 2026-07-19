@@ -32,7 +32,6 @@ import {
   updateAppWebhookSecret,
   preflightAutomation,
   issueSfBootstrapUrl,
-  rotateSfSecret,
   connectPlatform,
   installPlatform,
   parseTriggerInputSchema,
@@ -57,7 +56,6 @@ import {
   type Condition,
 } from './ConditionsBuilder';
 import { useFlowStore } from '@/stores/flowStore';
-import { uselegacyTogglesActive } from '@/lib/editorTools';
 import { automationSaveBlockReason } from './automationSaveGuard';
 
 // ─── Reusable Portal Select ─────────────────────────────────
@@ -416,31 +414,6 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
     setPreflightCopied(true);
     toast.success('Webhook URL copied');
     setTimeout(() => setPreflightCopied(false), 2000);
-  }
-
-  // legacyToggle: full HMAC secret rotation for an existing Salesforce
-  // automation. Clears Baton-side sfRegistrations + issues fresh bootstrap URL.
-  // Apex managed package (v0.8+) auto-heals on next dispatch — admin only needs
-  // to paste the new URL into Flow Builder; cache invalidation is automatic.
-  const cheatsActive = uselegacyTogglesActive();
-  const [regeneratingUrl, setRegeneratingUrl] = useState(false);
-  async function handleRegenerateSfUrl() {
-    if (!editingAutomation?.webhookKey) return;
-    setRegeneratingUrl(true);
-    try {
-      const result = await rotateSfSecret(editingAutomation.webhookKey);
-      setEditingEnrichedUrl(result.webhookUrl);
-      const orgCount = result.clearedSfOrgs.length;
-      toast.success(
-        orgCount > 0
-          ? `Secret rotated. ${orgCount} SF org${orgCount !== 1 ? 's' : ''} will re-register on next dispatch.`
-          : 'Webhook URL regenerated (no prior registrations to clear).',
-      );
-    } catch {
-      toast.error('Failed to rotate secret');
-    } finally {
-      setRegeneratingUrl(false);
-    }
   }
 
   async function handleSyncWorkflow() {
@@ -1153,17 +1126,6 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
                       >
                         {preflightCopied ? <CheckCircle className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                       </button>
-                      {cheatsActive && editingAutomation && sourcePlatform === 'salesforce' && (
-                        <button
-                          type="button"
-                          onClick={handleRegenerateSfUrl}
-                          disabled={regeneratingUrl}
-                          className="shrink-0 p-1.5 border border-emerald-300 rounded text-emerald-600 hover:bg-emerald-50 disabled:opacity-50"
-                          title="legacyToggle — regenerate bootstrap-enriched webhook URL"
-                        >
-                          {regeneratingUrl ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                        </button>
-                      )}
                     </div>
                   ) : (
                     <p className="text-[11px] text-gray-400 italic">Select a webhook source to generate URL</p>

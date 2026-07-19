@@ -67,7 +67,6 @@ export const TableNames = {
   SLACK_CONFIGS:            `${prefix}slack-configs`,
   QUEUED_WEBHOOKS:          `${prefix}queued-webhooks`,
   BOOTSTRAP_TOKENS:         `${prefix}bootstrap-tokens`,
-  DOC_OVERRIDES:            `${prefix}doc-overrides`,
 } as const;
 
 export type TableName = typeof TableNames[keyof typeof TableNames];

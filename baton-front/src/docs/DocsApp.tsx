@@ -9,23 +9,16 @@ import { DocsLayout } from './DocsLayout';
 import { SectionIndex } from './SectionIndex';
 import { SetupOverview, SetupGuide, SetupNotFound } from './SetupGuides';
 import { usePublicCatalog } from './useCatalog';
-import { useDocOverrides } from './useDocOverrides';
-import { DocMarkdown } from './DocMarkdown';
 import { DOC_COMPONENTS } from './pages';
 import { DEFAULT_SLUG, GROUP_BY_SLUG } from './registry';
 import './docs.css';
 
 function DocPage({ slug }: { slug: string }) {
   const Component = DOC_COMPONENTS[slug];
-  const { data } = useDocOverrides();
   if (!Component) return <Navigate to="/docs" replace />;
-  // A published FluidLabs edit replaces the hardcoded page. While overrides are
-  // still loading we show the TSX page (most pages have none), then swap if one
-  // exists for this slug.
-  const override = data?.overrides?.[slug];
   return (
-    <DocsLayout slug={slug} kind="page" contentKey={override ? `md${override.version}` : 'tsx'}>
-      {override ? <DocMarkdown source={override.contentMarkdown} /> : <Component />}
+    <DocsLayout slug={slug} kind="page" contentKey="tsx">
+      <Component />
     </DocsLayout>
   );
 }

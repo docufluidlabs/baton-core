@@ -514,20 +514,4 @@ export const tableDefinitions: CreateTableCommandInput[] = [
     ],
     ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 },
   },
-
-  // ─── Doc Overrides ────────────────────────────────────
-  // FluidLabs-editable documentation content. PK = `slug` (the /docs page slug);
-  // global, not org-scoped — the product docs are the same for every reader.
-  // A published override replaces the hardcoded TSX page when present. Tiny table
-  // (≤ a few dozen rows), so the public render endpoint Scans it.
-  {
-    TableName: TableNames.DOC_OVERRIDES,
-    KeySchema: [
-      { AttributeName: 'slug', KeyType: 'HASH' },
-    ],
-    AttributeDefinitions: [
-      { AttributeName: 'slug', AttributeType: 'S' },
-    ],
-    ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 },
-  },
 ];

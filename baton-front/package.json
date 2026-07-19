@@ -20,23 +20,14 @@
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.15.0",
-    "@types/turndown": "^5.0.6",
     "@xyflow/react": "^12.3.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.460.0",
-    "mdast-util-to-string": "^4.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-markdown": "^10.1.0",
     "react-router-dom": "^6.28.0",
-    "rehype-sanitize": "^6.0.0",
-    "remark-directive": "^4.0.0",
-    "remark-gfm": "^4.0.1",
     "sonner": "^1.7.0",
     "swr": "^2.2.5",
-    "turndown": "^7.2.4",
-    "turndown-plugin-gfm": "^1.0.2",
-    "unist-util-visit": "^5.1.0",
     "zustand": "^5.0.12"
   },
   "devDependencies": {

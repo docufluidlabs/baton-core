@@ -505,11 +505,6 @@ export interface AutomationAction {
   } | null;
 }
 
-// TODO: TEMP — one-time prod fix, remove after use
-export async function resolveRuleFailures(ruleId: string): Promise<{ resolved: number }> {
-  return api.post<{ resolved: number }>(`/automations/${ruleId}/resolve-failures`);
-}
-
 export function useAutomationActions(ruleId: string | null) {
   return useSWR<{ actions: AutomationAction[] }>(
     ruleId ? `/automations/${ruleId}/actions` : null,

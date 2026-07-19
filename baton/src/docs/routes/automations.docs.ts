@@ -284,24 +284,6 @@ registry.registerPath({
   },
 });
 
-registry.registerPath({
-  method: 'post',
-  path: '/api/automations/{id}/resolve-failures',
-  tags: [TAG],
-  summary: 'Mark all failed instances for this automation as resolved (one-off admin op)',
-  description: 'Temporary endpoint intended for a one-time prod fix; expected to be removed.',
-  deprecated: true,
-  security: SECURITY,
-  request: { params: idParam },
-  responses: {
-    200: {
-      description: 'Resolved',
-      content: { 'application/json': { schema: z.object({ resolved: z.number().int() }) } },
-    },
-    401: commonErrorResponses[401],
-  },
-});
-
 // Analytics endpoints (from src/routes/automations.ts) ----------------------
 
 registry.registerPath({

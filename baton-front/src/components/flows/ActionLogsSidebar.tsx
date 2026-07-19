@@ -5,9 +5,8 @@
  */
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { useSWRConfig } from 'swr';
 import {
-  useAutomationActions, resolveRuleFailures, retryInstance, reportInstance, type AutomationAction,
+  useAutomationActions, retryInstance, reportInstance, type AutomationAction,
   useAutomationQueue, releaseQueuedWebhook, cancelQueuedWebhook, type QueuedWebhook,
 } from '@/hooks/useApi';
 import { timeAgo } from '@/lib/utils';
@@ -18,7 +17,6 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import batonLogo from '@/assets/baton.svg';
-import { uselegacyTogglesActive } from '@/lib/editorTools';
 import { usePagination, PaginationFooter } from '@/components/ui/Pagination';
 import { matchesQuery, inputsToText } from '@/components/flows/instanceFilters';
 
@@ -119,26 +117,6 @@ export function ActionLogsSidebar({ open, ruleId, ruleName, ruleStatus, initialA
       setCancellingId(null);
     }
   }
-  // legacyToggle: bulk-resolve failed instances for this rule.
-  const cheatsActive = uselegacyTogglesActive();
-  const { mutate } = useSWRConfig();
-  const [resolving, setResolving] = useState(false);
-  async function handleResolveFailures() {
-    if (!ruleId) return;
-    setResolving(true);
-    try {
-      const { resolved } = await resolveRuleFailures(ruleId);
-      toast.success(`Resolved ${resolved} failed instance${resolved !== 1 ? 's' : ''}`);
-      mutateActions();
-      mutate('/instances/counts');
-      mutate('/workflows');
-    } catch {
-      toast.error('Failed to resolve instances');
-    } finally {
-      setResolving(false);
-    }
-  }
-
   useEffect(() => {
     if (initialActionNumber != null && actions.length > 0) {
       const match = actions.find((a) => a.actionNumber === initialActionNumber);
@@ -208,17 +186,6 @@ export function ActionLogsSidebar({ open, ruleId, ruleName, ruleStatus, initialA
                 {actions.length} relay{actions.length !== 1 ? 's' : ''}
               </p>
             </div>
-            {cheatsActive && (
-              <button
-                onClick={handleResolveFailures}
-                disabled={resolving}
-                title="legacyToggle — bulk-resolve failed instances for this rule"
-                className="px-2 py-1 text-[11px] font-medium text-white bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 rounded-md shrink-0 transition-colors flex items-center gap-1"
-              >
-                {resolving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                Fix
-              </button>
-            )}
             <button onClick={onClose} className="p-2 -mr-1 rounded-lg hover:bg-gray-100 shrink-0 transition-colors">
               <X className="w-4 h-4 text-gray-400" />
             </button>

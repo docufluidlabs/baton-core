@@ -17,7 +17,6 @@ import {
   Crown,
   ExternalLink,
   Check,
-  Wrench,
   CheckCircle2,
   Sparkles,
   X,
@@ -27,7 +26,6 @@ import clsx from 'clsx';
 import { timeAgo, formatDateFull } from '@/lib/utils';
 import { sendEnterpriseContact, type BillingResponse, type BillingPlansResponse } from '@/hooks/useApi';
 import { Modal } from '@/components/ui/Modal';
-import { useIsEditorUser, uselegacyTogglesEnabled } from '@/lib/editorTools';
 
 type Tab = 'general' | 'members' | 'billing' | 'audit';
 
@@ -67,77 +65,9 @@ export default function SettingsPage() {
 
       {/* Content */}
       {tab === 'general' && <GeneralSettings />}
-      {tab === 'general' && <legacyTogglesCard />}
       {tab === 'members' && <MembersSettings />}
       {tab === 'billing' && <BillingSettings />}
       {tab === 'audit' && <AuditLog />}
-    </div>
-  );
-}
-
-// ─── legacyToggles ────────────────────────────────────────
-// Visible only for users whose email matches /fluidlabs/i. Toggle persists
-// in localStorage; cheat-mode UI elsewhere checks both gates.
-
-function legacyTogglesCard() {
-  const isEditor = useIsEditorUser();
-  const [enabled, setEnabled] = uselegacyTogglesEnabled();
-  if (!isEditor) return null;
-
-  return (
-    <div
-      className={clsx(
-        'relative max-w-2xl rounded-xl border p-5 transition-all duration-200',
-        enabled
-          ? 'bg-gradient-to-br from-amber-50 to-orange-50/60 border-amber-300 shadow-[0_0_0_3px_rgba(251,191,36,0.08)]'
-          : 'bg-white border-gray-200 hover:border-amber-200',
-      )}
-    >
-      <div className="flex items-center gap-4">
-        {/* Icon badge */}
-        <div
-          className={clsx(
-            'flex items-center justify-center w-10 h-10 rounded-lg shrink-0 transition-colors',
-            enabled ? 'bg-amber-500 text-white shadow-sm' : 'bg-amber-50 text-amber-600 ring-1 ring-amber-100',
-          )}
-        >
-          <Wrench className="w-5 h-5" />
-        </div>
-
-        {/* Title + description */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold text-gray-900">extra tools</h3>
-            <span className="inline-flex items-center px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-800 bg-amber-100 rounded">
-              Staff
-            </span>
-          </div>
-          <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
-            Reveal hidden fix-it buttons across the app (e.g. Fix in automation Logs).
-            <span className="text-gray-400"> Stored locally on this device.</span>
-          </p>
-        </div>
-
-        {/* Toggle switch */}
-        <button
-          type="button"
-          role="switch"
-          aria-checked={enabled}
-          aria-label="Toggle staff tools"
-          onClick={() => setEnabled(!enabled)}
-          className={clsx(
-            'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:ring-offset-2',
-            enabled ? 'bg-amber-500' : 'bg-gray-200',
-          )}
-        >
-          <span
-            className={clsx(
-              'inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200',
-              enabled ? 'translate-x-6' : 'translate-x-1',
-            )}
-          />
-        </button>
-      </div>
     </div>
   );
 }

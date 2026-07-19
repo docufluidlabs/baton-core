@@ -39,8 +39,6 @@ import stripeWebhookRoutes from './routes/webhooks/stripe';
 import sfRegistrationRoutes from './routes/sf-registration';
 import sfBootstrapTokensRoutes from './routes/sf-bootstrap-tokens';
 import sfRotateSecretRoutes from './routes/sf-rotate-secret';
-import publicDocContentRoutes from './routes/public-doc-content';
-import docContentRoutes from './routes/doc-content';
 import { slackEventsRouter, slackConfigRouter, slackOAuthCallbackRouter, slackInstallRouter } from './routes/slack';
 
 // Middleware
@@ -179,7 +177,6 @@ apiRouter.use('/support', supportRoutes);
 apiRouter.use('/flow-layout', flowLayoutRoutes);
 apiRouter.use('/salesforce/bootstrap-tokens', sfBootstrapTokensRoutes);
 apiRouter.use('/salesforce/rotate-secret', sfRotateSecretRoutes);
-apiRouter.use('/doc-content', docContentRoutes);
 
 // ─── Slack public routes under /api (before apiRouter to bypass requireAuth) ─
 app.use('/api/slack/install', slackInstallRouter);
@@ -189,11 +186,6 @@ app.use('/api/slack/oauth/callback', slackOAuthCallbackRouter);
 // ─── Public platform catalog (before apiRouter to bypass requireAuth) ─
 // Powers the publicly-readable documentation setup guides at /docs/setup/*.
 app.use('/api/public/platforms-catalog', publicCatalogRoutes);
-
-// ─── Public doc content (before apiRouter to bypass requireAuth) ─
-// Serves FluidLabs-published doc overrides so the public docs reader can render
-// edited pages. Editing itself is gated under /api/doc-content (apiRouter).
-app.use('/api/public/doc-content', publicDocContentRoutes);
 
 // ─── OpenAPI / Swagger UI (basic-auth gated) ─────────────────
 // Mounted BEFORE `app.use('/api', apiRouter)` so /api/docs* takes precedence

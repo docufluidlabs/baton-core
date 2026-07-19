@@ -6,19 +6,10 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ArrowLeft, Menu, Search, Pencil } from 'lucide-react';
+import { ArrowLeft, Menu, Search } from 'lucide-react';
 import { GROUPS, DOC_ORDER, META_BY_SLUG, GROUP_BY_SLUG } from './registry';
 import { SearchModal } from './SearchModal';
-import { DocEditor } from './DocEditor';
-import { DOC_COMPONENTS } from './pages';
-import { useIsEditorUser } from '@/lib/editorTools';
 import { slugify } from './slug';
-
-// Dev convenience: with VITE_DEV_AUTH the local session isn't a real Clerk user,
-// so the editor gate can't pass — surface the editor anyway in dev. Prod
-// builds (DEV === false) stay gated strictly to FluidLabs emails, and the
-// backend enforces the email on every write regardless.
-const DEV_EDIT = import.meta.env.DEV && import.meta.env.VITE_DEV_AUTH === 'true';
 
 interface TocItem {
   id: string;
@@ -48,14 +39,6 @@ export function DocsLayout({
   const [searchOpen, setSearchOpen] = useState(false);
   const [toc, setToc] = useState<TocItem[]>([]);
   const [activeId, setActiveId] = useState('');
-  const [editing, setEditing] = useState(false);
-
-  // The edit affordance shows only for editors (or in dev) and only on a
-  // real, component-backed page — section overviews and setup guides aren't
-  // Markdown-editable.
-  const isEditor = useIsEditorUser();
-  const canEdit = (isEditor || DEV_EDIT) && kind === 'page' && !!DOC_COMPONENTS[slug];
-
   const pageMeta = kind === 'page' ? META_BY_SLUG[slug] : undefined;
   const sectionMeta = kind === 'section' ? GROUP_BY_SLUG[slug] : undefined;
   const activeGroupSlug = kind === 'section' ? slug : pageMeta?.groupSlug;
@@ -269,15 +252,6 @@ export function DocsLayout({
 
       {/* Mobile scrim */}
       <div className={`bd-scrim${menuOpen ? ' show' : ''}`} onClick={() => setMenuOpen(false)} />
-
-      {/* FluidLabs-only floating edit button */}
-      {canEdit && !editing && (
-        <button className="bd-fab" onClick={() => setEditing(true)} aria-label="Edit this page">
-          <Pencil />
-          <span>Edit page</span>
-        </button>
-      )}
-      {canEdit && editing && <DocEditor slug={slug} onClose={() => setEditing(false)} />}
 
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
