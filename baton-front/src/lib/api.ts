@@ -36,10 +36,13 @@ const DEV_HEADERS: Record<string, string> =
 async function request<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${path}`;
 
+  // FormData bodies must not get a manual Content-Type - the browser sets the
+  // multipart boundary itself.
+  const isFormData = options.body instanceof FormData;
   const res = await fetch(url, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       ...DEV_HEADERS,
       ...options.headers,
     },
@@ -96,6 +99,9 @@ export const api = {
   get: <T = unknown>(path: string) => request<T>(path),
   post: <T = unknown>(path: string, body?: unknown) =>
     request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
+  /** POST a FormData body (file uploads). Content-Type is left to the browser. */
+  postForm: <T = unknown>(path: string, form: FormData) =>
+    request<T>(path, { method: 'POST', body: form }),
   patch: <T = unknown>(path: string, body?: unknown) =>
     request<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),
   put: <T = unknown>(path: string, body?: unknown) =>

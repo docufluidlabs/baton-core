@@ -20,6 +20,7 @@ import * as ruleEngine from '../services/rule-engine.service';
 import { hasConnector, getConnector } from '../services/connectors';
 import { AutomationRule, Platform, TriggerPipelineEntry, WorkflowInstance, WebhookEvent } from '../lib/types';
 import { logAudit } from '../services/audit.service';
+import { removeFlowPositions } from '../services/flow-layout.service';
 import { createBootstrapToken } from '../services/bootstrap-token.service'; // used by /preflight for SF
 import env from '../env';
 import crypto from 'crypto';
@@ -213,6 +214,7 @@ router.delete('/:id', requireMember, async (req: Request, res: Response, next: N
     if (!rule || rule.orgId !== req.auth!.orgId) throw new NotFoundError('Automation');
 
     await ruleEngine.deleteRule(req.params.id as string);
+    await removeFlowPositions(req.auth!.orgId, [`pair-${req.params.id}`]);
 
     logInfo('Automation deleted via API', { ruleId: req.params.id });
 

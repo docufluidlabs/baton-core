@@ -4,6 +4,7 @@ import {
   Plug,
   Workflow,
   GitBranch,
+  FileSpreadsheet,
   Activity,
   Bell,
   Settings,
@@ -30,6 +31,7 @@ import { useInstances, useAutomations, useConnections } from '@/hooks/useApi';
 const NAV_ITEMS = [
   // { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/flows', label: 'Flow Builder', icon: GitBranch },
+  { to: '/bulk-upload', label: 'Bulk Upload', icon: FileSpreadsheet },
   { to: '/workflows', label: 'Workflow Checker', icon: Workflow },
   // { to: '/events', label: 'Events', icon: Activity }, // Moved to sidebar in FlowBuilder
 ];
@@ -48,6 +50,7 @@ const BOTTOM_NAV_ITEMS = [
 function helpDocForPath(pathname: string): string {
   const base = '/docs';
   if (pathname.startsWith('/flows')) return `${base}/flow-builder`;
+  if (pathname.startsWith('/bulk-upload')) return `${base}/flow-builder`;
   if (pathname.startsWith('/control-center')) return `${base}/control-center`;
   if (pathname.startsWith('/workflows')) return `${base}/workflows`;
   if (pathname.startsWith('/connections')) return `${base}/connections`;

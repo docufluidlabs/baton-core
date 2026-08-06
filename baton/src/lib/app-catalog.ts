@@ -190,6 +190,37 @@ export const APP_TEMPLATES: Partial<Record<AppSlug, AppTemplate>> = {
     webhookCapable: true,
   },
 
+  smartsheet: {
+    slug: 'smartsheet',
+    name: 'Smartsheet',
+    description: 'Work management - sheets, rows, attachments, automation',
+    logoUrl: '/assets/logos/smartsheet.svg',
+    category: 'Productivity',
+    icon: '📊',
+    secretKeyLabel: 'Shared Secret',
+    secretKeyHint: 'Paste the Shared Secret from your Smartsheet webhook configuration',
+    verificationMethod: {
+      type: 'hmac_sha256',
+      headerName: 'smartsheet-hmac-sha256',
+      encoding: 'base64',
+    },
+    setupInstructions: [
+      { step: 1, title: 'Open Smartsheet Account Settings', description: 'Click your profile icon → Apps & Integrations → API Access.' },
+      { step: 2, title: 'Create a Webhook via API', description: 'Use the Smartsheet API or CLI to create a webhook subscription pointing to the Baton URL shown above.' },
+      { step: 3, title: 'Copy the Shared Secret', description: 'After creating the webhook, copy the sharedSecret value returned by the API.' },
+      { step: 4, title: 'Paste the Shared Secret', description: 'Paste the sharedSecret below. Baton will use it to verify all incoming payloads.' },
+    ],
+    supportedEvents: [
+      { eventType: 'sheet.updated', label: 'Sheet Updated', description: 'A sheet was modified' },
+      { eventType: 'row.created', label: 'Row Created', description: 'A new row was added' },
+      { eventType: 'row.updated', label: 'Row Updated', description: 'A row was updated' },
+      { eventType: 'row.deleted', label: 'Row Deleted', description: 'A row was deleted' },
+      { eventType: 'attachment.created', label: 'Attachment Added', description: 'A file was attached to a row or sheet' },
+      { eventType: 'comment.created', label: 'Comment Added', description: 'A comment was posted' },
+    ],
+    webhookCapable: true,
+  },
+
   // ─── New platforms ────────────────────────────────────────────
 
   zendesk: {

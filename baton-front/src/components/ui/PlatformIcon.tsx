@@ -33,6 +33,7 @@ export const PLATFORM_BRAND_COLORS: Record<string, string> = {
   zohocrm: '#0770B7',
   docusign: '#4C00FF',
   zendesk: '#03363D',
+  smartsheet: '#002F58',
   slack: '#4A154B',
   greenhouse: '#24A47F',
   mondaycom: '#F62B54',
@@ -108,7 +109,25 @@ const PLATFORM_SVG_ICONS: Record<string, SvgIcon> = {
     ],
   },
 
-
+  smartsheet: {
+    name: 'Smartsheet',
+    viewBox: '0 0 100 113',
+    paths: [
+      // Classic Smartsheet mark: navy sheet with white check, page curling at
+      // the bottom. Traced from the official raster mark (447px) - the navy is
+      // the sampled brand value rgb(0,47,88).
+      {
+        // Sheet body with the check cut out of it and the bottom sweep
+        d: 'M0,0 L84,0 C70,20 55,44 48.5,61 C45,53 40,47 33.5,43.5 L21,43.5 C29.5,54 39.5,71 43.5,88 C52,64 68,28 97,0 L100,0 C99,28 98,55 97,78 C88,82 78,85.5 68,88 C48,95 25,104 6,110.5 C3,111.5 1.5,104 0.5,70 C0,45 0,20 0,0 Z',
+        fill: '#002F58',
+      },
+      {
+        // Curled page corner under the sweep
+        d: 'M73,92 C81,88.5 89,85 96,81 C96,88.5 93.5,97.5 88.5,105 C82,101 77,96.5 73,92 Z',
+        fill: '#002F58',
+      },
+    ],
+  },
 
   slack: {
     name: 'Slack',

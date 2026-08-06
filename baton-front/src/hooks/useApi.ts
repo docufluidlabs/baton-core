@@ -821,17 +821,256 @@ export async function testSlackNotification(): Promise<{ message: string }> {
   return api.post<{ message: string }>('/slack/test');
 }
 
+// ─── Bulk Upload ─────────────────────────────────────────────
+// A Bulk Upload processor launches a Docusign Workflow Builder workflow once
+// per file row, throttled. See BulkUploadPage / BulkUploadWizard / BatchLogsSidebar.
+
+export type BatchRunStatus = 'draft' | 'queued' | 'running' | 'paused' | 'completed' | 'stopped' | 'cancelled';
+
+/** Row status as returned by the API (display-resolved: 'launched' rows with a
+ *  live instance come back as running/completed/failed/cancelled). */
+export type BatchRowStatus =
+  | 'staged' | 'queued' | 'launching' | 'launched'
+  | 'running' | 'completed' | 'failed' | 'cancelled' | 'skipped';
+
+export interface BatchRunCounts {
+  queued: number;
+  running: number;
+  completed: number;
+  failed: number;
+  cancelled: number;
+  skipped: number;
+}
+
+export type BatchMappingEntry =
+  | { type: 'column'; column: string }
+  | { type: 'fixed'; value: string };
+
+export type BatchMapping = Record<string, BatchMappingEntry>;
+
+export type BatchRowSelection = { mode: 'all' } | { mode: 'range'; from: number; to: number };
+
+export interface BatchRunSettings {
+  releaseCount: number;
+  intervalMinutes: number;
+  stopAfterFailures: number;
+}
+
+export interface BatchRunSummary {
+  id: string;
+  runNumber: number;
+  fileName: string;
+  status: BatchRunStatus;
+  totalRows: number;
+  selectedRows: number;
+  counts: BatchRunCounts;
+  startedAt?: string;
+  completedAt?: string;
+  /** Dispatcher due time — present on active runs so the bubble can count down. */
+  nextReleaseAt?: string;
+  // GET /:id/runs enriches summaries with the run's settings and file columns.
+  settings?: BatchRunSettings;
+  columns?: string[];
+}
+
+export interface BatchProcessor {
+  id: string;
+  orgId: string;
+  name: string;
+  targetWorkflowId: string;
+  sourcePlatform?: string;
+  status: 'active';
+  throttleReleaseCount: number;
+  throttleIntervalMinutes: number;
+  stopAfterConsecutiveFailures: number;
+  createdAt: string;
+  updatedAt?: string;
+  createdBy?: string;
+  lastRun?: BatchRunSummary;
+  activeRun?: BatchRunSummary;
+  /** Runs waiting behind the active one, oldest first (strict run sequence). */
+  queuedRuns?: BatchRunSummary[];
+  /** Sequence aggregates across all non-draft runs of this processor. */
+  runsTotal?: number;
+  rowsTotal?: number;
+  rowsProcessed?: number;
+}
+
+export interface BatchRow {
+  rowNumber: number;
+  seq?: number;
+  name: string;
+  status: BatchRowStatus;
+  problems: string[];
+  data: Record<string, string>;
+  workflowInstanceId?: string;
+  maestroInstanceId?: string;
+  instance?: {
+    status: string;
+    currentStep?: string;
+    lastCompletedStep?: number;
+    totalSteps?: number;
+    instanceUrl?: string;
+  };
+  errorMessage?: string;
+  launchedAt?: string;
+  completedAt?: string;
+}
+
+export interface BatchUploadResult {
+  runId: string;
+  columns: string[];
+  totalRows: number;
+  blankRowsSkipped: number;
+  sheetNames: string[];
+  sheetName?: string;
+  /** First 3 data rows, keyed by column header. */
+  preview: Record<string, string>[];
+}
+
+export interface BatchPreflightResult {
+  readyRows: number;
+  problemRows: { rowNumber: number; problems: string[] }[];
+  unmappedRequired: string[];
+  estimatedMinutes: number;
+  /** Usage figures from the relay meter - null on self-hosted installs (no metering). */
+  planUsage?: { used: number | null; included: number | null };
+}
+
+export function useBatchProcessors() {
+  return useSWR<{ processors: BatchProcessor[] }>('/batch-processors', fetcher, {
+    refreshInterval: 15_000,
+  });
+}
+
+export function useBatchRuns(processorId: string | null) {
+  return useSWR<{ runs: BatchRunSummary[] }>(
+    processorId ? `/batch-processors/${processorId}/runs` : null,
+    fetcher,
+    { refreshInterval: 10_000 },
+  );
+}
+
+export function useBatchRows(processorId: string | null, runId: string | null, statusFilter?: string) {
+  return useSWR<{ rows: BatchRow[] }>(
+    processorId && runId
+      ? `/batch-processors/${processorId}/runs/${runId}/rows${statusFilter ? `?status=${statusFilter}` : ''}`
+      : null,
+    fetcher,
+    { refreshInterval: 10_000 },
+  );
+}
+
+export async function createBatchProcessor(data: {
+  name: string;
+  targetWorkflowId: string;
+  sourcePlatform?: string;
+  throttleReleaseCount?: number;
+  throttleIntervalMinutes?: number;
+  stopAfterConsecutiveFailures?: number;
+}) {
+  const res = await api.post<{ processor: BatchProcessor }>('/batch-processors', data);
+  toast.success('Bulk Upload created');
+  return res;
+}
+
+export async function updateBatchProcessor(id: string, data: Partial<{
+  name: string;
+  targetWorkflowId: string;
+  sourcePlatform: string;
+  throttleReleaseCount: number;
+  throttleIntervalMinutes: number;
+  stopAfterConsecutiveFailures: number;
+}>) {
+  const res = await api.patch<{ processor: BatchProcessor }>(`/batch-processors/${id}`, data);
+  toast.success('Bulk Upload updated');
+  return res;
+}
+
+export async function deleteBatchProcessor(id: string) {
+  await api.delete(`/batch-processors/${id}`);
+  toast.success('Bulk Upload deleted');
+}
+
+/** Upload a CSV/XLSX/TSV file — creates (or replaces) the draft run.
+ *  Sends FormData; Content-Type is intentionally NOT set manually so the
+ *  browser adds the multipart boundary itself. */
+export async function uploadBatchFile(processorId: string, file: File, sheet?: string): Promise<BatchUploadResult> {
+  const form = new FormData();
+  form.append('file', file);
+  const qs = sheet ? `?sheet=${encodeURIComponent(sheet)}` : '';
+  return api.postForm<BatchUploadResult>(`/batch-processors/${processorId}/uploads${qs}`, form);
+}
+
+export async function preflightBatchRun(processorId: string, runId: string, data: {
+  mapping: BatchMapping;
+  rowSelection: BatchRowSelection;
+  settings: BatchRunSettings;
+}): Promise<BatchPreflightResult> {
+  return api.post<BatchPreflightResult>(`/batch-processors/${processorId}/runs/${runId}/preflight`, data);
+}
+
+export async function startBatchRun(processorId: string, runId: string, data: {
+  mapping: BatchMapping;
+  rowSelection: BatchRowSelection;
+  settings: BatchRunSettings;
+  skipProblemRows: boolean;
+}): Promise<{ run: BatchRunSummary }> {
+  const res = await api.post<{ run: BatchRunSummary }>(`/batch-processors/${processorId}/runs/${runId}/start`, data);
+  if (res.run?.status === 'queued') {
+    toast.success('Run queued - it starts when the current run finishes');
+  } else {
+    toast.success('Bulk Upload run started');
+  }
+  return res;
+}
+
+export async function pauseBatchRun(processorId: string, runId: string): Promise<void> {
+  await api.post(`/batch-processors/${processorId}/runs/${runId}/pause`);
+  toast.success('Run paused');
+}
+
+export async function resumeBatchRun(processorId: string, runId: string): Promise<void> {
+  const res = await api.post<{ run?: BatchRunSummary }>(`/batch-processors/${processorId}/runs/${runId}/resume`);
+  if (res.run?.status === 'queued') {
+    toast.success('Run re-queued - another run took over while this one was stopped');
+  } else {
+    toast.success('Run resumed');
+  }
+}
+
+export async function cancelBatchRun(processorId: string, runId: string, scope: 'queued' | 'all'): Promise<void> {
+  await api.post(`/batch-processors/${processorId}/runs/${runId}/cancel`, { scope });
+  toast.success(scope === 'all' ? 'Queued and launched rows cancelled' : 'Queued rows cancelled');
+}
+
+export async function cancelBatchRow(processorId: string, runId: string, rowNumber: number): Promise<void> {
+  await api.post(`/batch-processors/${processorId}/runs/${runId}/rows/${rowNumber}/cancel`);
+  toast.success('Row cancelled');
+}
+
 // ─── Flow Layout ─────────────────────────────────────────────
 
-export type FlowPositions = Record<string, { x: number; y: number }>;
+/** Logical grid cell of a canvas node - see pages/flowBuilderGrid.ts. */
+export interface FlowCell { col: number; row: number }
+/** Partial map of node id → cell. Saves are per-key: only the sent ids are written. */
+export type FlowPositions = Record<string, FlowCell>;
+/** Server entries may still be legacy pixel positions from before the cells refactor. */
+export type StoredFlowPosition = FlowCell | { x: number; y: number };
 
-export async function getFlowLayout(): Promise<FlowPositions> {
-  const res = await api.get<{ positions: FlowPositions }>('/flow-layout');
+export async function getFlowLayout(): Promise<Record<string, StoredFlowPosition>> {
+  const res = await api.get<{ positions: Record<string, StoredFlowPosition> }>('/flow-layout');
   return res.positions ?? {};
 }
 
-export async function saveFlowLayout(positions: FlowPositions): Promise<void> {
-  await api.patch('/flow-layout', { positions });
+/**
+ * Persist layout cells. `positions` are user moves (overwrite the server key);
+ * `pins` are default placements (create-only server-side: if another device
+ * already saved a cell for that node, the pin is a no-op and the poll delivers
+ * the winning cell).
+ */
+export async function saveFlowLayout(positions: FlowPositions, pins?: FlowPositions): Promise<void> {
+  await api.patch('/flow-layout', { positions, pins: pins ?? {} });
 }
 
 // ─── Notification Preferences ────────────────────────────────

@@ -1,11 +1,18 @@
 /**
  * Flow Builder Page — Baton
  *
- * Uses Zustand (flowStore) for UI state: sidebar, confirm modal, tip, fitView.
- * ReactFlow nodes/edges are still local (useNodesState) because they need
- * ReactFlow's internal change-tracking.
+ * Uses Zustand (flowStore) for UI state: sidebar, confirm modal, tip, fitView,
+ * and the saved cell layout. ReactFlow nodes/edges are still local
+ * (useNodesState) because they need ReactFlow's internal change-tracking.
+ *
+ * Layout model: the canvas is a fixed grid (see flowBuilderGrid). Every node
+ * occupies one logical cell {col, row}; the server stores cells per node id and
+ * writes are per-key, so devices never overwrite each other's layout. Pixel
+ * positions are derived at render time with nodeOrigin=[0.5,0.5] — ReactFlow
+ * centers each card in its cell whatever its measured size, so content and
+ * font changes can never shift the layout.
  */
-import { useMemo, useEffect, useCallback, useRef, Component, type ReactNode } from 'react';
+import { useMemo, useEffect, useCallback, useRef, useState, Component, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   ReactFlow,
@@ -13,8 +20,8 @@ import {
   Background,
   BackgroundVariant,
   Controls,
-  // MiniMap,
   Panel,
+  ViewportPortal,
   useNodesState,
   useEdgesState,
   useNodesInitialized,
@@ -22,6 +29,7 @@ import {
   type Node,
   type Edge,
   type NodeTypes,
+  type XYPosition,
   MarkerType,
   ConnectionMode,
 } from '@xyflow/react';
@@ -34,7 +42,9 @@ import {
   useInstanceCounts,
   updateAutomationStatus,
   saveFlowLayout,
+  type FlowCell,
   type FlowPositions,
+  type StoredFlowPosition,
 } from '@/hooks/useApi';
 import useSWR, { useSWRConfig } from 'swr';
 import { fetcher } from '@/lib/api';
@@ -47,9 +57,8 @@ import { useFlowStore } from '@/stores/flowStore';
 import { Plus, Loader2, GitBranch, X as XIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  COL_X, ROW_GAP, START_Y,
-  CELL_W, CELL_H, GRID_ORIGIN_X, GRID_ORIGIN_Y, CELL_PAD_X, CELL_PAD_TOP,
-  snapToCell, nodeHeight, yCenteringOffset, normalizePositions,
+  CELL_W, CELL_H, GRID_LEFT, GRID_TOP, COL,
+  type Cell, cellCenter, cellFromPoint, cellRect, cellKey, clampCell, toCell, findFreeRow, findNearestFreeRow,
 } from './flowBuilderGrid';
 import { reconcileNodes, findDanglingEdges } from './flowBuilderSync';
 
@@ -61,12 +70,14 @@ const nodeTypes: NodeTypes = {
   workflow: WorkflowNode,
 };
 
-// ─── Layout / Grid Constants ─────────────────────────────────
-// Pure grid geometry (snapping, centering, collision resolution) lives in
-// ./flowBuilderGrid so it can be unit-tested without React/ReactFlow.
-
 const EMPTY_NODES: Node[] = [];
 const EMPTY_EDGES: Edge[] = [];
+const EMPTY_ASSIGNMENTS: FlowPositions = {};
+
+// Poll entries for a node the user saved in the last 15 s are ignored — a GET
+// dispatched before our PATCH landed can resolve after it and would otherwise
+// snap the node back to its stale position.
+const RECENT_SAVE_GUARD_MS = 15_000;
 
 // ─── ReactFlow Error Boundary ────────────────────────────────
 // Isolates ReactFlow crashes so the rest of the UI (sidebars, header) stays intact.
@@ -121,14 +132,10 @@ function FlowBuilderContent() {
     sidebarOpen, editingAutomation, openSidebar, closeSidebar,
     tipDismissed, dismissTip,
     setRfInstance,
-    getSavedPosition, saveNodePosition, mergeServerPositions,
+    savedCells, setNodeCells,
     openActivityLog,
     logsRuleId, logsRuleName, logsInitialActionNumber, openLogs, closeLogs,
   } = useFlowStore();
-
-  // Activity Log button moved to AppLayout's bottom nav (after Notifications).
-  // The sidebar itself is rendered globally there, so FlowBuilder only handles
-  // its own automation/instances/action-logs sidebars.
 
   const location = useLocation();
 
@@ -151,70 +158,276 @@ function FlowBuilderContent() {
   // re-render loop until /instances/counts resolves. That loop caused
   // partially-rendered nodes on tab switch / reload.
   const statusCounts = useMemo(() => countsData?.counts ?? {}, [countsData]);
-  const isLoading = !connData || !automationsData || !wfData;
+
+  // ─── Cell Persistence ────────────────────────────────────
+
+  // Cells the user moved locally that the server hasn't acknowledged yet.
+  const dirtyCellsRef = useRef<Map<string, FlowCell>>(new Map());
+  // Default placements queued as create-only pins (see saveFlowLayout).
+  const pinCellsRef = useRef<Map<string, FlowCell>>(new Map());
+  // Node id → time of its last acknowledged save (see RECENT_SAVE_GUARD_MS).
+  const recentlySavedRef = useRef<Map<string, number>>(new Map());
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushInFlightRef = useRef(false);
+  const flushPromiseRef = useRef<Promise<void> | null>(null);
+  const flushFailuresRef = useRef(0);
+  // Legacy pixel entries are re-saved as cells once per session.
+  const migratedLegacyRef = useRef(false);
+
+  // Flush pending cells to the server. Only the queued keys are sent — the
+  // server merges per key, so this can never clobber another device's moves.
+  // Exactly one PATCH is in flight at a time: overlapping requests for the
+  // same key could complete out of order and persist the older cell.
+  const scheduleFlush = useCallback((delayMs: number) => {
+    if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
+    flushTimerRef.current = setTimeout(async () => {
+      flushTimerRef.current = null;
+      if (flushInFlightRef.current) { scheduleFlush(300); return; }
+      const moves = Object.fromEntries(dirtyCellsRef.current);
+      const pins = Object.fromEntries(pinCellsRef.current);
+      if (Object.keys(moves).length === 0 && Object.keys(pins).length === 0) return;
+      flushInFlightRef.current = true;
+      try {
+        const request = saveFlowLayout(moves, pins);
+        flushPromiseRef.current = request;
+        await request;
+        flushFailuresRef.current = 0;
+        const now = Date.now();
+        for (const [id, cell] of Object.entries(moves)) {
+          recentlySavedRef.current.set(id, now);
+          const pending = dirtyCellsRef.current.get(id);
+          if (pending && pending.col === cell.col && pending.row === cell.row) {
+            dirtyCellsRef.current.delete(id);
+          }
+        }
+        for (const [id, cell] of Object.entries(pins)) {
+          // No recently-saved guard for pins: the server may have kept another
+          // device's cell (create-only write) and the poll should deliver it.
+          const pending = pinCellsRef.current.get(id);
+          if (pending && pending.col === cell.col && pending.row === cell.row) {
+            pinCellsRef.current.delete(id);
+          }
+        }
+        // A drag landed while the request was in flight — flush it too.
+        if (dirtyCellsRef.current.size > 0 || pinCellsRef.current.size > 0) scheduleFlush(500);
+      } catch {
+        // Transient failure — retry with capped backoff instead of sticking
+        // dirty forever (cells are clamped to server bounds, so a validation
+        // reject can't poison the batch).
+        flushFailuresRef.current += 1;
+        scheduleFlush(Math.min(5_000 * 2 ** (flushFailuresRef.current - 1), 60_000));
+      } finally {
+        flushInFlightRef.current = false;
+      }
+    }, delayMs);
+  }, []);
+
+  // Every cell entering the queues is clamped here - the single choke point -
+  // so no producer (drag, keyboard, pin, findFreeRow fallback) can ever queue
+  // a cell the server's schema rejects and wedge the flush loop.
+  const queueSave = useCallback((cells: FlowPositions) => {
+    for (const [id, cell] of Object.entries(cells)) dirtyCellsRef.current.set(id, clampCell(cell));
+    scheduleFlush(400);
+  }, [scheduleFlush]);
+
+  const queuePin = useCallback((cells: FlowPositions) => {
+    for (const [id, cell] of Object.entries(cells)) pinCellsRef.current.set(id, clampCell(cell));
+    scheduleFlush(400);
+  }, [scheduleFlush]);
+
+  // Flush whatever is pending when the page unmounts or the tab is hidden
+  // (best-effort, no retry) — a drop right before closing must not be lost to
+  // the 400 ms debounce.
+  useEffect(() => {
+    const flushNow = () => {
+      const moves = Object.fromEntries(dirtyCellsRef.current);
+      const pins = Object.fromEntries(pinCellsRef.current);
+      if (Object.keys(moves).length === 0 && Object.keys(pins).length === 0) return;
+      const send = () => { saveFlowLayout(moves, pins).catch(() => { /* best-effort */ }); };
+      // Chain on any in-flight PATCH so an unmount flush can't complete out of
+      // order with it and durably persist the older cell.
+      const inFlight = flushInFlightRef.current ? flushPromiseRef.current : null;
+      if (inFlight) void inFlight.then(send, send);
+      else send();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flushNow();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
+      flushNow();
+    };
+  }, []);
+
+  // Server layout — initial load + 10 s cross-device sync. Everything goes
+  // through the store (single source of truth for positions); setNodeCells
+  // no-ops when nothing changed, so a quiet poll causes zero re-renders.
+  const { data: layoutData, error: layoutError } = useSWR<{ positions: Record<string, StoredFlowPosition> }>(
+    '/flow-layout',
+    fetcher,
+    {
+      refreshInterval: 10_000,
+      revalidateOnFocus: true,
+      onSuccess: (data) => {
+        const raw = data?.positions ?? {};
+        const now = Date.now();
+        const incoming: FlowPositions = {};
+        const legacy: FlowPositions = {};
+        for (const [id, entry] of Object.entries(raw)) {
+          const cell = toCell(entry);
+          if (!cell) continue;
+          // Locally-dirty or just-saved nodes win over anything the server
+          // reports — including the legacy-migration re-save below, which must
+          // never overwrite a fresh drag with the old converted position.
+          if (dirtyCellsRef.current.has(id)) continue;
+          const savedAt = recentlySavedRef.current.get(id);
+          if (savedAt && now - savedAt < RECENT_SAVE_GUARD_MS) continue;
+          if (entry && typeof (entry as { col?: number }).col !== 'number') legacy[id] = cell;
+          incoming[id] = cell;
+        }
+        setNodeCells(incoming);
+        // One-time migration: re-save legacy pixel entries in cell format.
+        if (!migratedLegacyRef.current && Object.keys(legacy).length > 0) {
+          migratedLegacyRef.current = true;
+          queueSave(legacy);
+        }
+      },
+    },
+  );
+  // First paint waits for the saved layout (one small request) so nodes never
+  // render at defaults and then teleport when the layout arrives. A failed GET
+  // falls back to defaults rather than blocking the canvas.
+  const layoutReady = layoutData !== undefined || layoutError !== undefined;
+  const isLoading = !connData || !automationsData || !wfData || !layoutReady;
 
   // ─── Build Graph ─────────────────────────────────────────
 
-  const { computedNodes, computedEdges } = useMemo(() => {
-    if (isLoading) return { computedNodes: EMPTY_NODES, computedEdges: EMPTY_EDGES };
-
-    const nodes: Node[] = [];
-    const edges: Edge[] = [];
-
-    const referencedPlatforms = new Set(automations.map((r) => r.sourcePlatform));
-    const referencedWorkflows = new Set(automations.map((r) => r.targetWorkflowId));
+  const { computedNodes, computedEdges, defaultAssignments } = useMemo(() => {
+    if (isLoading) return { computedNodes: EMPTY_NODES, computedEdges: EMPTY_EDGES, defaultAssignments: EMPTY_ASSIGNMENTS };
 
     // DocuSign is OAuth-only — no webhook source, hide from canvas
     // TODO: re-enable when DocuSign Connect/Navigator webhook support is added
     const OAUTH_ONLY_PLATFORMS = new Set(['docusign']);
 
+    const referencedPlatforms = new Set(automations.map((r) => r.sourcePlatform));
+    const referencedWorkflows = new Set(automations.map((r) => r.targetWorkflowId));
+
     const platformNodeMap = new Map<string, string>();
-    let col1Index = 0;
+    const visibleConnections = connections.filter(
+      (c) => !OAUTH_ONLY_PLATFORMS.has(c.platform) && (referencedPlatforms.has(c.platform) || c.status === 'healthy'),
+    );
+    for (const conn of visibleConnections) platformNodeMap.set(conn.platform, `platform-${conn.platform}`);
+    // Active installed platforms (skip if already shown as connection)
+    const visibleInstalled = installedPlatforms.filter(
+      (p) => !OAUTH_ONLY_PLATFORMS.has(p.appSlug) && !platformNodeMap.has(p.appSlug) && p.status === 'active',
+    );
+    for (const p of visibleInstalled) platformNodeMap.set(p.appSlug, `platform-${p.appSlug}`);
 
-    connections
-      .filter((c) => !OAUTH_ONLY_PLATFORMS.has(c.platform) && (referencedPlatforms.has(c.platform) || c.status === 'healthy'))
-      .forEach((conn) => {
-        const nodeId = `platform-${conn.platform}`;
-        platformNodeMap.set(conn.platform, nodeId);
-        const platformAutomations = automations.filter((r) => r.sourcePlatform === conn.platform && !r.appSlug);
-        const defaultPos = { x: COL_X.platforms, y: START_Y + col1Index++ * ROW_GAP };
-        nodes.push({
-          id: nodeId,
-          type: 'platform',
-          position: getSavedPosition(nodeId) ?? defaultPos,
-          data: {
-            platform: conn.platform,
-            displayName: conn.displayName,
-            status: conn.status,
-            automationsCount: platformAutomations.length,
-            totalActionsThisMonth: platformAutomations.reduce((sum, r) => sum + r.timesTriggered, 0),
-            onAddAutomation: () => openSidebar(null, conn.platform),
-          } satisfies PlatformNodeData,
-        });
-      });
+    const visibleWorkflows = workflows.filter((wf) => referencedWorkflows.has(wf.id));
+    const workflowNodeMap = new Map(visibleWorkflows.map((wf) => [wf.id, `workflow-${wf.id}`]));
 
-    // Show active installed platforms (skip if already shown as connection)
-    installedPlatforms
-      .filter((p) => !OAUTH_ONLY_PLATFORMS.has(p.appSlug) && !platformNodeMap.has(p.appSlug) && p.status === 'active')
-      .forEach((platform) => {
-        const nodeId = `platform-${platform.appSlug}`;
-        platformNodeMap.set(platform.appSlug, nodeId);
-        const platformAutomations = automations.filter((r) => r.appSlug === platform.appSlug);
-        const defaultPos = { x: COL_X.platforms, y: START_Y + col1Index++ * ROW_GAP };
-        nodes.push({
-          id: nodeId,
-          type: 'platform',
-          position: getSavedPosition(nodeId) ?? defaultPos,
-          data: {
-            platform: platform.appSlug,
-            displayName: platform.displayName,
-            status: 'healthy' as const,
-            automationsCount: platformAutomations.length,
-            totalActionsThisMonth: platformAutomations.reduce((sum, r) => sum + r.timesTriggered, 0),
-            onAddAutomation: () => openSidebar(null, platform.appSlug),
-          } satisfies PlatformNodeData,
-        });
+    // ── Pass 1: give every node a grid cell ────────────────
+    // Saved cells claim first, so a default can never displace an arranged
+    // node. Unsaved nodes then fill the nearest free cell in their lane,
+    // anchored to their platform's row — and those assignments are reported in
+    // `defaultAssignments` so the page pins them to the server: a node keeps
+    // its cell for life instead of re-deriving it from volatile list order.
+    const occupied = new Set<string>();
+    const cells = new Map<string, Cell>();
+    const defaults: FlowPositions = {};
+
+    const platformIds = [...platformNodeMap.values()];
+    const allIds = [
+      ...platformIds,
+      ...automations.map((a) => `pair-${a.id}`),
+      ...visibleWorkflows.map((wf) => `workflow-${wf.id}`),
+    ];
+    for (const id of allIds) {
+      const saved = savedCells[id];
+      if (!saved) continue;
+      if (occupied.has(cellKey(saved))) {
+        // Two nodes saved into the same cell (concurrent writes) — render the
+        // later one below without overwriting either node's saved cell.
+        const row = findFreeRow(occupied, saved.col, saved.row);
+        cells.set(id, { col: saved.col, row });
+        occupied.add(cellKey({ col: saved.col, row }));
+      } else {
+        cells.set(id, saved);
+        occupied.add(cellKey(saved));
+      }
+    }
+
+    const assignDefault = (id: string, col: number, preferredRow: number, nearest = false) => {
+      if (cells.has(id)) return;
+      const row = nearest
+        ? findNearestFreeRow(occupied, col, preferredRow)
+        : findFreeRow(occupied, col, preferredRow);
+      const cell = { col, row };
+      cells.set(id, cell);
+      occupied.add(cellKey(cell));
+      defaults[id] = cell;
+    };
+
+    for (const id of platformIds) assignDefault(id, COL.platforms, 0);
+
+    const platformRowOf = (slug: string | undefined): number => {
+      const nodeId = slug ? platformNodeMap.get(slug) : undefined;
+      const cell = nodeId ? cells.get(nodeId) : undefined;
+      return cell ? cell.row : 0;
+    };
+    for (const a of automations) assignDefault(`pair-${a.id}`, COL.pairs, platformRowOf(a.appSlug || a.sourcePlatform), true);
+
+    // Workflows align with the first automation that feeds them.
+    const firstSourceRow = new Map<string, number>();
+    for (const a of automations) {
+      const r = cells.get(`pair-${a.id}`)?.row;
+      if (r !== undefined && !firstSourceRow.has(a.targetWorkflowId)) firstSourceRow.set(a.targetWorkflowId, r);
+    }
+    for (const wf of visibleWorkflows) assignDefault(`workflow-${wf.id}`, COL.workflows, firstSourceRow.get(wf.id) ?? 0, true);
+
+    // ── Pass 2: build nodes and edges ──────────────────────
+
+    const nodes: Node[] = [];
+    const edges: Edge[] = [];
+    const positionOf = (id: string) => cellCenter(cells.get(id)!);
+
+    visibleConnections.forEach((conn) => {
+      const nodeId = platformNodeMap.get(conn.platform)!;
+      const platformAutomations = automations.filter((r) => r.sourcePlatform === conn.platform && !r.appSlug);
+      nodes.push({
+        id: nodeId,
+        type: 'platform',
+        position: positionOf(nodeId),
+        data: {
+          platform: conn.platform,
+          displayName: conn.displayName,
+          status: conn.status,
+          automationsCount: platformAutomations.length,
+          totalActionsThisMonth: platformAutomations.reduce((sum, r) => sum + r.timesTriggered, 0),
+          onAddClick: () => openSidebar(null, conn.platform),
+        } satisfies PlatformNodeData,
       });
+    });
+
+    visibleInstalled.forEach((platform) => {
+      const nodeId = platformNodeMap.get(platform.appSlug)!;
+      const platformAutomations = automations.filter((r) => r.appSlug === platform.appSlug);
+      nodes.push({
+        id: nodeId,
+        type: 'platform',
+        position: positionOf(nodeId),
+        data: {
+          platform: platform.appSlug,
+          displayName: platform.displayName,
+          status: 'healthy' as const,
+          automationsCount: platformAutomations.length,
+          totalActionsThisMonth: platformAutomations.reduce((sum, r) => sum + r.timesTriggered, 0),
+          onAddClick: () => openSidebar(null, platform.appSlug),
+        } satisfies PlatformNodeData,
+      });
+    });
 
     // Pre-compute average success rate per workflow from its automations
     const wfSuccessRates = new Map<string, number>();
@@ -226,45 +439,39 @@ function FlowBuilderContent() {
       }
     }
 
-    const workflowNodeMap = new Map<string, string>();
-    // Show only workflows that have active automations
-    const visibleWorkflows = workflows.filter((wf) => referencedWorkflows.has(wf.id));
-    visibleWorkflows.forEach((wf, i) => {
-        const nodeId = `workflow-${wf.id}`;
-        workflowNodeMap.set(wf.id, nodeId);
-        const defaultPos = { x: COL_X.workflows, y: START_Y + i * ROW_GAP };
-        nodes.push({
-          id: nodeId,
-          type: 'workflow',
-          position: getSavedPosition(nodeId) ?? defaultPos,
-          data: {
-            workflowId: wf.id,
-            workflowName: wf.name,
-            maestroStatus: wf.maestroStatus,
-            platform: connections.find((c) => c.id === wf.connectionId)?.platform,
-            launchCount: wf.launchCount,
-            completedCount: statusCounts[wf.id]?.completed ?? 0,
-            failCount: statusCounts[wf.id]?.failed ?? 0,
-            cancelledCount: statusCounts[wf.id]?.cancelled ?? 0,
-            runningCount: statusCounts[wf.id]?.running ?? 0,
-            lastLaunchedAt: wf.lastLaunchedAt,
-            successRate: wfSuccessRates.get(wf.id),
-            maestroInstancesUrl: wf.maestroInstancesUrl,
-            onViewInstances: () => openActivityLog(wf.id, wf.name),
-          } satisfies WorkflowNodeData,
-        });
+    visibleWorkflows.forEach((wf) => {
+      const nodeId = workflowNodeMap.get(wf.id)!;
+      nodes.push({
+        id: nodeId,
+        type: 'workflow',
+        position: positionOf(nodeId),
+        data: {
+          workflowId: wf.id,
+          workflowName: wf.name,
+          maestroStatus: wf.maestroStatus,
+          platform: connections.find((c) => c.id === wf.connectionId)?.platform,
+          launchCount: wf.launchCount,
+          completedCount: statusCounts[wf.id]?.completed ?? 0,
+          failCount: statusCounts[wf.id]?.failed ?? 0,
+          cancelledCount: statusCounts[wf.id]?.cancelled ?? 0,
+          runningCount: statusCounts[wf.id]?.running ?? 0,
+          lastLaunchedAt: wf.lastLaunchedAt,
+          successRate: wfSuccessRates.get(wf.id),
+          maestroInstancesUrl: wf.maestroInstancesUrl,
+          onViewInstances: () => openActivityLog(wf.id, wf.name),
+        } satisfies WorkflowNodeData,
       });
+    });
 
-    automations.forEach((automation, i) => {
+    automations.forEach((automation) => {
       const nodeId = `pair-${automation.id}`;
       const wf = workflows.find((w) => w.id === automation.targetWorkflowId);
       const eventLabel = automation.eventType.replace(/\./g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
-      const pairDefaultPos = { x: COL_X.pairs, y: START_Y + i * ROW_GAP };
       nodes.push({
         id: nodeId,
         type: 'pair',
-        position: getSavedPosition(nodeId) ?? pairDefaultPos,
+        position: positionOf(nodeId),
         data: {
           automationId: automation.id,
           automationName: automation.name,
@@ -310,146 +517,52 @@ function FlowBuilderContent() {
       }
     });
 
-    // Normalize all positions onto the current grid and resolve collisions —
-    // saved positions from a previous grid size end up off-cell otherwise.
-    return { computedNodes: normalizePositions(nodes), computedEdges: edges };
-  }, [connections, automations, workflows, installedPlatforms, isLoading, statusCounts, getSavedPosition]); // eslint-disable-line react-hooks/exhaustive-deps
+    return { computedNodes: nodes, computedEdges: edges, defaultAssignments: defaults };
+  }, [connections, automations, workflows, installedPlatforms, isLoading, statusCounts, savedCells]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── ReactFlow State ─────────────────────────────────────
 
   const [nodes, setNodes, onNodesChange] = useNodesState(computedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(computedEdges);
 
-  // Track whether user is currently dragging on this device
-  const isDraggingRef = useRef(false);
-  // Node IDs whose local position hasn't been confirmed on the server yet.
-  // Protects rapidly-dragged nodes from being clobbered by a stale SWR poll
-  // response that arrives between drag-end and the debounced server save.
-  const dirtyIdsRef = useRef<Set<string>>(new Set());
-
-  // Poll server positions every 10 s — initial load + cross-device sync
-  useSWR<{ positions: FlowPositions }>('/flow-layout', fetcher, {
-    refreshInterval: 10_000,
-    revalidateOnFocus: true,
-    onSuccess: (data) => {
-      if (isDraggingRef.current) return;
-      const positions = data?.positions ?? {};
-      if (Object.keys(positions).length === 0) return;
-      // Drop positions for nodes the user has dragged locally but the server
-      // hasn't acknowledged yet — otherwise the response (still stale) would
-      // make them snap back.
-      const dirty = dirtyIdsRef.current;
-      const safe: FlowPositions = {};
-      for (const [id, pos] of Object.entries(positions)) {
-        if (!dirty.has(id)) safe[id] = pos;
-      }
-      if (Object.keys(safe).length === 0) return;
-      mergeServerPositions(safe);
-      // Push new positions into the live ReactFlow node state.
-      // Guard: if nodes aren't loaded yet (prev=[]) skip — mergeNodes will
-      // pick up server positions from the store once main data arrives.
-      setNodes((prev) => {
-        if (prev.length === 0) return prev;
-        const merged = prev.map((n) => {
-          const pos = safe[n.id];
-          return pos ? { ...n, position: pos } : n;
-        });
-        return normalizePositions(merged);
-      });
-    },
-  });
-
-  // Debounced save to server so positions stay in sync across devices
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Captures the node's position at drag-start so we can revert on a collision.
-  const dragStartPosRef = useRef<Map<string, { x: number; y: number }>>(new Map());
-
-  const onNodeDragStart = useCallback((_e: React.MouseEvent, node: Node) => {
-    isDraggingRef.current = true;
-    dragStartPosRef.current.set(node.id, node.position);
-  }, []);
-
-  // Persist position when a node is dragged
-  const onNodeDragStop = useCallback(
-    (_event: React.MouseEvent, node: Node) => {
-      isDraggingRef.current = false;
-      const original = dragStartPosRef.current.get(node.id) ?? node.position;
-      dragStartPosRef.current.delete(node.id);
-      const off = yCenteringOffset(nodeHeight(node));
-      // Convert the visual drop position back to its grid anchor before snapping.
-      const anchor = { x: node.position.x, y: node.position.y - off };
-      const snapped = snapToCell(anchor);
-      const snappedVisualY = snapped.y + off;
-
-      // If snapping landed us back where we started, just revert silently.
-      if (snapped.x === original.x && snappedVisualY === original.y) {
-        setNodes((prev) => prev.map((n) => (n.id === node.id ? { ...n, position: original } : n)));
-        return;
-      }
-
-      // Collision check: is the target cell occupied by another node?
-      const occupiedBy = nodes.find((n) => {
-        if (n.id === node.id) return false;
-        const otherAnchor = { x: n.position.x, y: n.position.y - yCenteringOffset(nodeHeight(n)) };
-        const c = snapToCell(otherAnchor);
-        return c.col === snapped.col && c.row === snapped.row;
-      });
-
-      if (occupiedBy) {
-        setNodes((prev) => prev.map((n) => (n.id === node.id ? { ...n, position: original } : n)));
-        toast.info('Клітинка зайнята', { description: 'Перетягніть бабл у вільну клітинку' });
-        return;
-      }
-
-      const finalPos = { x: snapped.x, y: snappedVisualY };
-      setNodes((prev) => prev.map((n) => (n.id === node.id ? { ...n, position: finalPos } : n)));
-      dirtyIdsRef.current.add(node.id);
-      saveNodePosition(node.id, finalPos);
-      // Debounce server save — collect rapid drags and flush after 1.5 s
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(async () => {
-        const snapshot = { ...useFlowStore.getState().savedPositions };
-        try {
-          await saveFlowLayout(snapshot);
-          // Only clear dirty for nodes whose local position still matches
-          // what we just sent — a drag during the await means the snapshot
-          // is already outdated for that node, so leave it dirty for the
-          // next debounce.
-          const current = useFlowStore.getState().savedPositions;
-          for (const id of Array.from(dirtyIdsRef.current)) {
-            const s = snapshot[id];
-            const c = current[id];
-            if (s && c && s.x === c.x && s.y === c.y) {
-              dirtyIdsRef.current.delete(id);
-            }
-          }
-        } catch { /* keep dirty so next drag re-flushes */ }
-      }, 1500);
-    },
-    [nodes, setNodes, saveNodePosition],
-  );
+  // Nodes currently being dragged — reconcile leaves their positions alone.
+  const draggingIdsRef = useRef<Set<string>>(new Set());
+  // Position of each dragged node at drag-start, for the occupied-cell revert.
+  const dragStartPosRef = useRef<Map<string, XYPosition>>(new Map());
+  // Cell under the dragged node, highlighted as the drop target.
+  const [dropTarget, setDropTarget] = useState<{ cell: Cell; valid: boolean } | null>(null);
 
   // Node/edge reconciliation lives in ./flowBuilderSync (pure, unit-tested).
   //
   // `computedNodes` and `computedEdges` come from one useMemo, so they always
-  // describe the same snapshot — whenever edges advance to a new snapshot, nodes
-  // must advance to it too. An earlier version skipped the node merge once on a
-  // warm (SWR-cache) mount and synced only edges; if the snapshot changed between
-  // the render that seeded useNodesState() and this effect's first run (a poll,
-  // statusCounts resolving, a StrictMode double-render…), edges pointed at a newer
-  // node set than the nodes in state and arrows/bubbles vanished until the next
-  // poll. `reconcileNodes` keeps the warm-mount no-op (returns prev unchanged when
-  // the snapshot is identical, so ReactFlow keeps its measurements / drag state)
-  // while always re-syncing nodes whenever the snapshot actually advances.
+  // describe the same snapshot — whenever edges advance to a new snapshot,
+  // nodes must advance to it too (otherwise arrows point at missing bubbles).
+  // Positions are store-driven: reconcile adopts the computed cell centers,
+  // preserving only measurements/selection and any in-flight drag.
   const lastSyncedNodesRef = useRef(computedNodes);
   useEffect(() => {
     const prevSynced = lastSyncedNodesRef.current;
     lastSyncedNodesRef.current = computedNodes;
-    setNodes((prev) => reconcileNodes(prev, computedNodes, prevSynced));
+    // Keyboard-moved nodes awaiting their commit are protected like drags —
+    // a data poll mid-move must not snap them back.
+    const inFlight = new Set([...draggingIdsRef.current, ...keyboardMovedIdsRef.current]);
+    setNodes((prev) => reconcileNodes(prev, computedNodes, prevSynced, inFlight));
     setEdges(computedEdges);
   }, [computedNodes, computedEdges, setNodes, setEdges]);
 
-  // Dev-only guard: surfaces the very desync the reconcile above prevents, so a
+  // Pin freshly-assigned default cells: store first (so the next render treats
+  // them as saved), then persist per-key. Without this, unsaved nodes would
+  // re-derive their row from list order and shift when platforms or
+  // automations come and go. Never pins while the layout GET hasn't succeeded —
+  // a transient error must not overwrite the org's saved layout with defaults.
+  useEffect(() => {
+    if (layoutData === undefined) return;
+    if (Object.keys(defaultAssignments).length === 0) return;
+    setNodeCells(defaultAssignments);
+    queuePin(defaultAssignments);
+  }, [defaultAssignments, layoutData, setNodeCells, queuePin]);
+
+  // Dev-only guard: surfaces node/edge snapshot desync (dangling arrows) so a
   // future regression shows up in the console instead of silently dropping arrows.
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -466,11 +579,9 @@ function FlowBuilderContent() {
 
   // Fit view ONCE, the first time ReactFlow has measured all nodes.
   // useNodesInitialized flips to true only after ResizeObserver has measured
-  // every node — calling fitView earlier (the old setTimeout approach) computed
-  // a bounding box from unmeasured nodes and left the viewport off-center.
-  // We deliberately do NOT refit when the node count changes afterwards, so a
-  // background SWR poll (or any data update) never overrides the user's manual
-  // pan/zoom.
+  // every node — calling fitView earlier computed a bounding box from
+  // unmeasured nodes and left the viewport off-center. We deliberately do NOT
+  // refit afterwards, so background polls never override manual pan/zoom.
   const reactFlow = useReactFlow();
   const nodesInitialized = useNodesInitialized();
   const didInitialFitRef = useRef(false);
@@ -481,35 +592,147 @@ function FlowBuilderContent() {
     didInitialFitRef.current = true;
   }, [computedNodes.length, nodesInitialized, reactFlow]);
 
-  // Re-center nodes once their actual rendered heights are known. The first
-  // paint uses NODE_H estimates; after ReactFlow measures each node, this
-  // effect rewrites positions so the visual center of the node lands on the
-  // cell center for its real height (matters for pair nodes with long names
-  // wrapping to 3 lines, etc.).
-  useEffect(() => {
-    if (!nodesInitialized) return;
-    if (isDraggingRef.current) return; // don't fight an in-progress drag
-    setNodes((prev) => {
-      const occupied = new Set<string>();
-      let changed = false;
-      const next = prev.map((n) => {
-        const off = yCenteringOffset(nodeHeight(n));
-        const col = Math.round((n.position.x - GRID_ORIGIN_X) / CELL_W);
-        const row = Math.round((n.position.y - off - GRID_ORIGIN_Y) / CELL_H);
-        let r = row;
-        while (occupied.has(`${col}|${r}`)) r++;
-        occupied.add(`${col}|${r}`);
-        const newX = GRID_ORIGIN_X + col * CELL_W;
-        const newY = GRID_ORIGIN_Y + r * CELL_H + off;
-        if (Math.abs(n.position.x - newX) > 0.5 || Math.abs(n.position.y - newY) > 0.5) {
-          changed = true;
-          return { ...n, position: { x: newX, y: newY } };
+  // ─── Drag Handling ───────────────────────────────────────
+  // Free-form drag with a live drop-target highlight; on drop the node snaps
+  // to the hovered cell (or reverts if that cell is taken) and the cell is
+  // queued for a per-key server save.
+
+  const onNodeDragStart = useCallback((_e: React.MouseEvent, node: Node | undefined, draggedNodes: Node[]) => {
+    const group = (draggedNodes?.length ? draggedNodes : [node]).filter((n): n is Node => !!n);
+    draggingIdsRef.current = new Set(group.map((n) => n.id));
+    for (const n of group) {
+      dragStartPosRef.current.set(n.id, n.position);
+      // Grabbing a node cancels its pending keyboard-move commit - otherwise
+      // the timer could fire mid-drag and persist a cell the pointer merely
+      // passed over. The drag's own drop logic takes over from here.
+      keyboardMovedIdsRef.current.delete(n.id);
+    }
+    if (keyboardMovedIdsRef.current.size === 0 && keyboardTimerRef.current) {
+      clearTimeout(keyboardTimerRef.current);
+      keyboardTimerRef.current = null;
+    }
+  }, []);
+
+  const onNodeDrag = useCallback((_e: React.MouseEvent, node: Node | undefined) => {
+    if (!node) return;
+    const cell = cellFromPoint(node.position);
+    const key = cellKey(cell);
+    const taken = nodes.some((n) => !draggingIdsRef.current.has(n.id) && cellKey(cellFromPoint(n.position)) === key);
+    setDropTarget((prev) =>
+      prev && prev.cell.col === cell.col && prev.cell.row === cell.row && prev.valid === !taken
+        ? prev
+        : { cell, valid: !taken },
+    );
+  }, [nodes]);
+
+  const onNodeDragStop = useCallback(
+    (_event: React.MouseEvent, node: Node | undefined, draggedNodes: Node[]) => {
+      const group = (draggedNodes?.length ? draggedNodes : [node]).filter((n): n is Node => !!n);
+      draggingIdsRef.current = new Set();
+      setDropTarget(null);
+
+      const groupIds = new Set(group.map((n) => n.id));
+      const occupied = new Set(
+        nodes.filter((n) => !groupIds.has(n.id)).map((n) => cellKey(cellFromPoint(n.position))),
+      );
+
+      const finalPos = new Map<string, XYPosition>();
+      const updates: FlowPositions = {};
+      let blocked = false;
+
+      for (const n of group) {
+        const start = dragStartPosRef.current.get(n.id) ?? n.position;
+        dragStartPosRef.current.delete(n.id);
+        const startCell = cellFromPoint(start);
+        const target = clampCell(cellFromPoint(n.position));
+        const moved = target.col !== startCell.col || target.row !== startCell.row;
+        const free = !occupied.has(cellKey(target));
+        if (moved && !free) blocked = true;
+        let cell: Cell;
+        if (moved && free) {
+          cell = target;
+        } else if (occupied.has(cellKey(startCell))) {
+          // Reverting, but another group member just claimed our start cell —
+          // fall to the nearest free row instead of stacking two nodes.
+          cell = { col: startCell.col, row: findFreeRow(occupied, startCell.col, startCell.row) };
+        } else {
+          cell = startCell;
         }
-        return n;
-      });
-      return changed ? next : prev;
-    });
-  }, [nodesInitialized, nodes, setNodes]);
+        occupied.add(cellKey(cell));
+        finalPos.set(n.id, cellCenter(cell));
+        if (cell.col !== startCell.col || cell.row !== startCell.row) updates[n.id] = cell;
+      }
+
+      setNodes((prev) => prev.map((n) => (finalPos.has(n.id) ? { ...n, position: finalPos.get(n.id)! } : n)));
+      if (blocked) toast.info('That cell is taken', { description: 'Drop the bubble on a free cell' });
+      if (Object.keys(updates).length > 0) {
+        setNodeCells(updates);
+        queueSave(updates);
+      }
+    },
+    [nodes, setNodes, setNodeCells, queueSave],
+  );
+
+  // ── Keyboard moves ───────────────────────────────────────
+  // ReactFlow moves selected nodes with arrow keys through onNodesChange
+  // without firing the drag handlers. Those moves would otherwise live only in
+  // ReactFlow state and snap back on the next data poll — so after the arrows
+  // go quiet, commit the node to the cell it landed on (or revert it).
+  const nodesRef = useRef<Node[]>(nodes);
+  nodesRef.current = nodes;
+  const keyboardMovedIdsRef = useRef<Set<string>>(new Set());
+  const keyboardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const commitKeyboardMoves = useCallback(() => {
+    keyboardTimerRef.current = null;
+    const ids = keyboardMovedIdsRef.current;
+    if (ids.size === 0) return;
+    keyboardMovedIdsRef.current = new Set();
+
+    const current = nodesRef.current;
+    const occupied = new Set(
+      current.filter((n) => !ids.has(n.id)).map((n) => cellKey(cellFromPoint(n.position))),
+    );
+    const savedNow = useFlowStore.getState().savedCells;
+    const finalPos = new Map<string, XYPosition>();
+    const updates: FlowPositions = {};
+
+    for (const n of current) {
+      if (!ids.has(n.id) || draggingIdsRef.current.has(n.id)) continue;
+      const target = clampCell(cellFromPoint(n.position));
+      const saved = savedNow[n.id];
+      const startCell = saved ?? target;
+      const cell = !occupied.has(cellKey(target))
+        ? target
+        : { col: startCell.col, row: findFreeRow(occupied, startCell.col, startCell.row) };
+      occupied.add(cellKey(cell));
+      finalPos.set(n.id, cellCenter(cell));
+      if (!saved || saved.col !== cell.col || saved.row !== cell.row) updates[n.id] = cell;
+    }
+
+    if (finalPos.size > 0) {
+      setNodes((prev) => prev.map((n) => (finalPos.has(n.id) ? { ...n, position: finalPos.get(n.id)! } : n)));
+    }
+    if (Object.keys(updates).length > 0) {
+      setNodeCells(updates);
+      queueSave(updates);
+    }
+  }, [setNodes, setNodeCells, queueSave]);
+
+  const handleNodesChange: typeof onNodesChange = useCallback((changes) => {
+    onNodesChange(changes);
+    let sawKeyboardMove = false;
+    for (const c of changes) {
+      if (c.type === 'position' && !c.dragging && c.position && !draggingIdsRef.current.has(c.id)) {
+        keyboardMovedIdsRef.current.add(c.id);
+        sawKeyboardMove = true;
+      }
+    }
+    if (sawKeyboardMove) {
+      if (keyboardTimerRef.current) clearTimeout(keyboardTimerRef.current);
+      keyboardTimerRef.current = setTimeout(commitKeyboardMoves, 600);
+    }
+  }, [onNodesChange, commitKeyboardMoves]);
 
   // ─── Actions ─────────────────────────────────────────────
 
@@ -532,6 +755,8 @@ function FlowBuilderContent() {
   const isMobile = window.innerWidth < 768;
   const safeBottomStyle = isMobile ? { marginBottom: 'calc(env(safe-area-inset-bottom, 0px) + 60px)' } : undefined;
 
+  const dropRect = dropTarget ? cellRect(dropTarget.cell) : null;
+
   return (
     <div className="h-full relative" style={{ touchAction: 'none' }}>
       {isLoading ? (
@@ -547,9 +772,10 @@ function FlowBuilderContent() {
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
+          onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeDragStart={onNodeDragStart}
+          onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
           onNodeDoubleClick={(_event, node) => {
             const data = node.data as Record<string, unknown>;
@@ -560,6 +786,7 @@ function FlowBuilderContent() {
             }
           }}
           nodeTypes={nodeTypes}
+          nodeOrigin={[0.5, 0.5]}
           connectionMode={ConnectionMode.Loose}
           onInit={(instance) => setRfInstance(instance)}
           minZoom={0.3}
@@ -572,18 +799,33 @@ function FlowBuilderContent() {
             gap={[CELL_W, CELL_H]}
             // ReactFlow's lines pattern draws each line at `gap/2` inside the
             // pattern tile and shifts the tile by `-offset`. So a line lands in
-            // world space at `gap/2 - offset`. We want lines at the cell's
-            // top-left corner (origin shifted by the padding), so:
-            //   offset = gap/2 - (origin - pad)
-            offset={[
-              CELL_W / 2 - (GRID_ORIGIN_X - CELL_PAD_X),
-              CELL_H / 2 - (GRID_ORIGIN_Y - CELL_PAD_TOP),
-            ]}
+            // world space at `gap/2 - offset`. We want lines exactly on the
+            // cell borders, whose origin is (GRID_LEFT, GRID_TOP):
+            //   offset = gap/2 - origin
+            offset={[CELL_W / 2 - GRID_LEFT, CELL_H / 2 - GRID_TOP]}
             color="#e2e8f0"
             lineWidth={1}
           />
           <Background id="dots" gap={24} color="#f1f5f9" size={1} />
           <Controls showInteractive={false} style={safeBottomStyle} />
+
+          {/* Drop-target highlight while dragging */}
+          {dropRect && (
+            <ViewportPortal>
+              <div
+                style={{
+                  position: 'absolute',
+                  transform: `translate(${dropRect.x}px, ${dropRect.y}px)`,
+                  width: dropRect.width,
+                  height: dropRect.height,
+                }}
+                className={`pointer-events-none rounded-2xl border-2 ${
+                  dropTarget!.valid ? 'border-brand-400/80 bg-brand-100/20' : 'border-red-300/80 bg-red-50/40'
+                }`}
+              />
+            </ViewportPortal>
+          )}
+
           <Panel position="top-right">
             <button
               onClick={() => openSidebar()}
@@ -621,6 +863,9 @@ function FlowBuilderContent() {
         editingAutomation={editingAutomation}
         onSaved={handleAutomationSaved}
       />
+
+      {/* Bulk Upload lives on its own page (/bulk-upload) - it is manual,
+          platform-agnostic, and tracks rows, none of which fits the canvas. */}
 
       {/* Per-workflow instances now open in the Activity Log (filtered to the
           workflow) — see openActivityLog(wf.id, wf.name) above and AppLayout. */}

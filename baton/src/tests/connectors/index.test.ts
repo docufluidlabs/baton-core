@@ -7,6 +7,7 @@ vi.mock('../../services/connectors/hubspot.connector', () => ({ hubspotConnector
 vi.mock('../../services/connectors/zohocrm.connector', () => ({ zohocrmConnector: { platform: 'zohocrm' } }));
 vi.mock('../../services/connectors/bamboohr.connector', () => ({ bamboohrConnector: { platform: 'bamboohr' } }));
 vi.mock('../../services/connectors/zendesk.connector', () => ({ zendeskConnector: { platform: 'zendesk' } }));
+vi.mock('../../services/connectors/smartsheet.connector', () => ({ smartsheetConnector: { platform: 'smartsheet' } }));
 vi.mock('../../services/connectors/powerautomate.connector', () => ({ powerautomateConnector: { platform: 'powerautomate' } }));
 vi.mock('../../lib/types', () => ({}));
 
@@ -19,6 +20,7 @@ const SHIP_SET = [
   'zohocrm',
   'zendesk',
   'bamboohr',
+  'smartsheet',
   'powerautomate',
 ] as const;
 
@@ -49,7 +51,7 @@ describe('Connector Registry', () => {
     });
 
     it('should return false for platforms that no longer ship', () => {
-      for (const platform of ['procore', 'xero', 'smartsheet', 'middesk', 'pipedrive']) {
+      for (const platform of ['procore', 'xero', 'middesk', 'pipedrive']) {
         expect(hasConnector(platform as any)).toBe(false);
       }
     });

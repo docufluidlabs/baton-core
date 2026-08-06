@@ -46,10 +46,10 @@ const MAX_RETRY_ATTEMPTS = RETRY_DELAYS_SEC.length;
 const SQS_MAX_DELAY_SEC = 900;
 
 export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<void> {
-  const { ruleId, ruleName, actionNumber, sourcePlatform, pipelineEntryId, workflowId, orgId, inputData, instanceName, requestId, retry, sfDispatchId } = job;
+  const { ruleId, ruleName, actionNumber, sourcePlatform, pipelineEntryId, workflowId, orgId, inputData, instanceName, requestId, retry, sfDispatchId, batch } = job;
   const docClient = getDocClient();
   const now = new Date().toISOString();
-  const log = createLogger({ worker: 'workflow-launcher', ruleId, workflowId, orgId, requestId, sfDispatchId });
+  const log = createLogger({ worker: 'workflow-launcher', ruleId, workflowId, orgId, requestId, sfDispatchId, batchRunId: batch?.runId, batchRowNumber: batch?.rowNumber });
 
   // ─── Deferred retry: re-enqueue if not yet time ───────────
   // SQS caps DelaySeconds at 900, so for 30min we use a deferUntil timestamp.
@@ -124,29 +124,70 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
 
     // 2.5 Relay gate — billing/licensing seam (see lib/billing-hooks.ts).
     // The default gate always allows; the hosted edition injects enforcement.
-    // A denial is a policy decision, not an error: we mark the pipeline entry
-    // as skipped and bail without throwing (no SQS retry, no DLQ).
+    // A denial is a policy decision, not an error: we mark the batch row or
+    // pipeline entry as skipped and bail without throwing (no SQS retry, no DLQ).
     const gate = await getRelayGate().check(orgId);
     if (!gate.allowed) {
       const reason = gate.reason || 'relay_blocked';
+      const userMessage = 'This relay was not launched because your organization has reached its usage limit.';
 
-      await docClient.send(new UpdateCommand({
-        TableName: TableNames.TRIGGER_PIPELINE,
-        Key: { id: pipelineEntryId },
-        UpdateExpression:
-          'SET #st = :status, userMessage = :userMsg, adminMessage = :adminMsg, errorCategory = :cat, userActionable = :act, completedAt = :now',
-        ExpressionAttributeValues: {
-          ':status': 'skipped',
-          ':userMsg': 'This relay was not launched because your organization has reached its usage limit.',
-          ':adminMsg': `Relay gate: ${reason}`,
-          ':cat': 'quota',
-          ':act': true,
-          ':now': now,
-        },
-        ExpressionAttributeNames: { '#st': 'status' },
-      }));
+      if (batch) {
+        // Bulk Upload path — no pipeline entry exists; mark the row skipped
+        // with the same no-retry semantics.
+        await docClient.send(new UpdateCommand({
+          TableName: TableNames.BATCH_ROWS,
+          Key: { runId: batch.runId, rowNumber: batch.rowNumber },
+          UpdateExpression: 'SET #st = :status, errorMessage = :err, completedAt = :now',
+          ExpressionAttributeValues: {
+            ':status': 'skipped',
+            ':err': userMessage,
+            ':now': now,
+          },
+          ExpressionAttributeNames: { '#st': 'status' },
+        }));
+      } else if (pipelineEntryId) {
+        await docClient.send(new UpdateCommand({
+          TableName: TableNames.TRIGGER_PIPELINE,
+          Key: { id: pipelineEntryId },
+          UpdateExpression:
+            'SET #st = :status, userMessage = :userMsg, adminMessage = :adminMsg, errorCategory = :cat, userActionable = :act, completedAt = :now',
+          ExpressionAttributeValues: {
+            ':status': 'skipped',
+            ':userMsg': userMessage,
+            ':adminMsg': `Relay gate: ${reason}`,
+            ':cat': 'quota',
+            ':act': true,
+            ':now': now,
+          },
+          ExpressionAttributeNames: { '#st': 'status' },
+        }));
+      }
 
-      log.info({ reason }, 'Relay skipped at relay gate');
+      // A retry attempt has a tracking instance in 'running' — resolve it so a
+      // gate denial mid-ladder can't strand it as running forever.
+      if (retry?.instanceId) {
+        try {
+          await docClient.send(new UpdateCommand({
+            TableName: TableNames.WORKFLOW_INSTANCES,
+            Key: { id: retry.instanceId },
+            UpdateExpression: 'SET #st = :status, errorMessage = :err, completedAt = :now',
+            ConditionExpression: '#st = :running',
+            ExpressionAttributeValues: {
+              ':status': 'cancelled',
+              ':err': `Relay gate: ${reason}`,
+              ':running': 'running',
+              ':now': now,
+            },
+            ExpressionAttributeNames: { '#st': 'status' },
+          }));
+        } catch (err: any) {
+          if (err.name !== 'ConditionalCheckFailedException') {
+            logError('Failed to resolve tracking instance after relay-gate denial', err);
+          }
+        }
+      }
+
+      log.info({ reason }, 'Relay skipped at relay gate')
       return;
     }
 
@@ -206,7 +247,8 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
         sourcePlatform,
         startedAt: now,
         retryCount: 0,
-        launchedBy: 'automation',
+        launchedBy: batch ? 'batch' : 'automation',
+        ...(batch ? { batchRunId: batch.runId, batchRowNumber: batch.rowNumber } : {}),
       };
 
       await docClient.send(new PutCommand({
@@ -215,19 +257,42 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
       }));
     }
 
-    // 5. Update trigger_pipeline entry with success
-    await docClient.send(new UpdateCommand({
-      TableName: TableNames.TRIGGER_PIPELINE,
-      Key: { id: pipelineEntryId },
-      UpdateExpression: 'SET #st = :status, workflowInstanceId = :instanceId, completedAt = :now, durationMs = :duration',
-      ExpressionAttributeValues: {
-        ':status': 'completed',
-        ':instanceId': resolvedInstanceId,
-        ':now': now,
-        ':duration': Date.now() - new Date(now).getTime(),
-      },
-      ExpressionAttributeNames: { '#st': 'status' },
-    }));
+    // 5. Record the launch: batch row for Bulk Upload, pipeline entry otherwise
+    if (batch) {
+      await docClient.send(new UpdateCommand({
+        TableName: TableNames.BATCH_ROWS,
+        Key: { runId: batch.runId, rowNumber: batch.rowNumber },
+        UpdateExpression: 'SET #st = :status, workflowInstanceId = :wid, maestroInstanceId = :mid, launchedAt = :now',
+        ExpressionAttributeValues: {
+          ':status': 'launched',
+          ':wid': resolvedInstanceId,
+          ':mid': result.instanceId,
+          ':now': now,
+        },
+        ExpressionAttributeNames: { '#st': 'status' },
+      }));
+
+      // A successful launch resets the run's consecutive-failure streak
+      await docClient.send(new UpdateCommand({
+        TableName: TableNames.BATCH_RUNS,
+        Key: { id: batch.runId },
+        UpdateExpression: 'SET consecutiveFailures = :zero',
+        ExpressionAttributeValues: { ':zero': 0 },
+      }));
+    } else if (pipelineEntryId) {
+      await docClient.send(new UpdateCommand({
+        TableName: TableNames.TRIGGER_PIPELINE,
+        Key: { id: pipelineEntryId },
+        UpdateExpression: 'SET #st = :status, workflowInstanceId = :instanceId, completedAt = :now, durationMs = :duration',
+        ExpressionAttributeValues: {
+          ':status': 'completed',
+          ':instanceId': resolvedInstanceId,
+          ':now': now,
+          ':duration': Date.now() - new Date(now).getTime(),
+        },
+        ExpressionAttributeNames: { '#st': 'status' },
+      }));
+    }
 
     // 6. Update workflow stats
     if (!isRetryAttempt) {
@@ -239,8 +304,10 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
       }));
     }
 
-    // 7. Update rule success stats
-    await updateRuleSuccess(ruleId);
+    // 7. Update rule success stats (rule-triggered launches only)
+    if (ruleId) {
+      await updateRuleSuccess(ruleId);
+    }
 
     // 8. Increment org execution count (local read model)
     await usageService.incrementExecutionCount(orgId);
@@ -293,7 +360,8 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
           retryMaxAttempts: MAX_RETRY_ATTEMPTS,
           nextRetryAt: new Date(Date.now() + delaySec * 1000).toISOString(),
           errorMessage: `Retry ${nextAttempt} of ${MAX_RETRY_ATTEMPTS}: ${error.message || 'Unknown error'}`,
-          launchedBy: 'automation',
+          launchedBy: batch ? 'batch' : 'automation',
+          ...(batch ? { batchRunId: batch.runId, batchRowNumber: batch.rowNumber } : {}),
         };
         await docClient.send(new PutCommand({
           TableName: TableNames.WORKFLOW_INSTANCES,
@@ -315,21 +383,24 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
         }));
       }
 
-      // Update pipeline entry to reflect retry-in-progress (not fully failed)
-      try {
-        await docClient.send(new UpdateCommand({
-          TableName: TableNames.TRIGGER_PIPELINE,
-          Key: { id: pipelineEntryId },
-          UpdateExpression: 'SET #st = :status, errorMessage = :err, userMessage = :userMsg, adminMessage = :adminMsg',
-          ExpressionAttributeValues: {
-            ':status': 'retrying',
-            ':err': error.message || 'Unknown error',
-            ':userMsg': `Retrying automatically (attempt ${nextAttempt} of ${MAX_RETRY_ATTEMPTS}). Next retry in ${formatDelay(delaySec)}.`,
-            ':adminMsg': `Retry ${nextAttempt}/${MAX_RETRY_ATTEMPTS}: ${error.message}`,
-          },
-          ExpressionAttributeNames: { '#st': 'status' },
-        }));
-      } catch { /* best-effort */ }
+      // Update pipeline entry to reflect retry-in-progress (not fully failed).
+      // Bulk Upload jobs have no pipeline entry — the row stays 'launching'.
+      if (pipelineEntryId) {
+        try {
+          await docClient.send(new UpdateCommand({
+            TableName: TableNames.TRIGGER_PIPELINE,
+            Key: { id: pipelineEntryId },
+            UpdateExpression: 'SET #st = :status, errorMessage = :err, userMessage = :userMsg, adminMessage = :adminMsg',
+            ExpressionAttributeValues: {
+              ':status': 'retrying',
+              ':err': error.message || 'Unknown error',
+              ':userMsg': `Retrying automatically (attempt ${nextAttempt} of ${MAX_RETRY_ATTEMPTS}). Next retry in ${formatDelay(delaySec)}.`,
+              ':adminMsg': `Retry ${nextAttempt}/${MAX_RETRY_ATTEMPTS}: ${error.message}`,
+            },
+            ExpressionAttributeNames: { '#st': 'status' },
+          }));
+        } catch { /* best-effort */ }
+      }
 
       // Enqueue retry job with delay
       const retryJob: WorkflowLaunchJob = {
@@ -358,13 +429,15 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
 
     // Check if this pipeline entry was already marked as failed (SQS retry)
     let isRetry = false;
-    try {
-      const existingEntry = await docClient.send(new GetCommand({
-        TableName: TableNames.TRIGGER_PIPELINE,
-        Key: { id: pipelineEntryId },
-      }));
-      isRetry = existingEntry.Item?.status === 'failed';
-    } catch { /* ignore lookup errors */ }
+    if (pipelineEntryId) {
+      try {
+        const existingEntry = await docClient.send(new GetCommand({
+          TableName: TableNames.TRIGGER_PIPELINE,
+          Key: { id: pipelineEntryId },
+        }));
+        isRetry = existingEntry.Item?.status === 'failed';
+      } catch { /* ignore lookup errors */ }
+    }
 
     // Mark instance as failed if it exists
     if (retry?.instanceId) {
@@ -386,40 +459,78 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
       }
     }
 
-    // Update pipeline entry with failure
-    try {
-      const errorMessage = error.message || 'Unknown error';
-      const userMessage = currentAttempt >= MAX_RETRY_ATTEMPTS
-        ? `All ${MAX_RETRY_ATTEMPTS} retry attempts exhausted. ${categorizeUserMessage(errorMessage)}`
-        : categorizeUserMessage(errorMessage);
-      const adminMessage = `Workflow launch failed: ${errorMessage}`;
+    // Record the failure: batch row for Bulk Upload, pipeline entry otherwise
+    if (batch) {
+      try {
+        // Conditional update makes the consecutiveFailures counter idempotent
+        // across SQS redeliveries — the row only transitions to 'failed' once.
+        await docClient.send(new UpdateCommand({
+          TableName: TableNames.BATCH_ROWS,
+          Key: { runId: batch.runId, rowNumber: batch.rowNumber },
+          UpdateExpression: retry?.instanceId
+            ? 'SET #st = :status, errorMessage = :err, completedAt = :now, workflowInstanceId = :wid'
+            : 'SET #st = :status, errorMessage = :err, completedAt = :now',
+          ConditionExpression: '#st <> :status',
+          ExpressionAttributeValues: {
+            ':status': 'failed',
+            ':err': error.message || 'Unknown error',
+            ':now': new Date().toISOString(),
+            ...(retry?.instanceId ? { ':wid': retry.instanceId } : {}),
+          },
+          ExpressionAttributeNames: { '#st': 'status' },
+        }));
 
-      await docClient.send(new UpdateCommand({
-        TableName: TableNames.TRIGGER_PIPELINE,
-        Key: { id: pipelineEntryId },
-        UpdateExpression: 'SET #st = :status, errorMessage = :error, userMessage = :userMsg, adminMessage = :adminMsg, errorCategory = :errCat, userActionable = :actionable, completedAt = :now',
-        ExpressionAttributeValues: {
-          ':status': 'failed',
-          ':error': errorMessage,
-          ':userMsg': userMessage,
-          ':adminMsg': adminMessage,
-          ':errCat': errorCategory,
-          ':actionable': isUserActionable(errorMessage),
-          ':now': new Date().toISOString(),
-        },
-        ExpressionAttributeNames: { '#st': 'status' },
-      }));
-
-      // Only count failure once per pipeline entry (skip on SQS retries)
-      if (!isRetry) {
-        await updateRuleFailure(ruleId, errorMessage, sfDispatchId);
+        // Count the failure streak on the run (reset to 0 on any success)
+        await docClient.send(new UpdateCommand({
+          TableName: TableNames.BATCH_RUNS,
+          Key: { id: batch.runId },
+          UpdateExpression: 'ADD consecutiveFailures :one',
+          ExpressionAttributeValues: { ':one': 1 },
+        }));
+      } catch (updateError: any) {
+        if (updateError.name !== 'ConditionalCheckFailedException') {
+          logError('Failed to mark batch row as failed', updateError);
+        }
       }
-    } catch (updateError) {
-      logError('Failed to update pipeline entry on error', updateError);
+    } else {
+      try {
+        const errorMessage = error.message || 'Unknown error';
+        const userMessage = currentAttempt >= MAX_RETRY_ATTEMPTS
+          ? `All ${MAX_RETRY_ATTEMPTS} retry attempts exhausted. ${categorizeUserMessage(errorMessage)}`
+          : categorizeUserMessage(errorMessage);
+        const adminMessage = `Workflow launch failed: ${errorMessage}`;
+
+        if (pipelineEntryId) {
+          await docClient.send(new UpdateCommand({
+            TableName: TableNames.TRIGGER_PIPELINE,
+            Key: { id: pipelineEntryId },
+            UpdateExpression: 'SET #st = :status, errorMessage = :error, userMessage = :userMsg, adminMessage = :adminMsg, errorCategory = :errCat, userActionable = :actionable, completedAt = :now',
+            ExpressionAttributeValues: {
+              ':status': 'failed',
+              ':error': errorMessage,
+              ':userMsg': userMessage,
+              ':adminMsg': adminMessage,
+              ':errCat': errorCategory,
+              ':actionable': isUserActionable(errorMessage),
+              ':now': new Date().toISOString(),
+            },
+            ExpressionAttributeNames: { '#st': 'status' },
+          }));
+        }
+
+        // Only count failure once per pipeline entry (skip on SQS retries)
+        if (!isRetry && ruleId) {
+          await updateRuleFailure(ruleId, errorMessage, sfDispatchId);
+        }
+      } catch (updateError) {
+        logError('Failed to update pipeline entry on error', updateError);
+      }
     }
 
     // ─── Send failure notification ──────────────────────────
-    if (!isRetry) {
+    // Bulk Upload rows skip the per-launch failure fanout — a 5k-row file
+    // must not page every admin per row (batch notifications are out of scope).
+    if (!isRetry && !batch) {
       try {
         // Fan out to all org admins (the launcher only runs for automation-triggered
         // workflows, so there's no real launching user to notify). Slack routes
@@ -428,7 +539,9 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
         if (adminIds.length > 0) {
           const [wfResult, pipelineResult] = await Promise.all([
             docClient.send(new GetCommand({ TableName: TableNames.WORKFLOWS, Key: { id: workflowId } })),
-            docClient.send(new GetCommand({ TableName: TableNames.TRIGGER_PIPELINE, Key: { id: pipelineEntryId } })),
+            pipelineEntryId
+              ? docClient.send(new GetCommand({ TableName: TableNames.TRIGGER_PIPELINE, Key: { id: pipelineEntryId } }))
+              : Promise.resolve({ Item: undefined } as { Item?: Record<string, any> }),
           ]);
           const workflowName = wfResult.Item?.name || 'Unknown';
           const pipelineEntry = pipelineResult.Item;
@@ -451,13 +564,13 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
             currentAttempt >= MAX_RETRY_ATTEMPTS
               ? retryExhaustedNotification(
                   orgId, adminId, workflowName,
-                  retry?.instanceId || pipelineEntryId,
+                  retry?.instanceId || pipelineEntryId || workflowId,
                   MAX_RETRY_ATTEMPTS,
                   { ...notifExtra, automationName },
                 )
               : workflowFailedNotification(
                   orgId, adminId, workflowName,
-                  retry?.instanceId || pipelineEntryId,
+                  retry?.instanceId || pipelineEntryId || workflowId,
                   error.message || 'Unknown error',
                   { ...notifExtra, automationName },
                 );
@@ -474,7 +587,9 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
     }
 
     // Don't re-throw — we handle retries ourselves now.
-    if (!isRetryable && currentAttempt === 0) {
+    // Bulk Upload rows never re-throw: the row is already marked 'failed' and
+    // an SQS redelivery would only duplicate the launch attempt.
+    if (!batch && !isRetryable && currentAttempt === 0) {
       // Non-retryable, first attempt, no retry sequence — throw for SQS DLQ
       throw error;
     }

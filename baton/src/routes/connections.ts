@@ -493,6 +493,9 @@ function extractAccountId(platform: Platform, tokens: any): string | undefined {
     case 'zohocrm':
       // Zoho: current user's org ID fetched after token exchange (#13)
       return tokens.raw?.userInfo?.id?.toString() || tokens.raw?.userInfo?.org?.[0]?.id?.toString();
+    case 'smartsheet':
+      // Smartsheet: current user's ID fetched after token exchange (#13)
+      return tokens.raw?.userInfo?.id?.toString();
     default:
       return undefined;
   }

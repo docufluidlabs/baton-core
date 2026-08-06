@@ -58,6 +58,7 @@ Adding a platform is one connector class + one catalog entry - see [CONTRIBUTING
 ## Features
 
 - **Visual Flow Builder** - a live canvas of platform → automation → workflow with per-automation relay counts, logs, and inline editing
+- **Bulk Upload** - launch a workflow for every row of a CSV, XLSX, or TSV file from any system: map columns to workflow inputs, throttle the release rate, queue multiple files, and track every row to its instance
 - **Resolution Center** - every failed workflow run in one queue: retry, cancel, postpone
 - **Async pipeline** - webhooks are verified, stored idempotently, queued to SQS, and processed by background workers with retries
 - **Self-contained auth** - first-run owner setup, email/password sessions, member invites via copyable links (no SMTP required), owner/admin/member/viewer roles

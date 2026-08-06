@@ -5,6 +5,7 @@ import { fetcher } from '@/lib/api';
 import {
   useWorkflows,
   useAutomations,
+  useBatchProcessors,
   cancelInstance,
   retryInstance,
   type WorkflowInstance,
@@ -37,25 +38,32 @@ export function ActivityLogSidebar({ open, onClose, onActionClick, workflowId, w
   );
   const { data: wfData } = useWorkflows();
   const { data: autoData } = useAutomations();
+  const { data: batchData } = useBatchProcessors();
 
   const workflows = wfData?.workflows ?? [];
   const workflowMap = useMemo(() => new Map(workflows.map((w) => [w.id, w])), [workflows]);
 
   // Only show instances that map to something currently on the canvas. The
-  // canvas is keyed on automations (pair nodes) and their target workflows, so:
+  // canvas is keyed on automations (pair nodes), and Bulk Upload processors'
+  // target workflows count too (Bulk Upload lives on its own page, but its
+  // instances belong in the Activity Log all the same):
   //  • rule-launched instances must belong to an automation that still exists
   //    (triggerRuleId match) — this drops instances from a deleted automation
   //    even if a new automation later reuses the same target workflow;
-  //  • rule-less instances (e.g. manual launches) fall back to the workflow,
-  //    which is on the canvas only while some automation targets it.
+  //  • rule-less instances (manual and Bulk Upload launches) fall back to the
+  //    workflow, which counts while an automation or a Bulk Upload
+  //    processor targets it.
   // Anything else is historical and must not appear in the Activity Log.
   const canvasAutomationIds = useMemo(
     () => new Set((autoData?.automations ?? []).map((a) => a.id)),
     [autoData],
   );
   const canvasWorkflowIds = useMemo(
-    () => new Set((autoData?.automations ?? []).map((a) => a.targetWorkflowId)),
-    [autoData],
+    () => new Set([
+      ...(autoData?.automations ?? []).map((a) => a.targetWorkflowId),
+      ...(batchData?.processors ?? []).map((p) => p.targetWorkflowId),
+    ]),
+    [autoData, batchData],
   );
   const instances = useMemo(
     () => (data?.instances ?? []).filter((i) =>

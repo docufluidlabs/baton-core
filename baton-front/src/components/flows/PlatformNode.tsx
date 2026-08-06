@@ -2,6 +2,9 @@
  * Platform Node — ReactFlow custom node
  * Represents a connected platform (source of webhook events)
  * Shows: logo, platform name, total actions this month, "+" button
+ *
+ * The "+" button opens the new-automation sidebar with this platform
+ * preselected. (Bulk Upload lives on its own page - it has no source platform.)
  */
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
@@ -15,7 +18,8 @@ export interface PlatformNodeData {
   automationsCount: number;
   totalActionsThisMonth: number;
   lastWebhookAt?: string;
-  onAddAutomation?: () => void;
+  /** Opens the new-automation sidebar with this platform preselected. */
+  onAddClick?: () => void;
   [key: string]: unknown;
 }
 
@@ -36,7 +40,7 @@ function PlatformNodeComponent({ data }: NodeProps) {
 
       {/* "+" handle */}
       <button
-        onClick={(e) => { e.stopPropagation(); d.onAddAutomation?.(); }}
+        onClick={(e) => { e.stopPropagation(); d.onAddClick?.(); }}
         className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-brand-500 hover:bg-brand-600 text-white flex items-center justify-center transition-colors z-10"
       >
         <Plus className="w-3 h-3" />

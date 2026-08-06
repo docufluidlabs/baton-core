@@ -11,8 +11,8 @@ export type OrgPlan = 'free_demo' | 'starter' | 'growth' | 'enterprise';
 // zendesk, bamboohr, powerautomate (inbound). greenhouse/mondaycom/slack are
 // catalog/webhook-only integrations without a connector class.
 // Legacy platforms kept for backward compat with existing connectors/routes
-export type Platform = 'salesforce' | 'hubspot' | 'zohocrm' | 'bamboohr' | 'docusign' | 'zendesk' | 'slack' | 'greenhouse' | 'mondaycom' | 'powerautomate';
-export type AppSlug = 'salesforce' | 'hubspot' | 'zohocrm' | 'bamboohr' | 'zendesk' | 'slack' | 'greenhouse' | 'mondaycom' | 'powerautomate';
+export type Platform = 'salesforce' | 'hubspot' | 'zohocrm' | 'bamboohr' | 'smartsheet' | 'docusign' | 'zendesk' | 'slack' | 'greenhouse' | 'mondaycom' | 'powerautomate';
+export type AppSlug = 'salesforce' | 'hubspot' | 'zohocrm' | 'bamboohr' | 'smartsheet' | 'zendesk' | 'slack' | 'greenhouse' | 'mondaycom' | 'powerautomate';
 export type ConnectionStatus = 'pending' | 'healthy' | 'warning' | 'error' | 'disconnected';
 export type MaestroStatus = 'draft' | 'active' | 'paused';
 export type TriggerType = 'http' | 'link' | 'api_call' | 'form';
@@ -348,6 +348,110 @@ export interface Notification {
   createdAt: string;
 }
 
+export type BatchFileType = 'csv' | 'xlsx' | 'tsv';
+// 'queued' = started while another run was active; the dispatcher promotes it
+// to 'running' when the processor's active run finishes (strict run sequence).
+export type BatchRunStatus = 'draft' | 'queued' | 'running' | 'paused' | 'completed' | 'stopped' | 'cancelled';
+export type BatchRowStatus = 'staged' | 'queued' | 'launching' | 'launched' | 'completed' | 'failed' | 'cancelled' | 'skipped';
+
+// ─── Bulk Upload (Batch Processors) ──────────────────────────
+
+/**
+ * A Bulk Upload processor — an alternative middle bubble on the Flow Builder
+ * canvas. Customers upload a CSV/XLSX/TSV, map columns to workflow parameters,
+ * and Baton launches the target Docusign Workflow Builder workflow once per
+ * row, throttled by the dispatcher cron.
+ */
+export interface BatchProcessor {
+  id: string;
+  orgId: string;
+  name: string;
+  /** Baton workflows.id of the target workflow. */
+  targetWorkflowId: string;
+  sourcePlatform?: string;
+  status: 'active';
+  /** Rows released per dispatcher interval. Default 5. */
+  throttleReleaseCount: number;
+  /** Minutes between releases. Default 10. */
+  throttleIntervalMinutes: number;
+  /** Auto-stop a run after this many consecutive launch failures. Default 5. */
+  stopAfterConsecutiveFailures: number;
+  createdAt: string;
+  updatedAt: string;
+  createdBy?: string;
+}
+
+export type BatchMappingEntry =
+  | { type: 'column'; column: string }
+  | { type: 'fixed'; value: string };
+
+/** paramName → source spec. Params absent from the map are "- not set -". */
+export type BatchMapping = Record<string, BatchMappingEntry>;
+
+export type BatchRowSelection =
+  | { mode: 'all' }
+  | { mode: 'range'; from: number; to: number };
+
+export interface BatchRunSettings {
+  releaseCount: number;
+  intervalMinutes: number;
+  stopAfterFailures: number;
+}
+
+export interface BatchRun {
+  id: string;
+  orgId: string;
+  batchProcessorId: string;
+  /** Per-processor sequence number (1-based). */
+  runNumber: number;
+  fileName: string;
+  fileType: BatchFileType;
+  sheetName?: string;
+  columns: string[];
+  totalRows: number;
+  status: BatchRunStatus;
+  /** Set at preflight/start time. */
+  mapping?: BatchMapping;
+  rowSelection?: BatchRowSelection;
+  settings?: BatchRunSettings;
+  /** The workflow triggerInputSchema pinned at preflight time (schema pinning). */
+  schemaSnapshot?: Record<string, any>;
+  selectedRows?: number;
+  /** Exact queued/skipped row counts persisted at start time, so run
+   *  summaries don't need a rows fetch. */
+  queuedRows?: number;
+  skippedRows?: number;
+  consecutiveFailures?: number;
+  /** ISO string — dispatcher releases the next batch of rows when due. */
+  nextReleaseAt?: string;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  createdBy?: string;
+}
+
+export interface BatchRow {
+  runId: string;
+  /** 1-based file data row number (RANGE key). */
+  rowNumber: number;
+  orgId: string;
+  batchProcessorId: string;
+  /** Raw values keyed by column header — all strings, trimmed. */
+  data: Record<string, string>;
+  /** True when the row falls inside the run's rowSelection. */
+  included: boolean;
+  /** Validation problems — empty means valid. */
+  problems: string[];
+  status: BatchRowStatus;
+  workflowInstanceId?: string;
+  maestroInstanceId?: string;
+  errorMessage?: string;
+  /** Display order among selected rows (1-based). */
+  seq?: number;
+  launchedAt?: string;
+  completedAt?: string;
+}
+
 // ─── API Error Response ──────────────────────────────────────
 
 export interface ApiError {
@@ -376,11 +480,12 @@ export interface WebhookProcessingJob {
 }
 
 export interface WorkflowLaunchJob {
-  ruleId: string;
+  ruleId?: string;
   ruleName?: string;
   actionNumber?: number;
   sourcePlatform?: string;
-  pipelineEntryId: string;
+  /** Absent for Bulk Upload launches — no TRIGGER_PIPELINE writes on that path. */
+  pipelineEntryId?: string;
   workflowId: string;
   orgId: string;
   inputData: Record<string, any>;
@@ -388,6 +493,11 @@ export interface WorkflowLaunchJob {
   requestId?: string;
   /** End-to-end correlation id from SF Apex (only set for sourcePlatform === 'salesforce'). */
   sfDispatchId?: string;
+  /** Bulk Upload metadata — present when this launch is one row of a batch run. */
+  batch?: {
+    runId: string;
+    rowNumber: number;
+  };
   /** Retry metadata — present when this is a retry attempt */
   retry?: {
     attempt: number;         // 1-based: which retry attempt this is (1–6)
@@ -513,12 +623,11 @@ export interface BootstrapToken {
 }
 
 /**
- * DocOverride — FluidLabs-editable documentation content for one /docs page.
+ * DocOverride - stored documentation content for one /docs page.
  *
  * When a `published` override exists for a slug, the docs reader renders its
- * Markdown instead of the hardcoded TSX page. Global (not org-scoped) — the
- * product docs are identical for every reader. Written only by staff
- * (enforced server-side by requireStaffAccess).
+ * Markdown instead of the hardcoded TSX page. Global (not org-scoped) - the
+ * product docs are identical for every reader.
  */
 export interface DocOverride {
   /** The /docs page slug — also the table's partition key. */

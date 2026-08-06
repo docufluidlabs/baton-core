@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage';
 import ConnectionsPage from './pages/ConnectionsPage';
 import WorkflowsPage from './pages/WorkflowsPage';
 import FlowBuilderPage from './pages/FlowBuilderPage';
+import BulkUploadPage from './pages/BulkUploadPage';
 import SettingsPage from './pages/SettingsPage';
 import SalesforceSetupPage from './pages/SalesforceSetupPage';
 import ConnectorSetupPage from './pages/ConnectorSetupPage';
@@ -89,6 +90,7 @@ function AuthenticatedApp() {
         <Route path="/platforms" element={<Navigate to="/connections" replace />} />
         <Route path="/workflows" element={<RequiresDocuSign><WorkflowsPage /></RequiresDocuSign>} />
         <Route path="/flows" element={<RequiresDocuSign><FlowBuilderPage /></RequiresDocuSign>} />
+        <Route path="/bulk-upload" element={<RequiresDocuSign><BulkUploadPage /></RequiresDocuSign>} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/control-center" element={<RequiresDocuSign><ControlCenterPage /></RequiresDocuSign>} />
         <Route path="/settings" element={<SettingsPage />} />

@@ -64,7 +64,7 @@ interface PortalSelectOption {
   label: string;
 }
 
-function PortalSelect({
+export function PortalSelect({
   value,
   onChange,
   options,

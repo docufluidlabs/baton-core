@@ -14,6 +14,7 @@ import './schemas/settings';
 import './schemas/slack';
 import './schemas/salesforce';
 import './schemas/inbound';
+import './schemas/batch';
 
 // Route registrations
 import './routes/health.docs';

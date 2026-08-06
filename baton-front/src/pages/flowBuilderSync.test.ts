@@ -5,9 +5,9 @@
  * edge state must always come from the SAME computed snapshot, so an edge can
  * never reference a node that isn't in the node set.
  *
- *  - reconcileNodes    — warm-mount no-op, snapshot advance, position preservation,
- *                        add/remove of nodes
- *  - findDanglingEdges — invariant checker used by the regression cases below
+ * Positions are store-driven: reconciliation ADOPTS computed positions (they
+ * are the cell centers the saved layout prescribes), preserving only ReactFlow
+ * measurements, selection, and the live position of a node mid-drag.
  */
 import { describe, it, expect } from 'vitest';
 import { reconcileNodes, findDanglingEdges, type SyncNode, type SyncEdge } from './flowBuilderSync';
@@ -18,7 +18,7 @@ const edge = (source: string, target: string): SyncEdge => ({ id: `${source}->${
 describe('reconcileNodes', () => {
   it('returns prev UNCHANGED (same reference) when the snapshot has not changed', () => {
     const snapshot = [node('a'), node('b')];
-    const prev = [node('a', 50, 50), node('b')]; // 'a' was dragged
+    const prev = [node('a', 50, 50), node('b')]; // 'a' mid-interaction
     // computedNodes === prevSyncedNodes → warm-mount no-op, keep live state intact
     expect(reconcileNodes(prev, snapshot, snapshot)).toBe(prev);
   });
@@ -30,13 +30,35 @@ describe('reconcileNodes', () => {
     expect(result.map((n) => n.id)).toEqual(['a', 'b', 'c']);
   });
 
-  it('preserves the live position of a node that survived the snapshot change', () => {
-    const prev = [node('a', 999, 123)]; // user dragged 'a' here
-    const v2 = [node('a', 0, 0), node('b', 10, 10)]; // server still reports default for 'a'
-    const result = reconcileNodes(prev, v2, [node('a', 0, 0)]);
+  it('adopts computed positions — the store-prescribed cell centers win', () => {
+    const prev = [node('a', 999, 123)];
+    const v2 = [node('a', 170, 145), node('b', 490, 145)];
+    const result = reconcileNodes(prev, v2, [node('a', 999, 123)]);
+    expect(result.find((n) => n.id === 'a')!.position).toEqual({ x: 170, y: 145 });
+    expect(result.find((n) => n.id === 'b')!.position).toEqual({ x: 490, y: 145 });
+  });
+
+  it('preserves the live position of a node that is mid-drag', () => {
+    const prev = [node('a', 999, 123), node('b', 10, 10)];
+    const v2 = [node('a', 170, 145), node('b', 490, 145)];
+    const result = reconcileNodes(prev, v2, [node('a'), node('b')], new Set(['a']));
+    // dragged node keeps the pointer position, everything else snaps to its cell
     expect(result.find((n) => n.id === 'a')!.position).toEqual({ x: 999, y: 123 });
-    // brand-new node uses its computed position
-    expect(result.find((n) => n.id === 'b')!.position).toEqual({ x: 10, y: 10 });
+    expect(result.find((n) => n.id === 'b')!.position).toEqual({ x: 490, y: 145 });
+  });
+
+  it('carries over measured dimensions so a snapshot advance never re-measures', () => {
+    const prev: SyncNode[] = [{ id: 'a', position: { x: 0, y: 0 }, measured: { width: 240, height: 150 } }];
+    const v2 = [node('a', 170, 145)];
+    const result = reconcileNodes(prev, v2, [node('a')]);
+    expect(result[0].measured).toEqual({ width: 240, height: 150 });
+  });
+
+  it('carries over selection across a snapshot advance', () => {
+    const prev: SyncNode[] = [{ id: 'a', position: { x: 0, y: 0 }, selected: true }];
+    const v2 = [node('a', 170, 145)];
+    const result = reconcileNodes(prev, v2, [node('a')]);
+    expect(result[0].selected).toBe(true);
   });
 
   it('drops a node that was removed from the snapshot (no stale bubble)', () => {
@@ -81,10 +103,6 @@ describe('regression: nodes and edges never desync', () => {
     const v2Nodes = [node('platform'), node('pair')];
     const v2Edges = [edge('platform', 'pair')];
 
-    // Old behaviour: the removed 'workflow' bubble would linger in node state.
-    expect(v1Nodes.some((n) => n.id === 'workflow')).toBe(true);
-
-    // Fixed: reconcile drops it and edges remain consistent.
     const reconciled = reconcileNodes(v1Nodes, v2Nodes, v1Nodes);
     expect(reconciled.some((n) => n.id === 'workflow')).toBe(false);
     expect(findDanglingEdges(reconciled, v2Edges)).toEqual([]);

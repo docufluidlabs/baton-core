@@ -500,4 +500,77 @@ export const tableDefinitions: CreateTableCommandInput[] = [
     ],
     ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 },
   },
+  // ─── Batch Processors (Bulk Upload) ────────────────────
+  // One record per Bulk Upload on the Bulk Upload page.
+  {
+    TableName: TableNames.BATCH_PROCESSORS,
+    KeySchema: [
+      { AttributeName: 'id', KeyType: 'HASH' },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: 'id', AttributeType: 'S' },
+      { AttributeName: 'orgId', AttributeType: 'S' },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: 'orgId-index',
+        KeySchema: [{ AttributeName: 'orgId', KeyType: 'HASH' }],
+        Projection: { ProjectionType: 'ALL' },
+        ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 },
+      },
+    ],
+    ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 },
+  },
+
+  // ─── Batch Runs (Bulk Upload) ──────────────────────────
+  // One record per uploaded file / run of a batch processor.
+  {
+    TableName: TableNames.BATCH_RUNS,
+    KeySchema: [
+      { AttributeName: 'id', KeyType: 'HASH' },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: 'id', AttributeType: 'S' },
+      { AttributeName: 'batchProcessorId', AttributeType: 'S' },
+      { AttributeName: 'orgId', AttributeType: 'S' },
+      { AttributeName: 'createdAt', AttributeType: 'S' },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: 'batchProcessorId-createdAt-index',
+        KeySchema: [
+          { AttributeName: 'batchProcessorId', KeyType: 'HASH' },
+          { AttributeName: 'createdAt', KeyType: 'RANGE' },
+        ],
+        Projection: { ProjectionType: 'ALL' },
+        ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 },
+      },
+      {
+        IndexName: 'orgId-createdAt-index',
+        KeySchema: [
+          { AttributeName: 'orgId', KeyType: 'HASH' },
+          { AttributeName: 'createdAt', KeyType: 'RANGE' },
+        ],
+        Projection: { ProjectionType: 'ALL' },
+        ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 },
+      },
+    ],
+    ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 },
+  },
+
+  // ─── Batch Rows (Bulk Upload) ──────────────────────────
+  // One item per data row of an uploaded file. Composite PK: runId + rowNumber.
+  // No GSI — all access is by runId partition query.
+  {
+    TableName: TableNames.BATCH_ROWS,
+    KeySchema: [
+      { AttributeName: 'runId', KeyType: 'HASH' },
+      { AttributeName: 'rowNumber', KeyType: 'RANGE' },
+    ],
+    AttributeDefinitions: [
+      { AttributeName: 'runId', AttributeType: 'S' },
+      { AttributeName: 'rowNumber', AttributeType: 'N' },
+    ],
+    ProvisionedThroughput: { ReadCapacityUnits: 5, WriteCapacityUnits: 5 },
+  },
 ];

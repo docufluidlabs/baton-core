@@ -17,6 +17,7 @@ import {
   workflowFailedNotification,
 } from '../services/notification.service';
 import { getOrgAdmins } from '../services/user.service';
+import { dispatchDueBatchRuns } from '../services/batch.service';
 
 // ─── Rate limit backoff ──────────────────────────────────────
 
@@ -60,6 +61,17 @@ export function startScheduledJobs(): void {
       if (!handleRateLimitError(err)) {
         logError('Instance status sync failed', err);
       }
+    }
+  });
+
+  // Every 30 seconds: release queued Bulk Upload rows for batch runs whose
+  // nextReleaseAt is due, then reconcile/promote the per-processor run queues.
+  // Logic lives in batch.service.dispatchDueBatchRuns.
+  cron.schedule('*/30 * * * * *', async () => {
+    try {
+      await dispatchDueBatchRuns();
+    } catch (err) {
+      logError('Bulk Upload dispatcher failed', err);
     }
   });
 
