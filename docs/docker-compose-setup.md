@@ -25,29 +25,36 @@ openssl rand -hex 32
 
 The `.env.example` defaults already point DynamoDB and SQS at LocalStack (`http://localhost:4566`), so nothing else is required to start.
 
-### 2. Build and start all containers
+### 2. Start all containers
 
 ```bash
+docker compose up -d          # pulls the published images
+# or build from source:
 docker compose up -d --build
 ```
 
-### 3. Wait ~5 seconds for LocalStack to initialize, then create tables and queues
+To pin a specific release, set `BATON_VERSION` in a root-level `.env` next to `docker-compose.yml` (e.g. `BATON_VERSION=1.0.0`) - see the [releases page](https://github.com/docufluidlabs/baton-core/releases).
 
-```bash
-cd baton && npm install && npm run setup
-```
-
-This runs `db:create-tables` + `sqs:create-queues` - creates all 18 DynamoDB tables and 6 SQS queues in LocalStack.
+Compose waits for LocalStack to be healthy, then the API creates all 21 DynamoDB tables and 6 SQS queues automatically on first boot - no host-side Node/npm required.
 
 That's it. The app is now running at `http://localhost` - the first visit walks you through the `/setup` screen, which creates your organization and owner account (no external auth service involved). Alternatively, seed the owner headlessly with `npm run seed` (set `BATON_OWNER_EMAIL` / `BATON_OWNER_PASSWORD`).
 
 ## Subsequent Starts
 
-On the next run, data is already persisted in the volume - no need to run `setup` again:
+Data is persisted in the volume; existing tables and queues are detected and skipped on boot:
 
 ```bash
 docker compose up -d
 ```
+
+## Updating to a New Release
+
+```bash
+# bump BATON_VERSION in the root .env, then:
+docker compose pull && docker compose up -d
+```
+
+Your data and `baton/.env` are untouched; any tables/queues added by the new version are created automatically on boot.
 
 ## Stopping
 
@@ -65,8 +72,7 @@ docker compose down -v
 
 ```bash
 docker compose down -v          # removes the volume with all data
-docker compose up -d --build    # rebuild and start
-cd baton && npm run setup       # re-initialize tables and queues
+docker compose up -d            # start fresh - tables/queues are re-created on boot
 ```
 
 ## Verify LocalStack is Running

@@ -1,35 +1,29 @@
 /**
  * Create DynamoDB Tables — Baton
- * 
+ *
  * Usage: npm run db:create-tables
- * Reads table definitions and creates all tables.
+ * Reads table definitions and creates all tables (TTL included).
  * Safe to run multiple times — skips existing tables.
+ *
+ * The server also runs the same ensure step on boot (see src/db/ensure-tables.ts):
+ * against LocalStack it creates missing tables automatically; on real AWS this
+ * script (or CloudFormation) is the explicit way to create them.
  */
 
-import { CreateTableCommand, DescribeTableCommand } from '@aws-sdk/client-dynamodb';
-import { getDynamoDBClient } from '../src/db/client';
+import { ensureAllTablesExist } from '../src/db/ensure-tables';
 import { tableDefinitions } from '../src/db/table-definitions';
 
 async function createTables() {
-  const client = getDynamoDBClient();
-
   console.log(`\n🗄️  Creating ${tableDefinitions.length} DynamoDB tables...\n`);
+
+  const { created, existing } = await ensureAllTablesExist({ createMissing: true });
 
   for (const tableDef of tableDefinitions) {
     const tableName = tableDef.TableName!;
-
-    try {
-      // Check if table exists
-      await client.send(new DescribeTableCommand({ TableName: tableName }));
+    if (created.includes(tableName)) {
+      console.log(`  🆕 ${tableName} - created`);
+    } else if (existing.includes(tableName)) {
       console.log(`  ✅ ${tableName} - already exists`);
-    } catch (error: any) {
-      if (error.name === 'ResourceNotFoundException') {
-        // Create table
-        await client.send(new CreateTableCommand(tableDef));
-        console.log(`  🆕 ${tableName} - created`);
-      } else {
-        console.error(`  ❌ ${tableName} - error: ${error.message}`);
-      }
     }
   }
 

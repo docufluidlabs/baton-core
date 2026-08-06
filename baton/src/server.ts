@@ -51,6 +51,7 @@ import { requestLogger } from './middleware/request-logger';
 // SQS Workers
 import { startAllWorkers, stopAllWorkers } from './workers';
 import { ensureAllQueuesExist } from './queue/sqs-client';
+import { ensureAllTablesExist } from './db/ensure-tables';
 
 // Scheduled Jobs
 import { startScheduledJobs } from './lib/scheduler';
@@ -287,11 +288,14 @@ const server = app.listen(PORT, () => {
   logger.info(`📡 Public URL: ${env.APP_URL}`);
   logger.info(`🌍 Environment: ${env.NODE_ENV}`);
 
-  // Ensure SQS queues exist before starting workers (idempotent — safe on every boot)
-  ensureAllQueuesExist()
+  // Ensure DynamoDB tables and SQS queues exist before starting workers
+  // (idempotent — safe on every boot; on LocalStack missing ones are created,
+  // on real AWS they must pre-exist via CloudFormation)
+  ensureAllTablesExist()
+    .then(() => ensureAllQueuesExist())
     .then(() => startAllWorkers())
     .catch((err) => {
-      logger.error({ err }, 'Failed to initialize SQS queues or start workers');
+      logger.error({ err }, 'Failed to initialize tables/queues or start workers');
     });
 
   // Start scheduled cron jobs only on the designated pod (#10)

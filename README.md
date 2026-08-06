@@ -18,13 +18,23 @@ cp baton/.env.example baton/.env
 openssl rand -hex 32
 openssl rand -hex 32
 
-docker compose up -d --build
-cd baton && npm install && npm run setup   # creates DynamoDB tables + SQS queues (LocalStack)
+docker compose up -d   # pulls the published images; add --build to build from source
 ```
 
-Open **http://localhost** - the first visit walks you through creating your organization and owner account. No external auth or billing service is required.
+Open **http://localhost** - the first boot creates all DynamoDB tables and SQS queues automatically (LocalStack), and the first visit walks you through creating your organization and owner account. No external auth or billing service is required.
 
 To receive real webhooks from external platforms, expose the app on a public URL (reverse proxy or tunnel) and set `APP_URL`/`API_URL` accordingly. To launch real workflows, add your Docusign developer app credentials (`DOCUSIGN_*` in `baton/.env` - the defaults point at Docusign's free developer sandbox).
+
+### Updating
+
+Releases follow [semver](https://github.com/docufluidlabs/baton-core/releases): patch = fixes, minor = backward-compatible features, major = action required (called out in the release notes). Pin the version in a root-level `.env` next to `docker-compose.yml`:
+
+```bash
+echo "BATON_VERSION=1.0.0" > .env
+docker compose pull && docker compose up -d
+```
+
+Upgrades never touch your data - it lives in your DynamoDB (or the `localstack-data` volume) and `baton/.env`. New tables and queues are created automatically on boot.
 
 ## How it works
 

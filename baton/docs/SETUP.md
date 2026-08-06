@@ -139,10 +139,12 @@ Leave `DYNAMODB_ENDPOINT` and `SQS_ENDPOINT` empty to use real AWS.
 
 ### Create tables and queues
 
+> **Running against LocalStack?** This step is optional: whenever `DYNAMODB_ENDPOINT`/`SQS_ENDPOINT` are set, the API creates any missing tables and queues automatically on boot (including TTL). The scripts below do the same thing explicitly — and are the way to create tables on **real AWS** if you don't use the CloudFormation templates.
+
 ```bash
 cd baton
 
-# Create the 18 DynamoDB tables
+# Create the 21 DynamoDB tables
 npm run db:create-tables
 
 # Create the 6 SQS queues
@@ -155,7 +157,7 @@ npm run setup
 Expected output:
 
 ```
-🗄️  Creating 18 DynamoDB tables...
+🗄️  Creating 21 DynamoDB tables...
 
   🆕 baton-organizations - created
   🆕 baton-users - created
@@ -175,6 +177,9 @@ Expected output:
   🆕 baton-slack-configs - created
   🆕 baton-queued-webhooks - created
   🆕 baton-webhook-endpoints - created
+  🆕 baton-batch-processors - created
+  🆕 baton-batch-runs - created
+  🆕 baton-batch-rows - created
 
 ✨ Done!
 ```
@@ -182,6 +187,8 @@ Expected output:
 Both scripts are idempotent - existing tables/queues are skipped.
 
 ### Enable TTL on the TTL-based tables
+
+> TTL is enabled automatically when the tables are created by the script or by boot-time setup. The manual commands below are only needed for tables that already existed before TTL support (or CloudFormation stacks that don't set it).
 
 ```bash
 aws dynamodb update-time-to-live \
