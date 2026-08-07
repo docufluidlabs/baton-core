@@ -50,7 +50,9 @@ async function request<T = unknown>(path: string, options: RequestInit = {}): Pr
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }));
-    const err = new ApiError(res.status, body.error || body.message || 'Request failed');
+    // message is the human-readable half of the API error contract; error is
+    // the error NAME (e.g. 'ValidationError'), so it must be the fallback.
+    const err = new ApiError(res.status, body.message || body.error || 'Request failed');
     // A 401 outside the auth endpoints means the session cookie is gone or
     // expired — tell the AuthContext so the app flips to the sign-in screen.
     // /auth/* is excluded: a failed login or an anonymous /auth/me probe is

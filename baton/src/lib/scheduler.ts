@@ -21,6 +21,7 @@ import { dispatchDueBatchRuns } from '../services/batch.service';
 
 // ─── Rate limit backoff ──────────────────────────────────────
 
+let batchDispatchInFlight = false;
 let rateLimitBackoffUntil = 0;
 
 function isRateLimited(): boolean {
@@ -52,26 +53,37 @@ export function startScheduledJobs(): void {
     }
   });
 
-  // Every 30 seconds: sync running instance statuses from Maestro
+  // Every 30 seconds: sync running instance statuses from Maestro. The
+  // in-flight guard stops passes from stacking when one pass outlives the
+  // 30s interval (large table, many Maestro round-trips).
   cron.schedule('*/30 * * * * *', async () => {
-    if (isRateLimited()) return;
+    if (isRateLimited() || instanceSyncInFlight) return;
+    instanceSyncInFlight = true;
     try {
       await syncRunningInstanceStatuses();
     } catch (err) {
       if (!handleRateLimitError(err)) {
         logError('Instance status sync failed', err);
       }
+    } finally {
+      instanceSyncInFlight = false;
     }
   });
 
   // Every 30 seconds: release queued Bulk Upload rows for batch runs whose
-  // nextReleaseAt is due, then reconcile/promote the per-processor run queues.
-  // Logic lives in batch.service.dispatchDueBatchRuns.
+  // nextReleaseAt is due. Logic lives in batch.service.dispatchDueBatchRuns.
+  // In-flight guard: with runs executing concurrently a pass can outlive the
+  // interval; per-row conditional writes make overlap safe but stacking
+  // passes would only add contention.
   cron.schedule('*/30 * * * * *', async () => {
+    if (batchDispatchInFlight) return;
+    batchDispatchInFlight = true;
     try {
       await dispatchDueBatchRuns();
     } catch (err) {
       logError('Bulk Upload dispatcher failed', err);
+    } finally {
+      batchDispatchInFlight = false;
     }
   });
 
@@ -126,19 +138,43 @@ async function queueExpiringTokenRefreshes(): Promise<void> {
 
 // ─── Instance Status Sync ────────────────────────────────────
 
+let instanceSyncInFlight = false;
+
+/** Scan cursor persisted across passes — each pass walks at most
+ *  MAX_SYNC_SCAN_PAGES pages from where the previous pass stopped, wrapping
+ *  at the table end. Bounded per tick, full coverage across ticks. */
+let syncScanCursor: Record<string, unknown> | undefined;
+const MAX_SYNC_SCAN_PAGES = 5;
+
+/** Per-instance backoff for the direct-fetch fallback, so an instance that is
+ *  permanently missing upstream (deleted in Maestro, stale id) costs one API
+ *  call every FALLBACK_RETRY_MS, not one per 30s tick forever. */
+const instanceFallbackBackoff = new Map<string, number>();
+const FALLBACK_RETRY_MS = 10 * 60_000;
+const MAX_FALLBACKS_PER_PASS = 25;
+
 async function syncRunningInstanceStatuses(): Promise<void> {
   const docClient = getDocClient();
 
-  // Find running instances
-  const result = await docClient.send(new ScanCommand({
-    TableName: TableNames.WORKFLOW_INSTANCES,
-    FilterExpression: '#st = :running',
-    ExpressionAttributeValues: { ':running': 'running' },
-    ExpressionAttributeNames: { '#st': 'status' },
-    Limit: 100,
-  }));
-
-  const running = (result.Items as WorkflowInstance[]) || [];
+  // Find running instances. The old capped single-page Scan (Limit applies to
+  // items evaluated BEFORE the filter, restarting from the table start each
+  // tick) permanently hid instances past the cap once the table outgrew it.
+  // The cursor walk covers the whole table across passes without unbounded
+  // per-tick cost.
+  const running: WorkflowInstance[] = [];
+  let pages = 0;
+  do {
+    const result: any = await docClient.send(new ScanCommand({
+      TableName: TableNames.WORKFLOW_INSTANCES,
+      FilterExpression: '#st = :running',
+      ExpressionAttributeValues: { ':running': 'running' },
+      ExpressionAttributeNames: { '#st': 'status' },
+      ExclusiveStartKey: syncScanCursor,
+    }));
+    running.push(...((result.Items as WorkflowInstance[]) || []));
+    syncScanCursor = result.LastEvaluatedKey; // undefined = wrapped to the start
+    pages++;
+  } while (syncScanCursor && pages < MAX_SYNC_SCAN_PAGES);
   logDebug('Running instances to sync', { count: running.length });
 
   if (running.length === 0) return;
@@ -154,6 +190,7 @@ async function syncRunningInstanceStatuses(): Promise<void> {
 
   let synced = 0;
   let errors = 0;
+  let fallbacksThisPass = 0;
 
   for (const [workflowId, instances] of byWorkflow) {
     try {
@@ -198,13 +235,37 @@ async function syncRunningInstanceStatuses(): Promise<void> {
 
       for (const instance of instances) {
         try {
-          const maestroInstance = maestroById.get(instance.maestroInstanceId!);
+          let maestroInstance = maestroById.get(instance.maestroInstanceId!);
           if (!maestroInstance) {
-            logDebug('Workflow Builder instance not found in list response', {
-              instanceId: instance.id,
-              maestroInstanceId: instance.maestroInstanceId,
-            });
-            continue;
+            // The instances list endpoint is not paginated on the Maestro
+            // side, so at batch scale our instance can fall off the first
+            // page and would otherwise stay 'running' in Baton forever.
+            // Fall back to a direct single-instance fetch - backed off per
+            // instance and capped per pass so permanently-missing instances
+            // don't burn API quota every tick.
+            const nextTryAt = instanceFallbackBackoff.get(instance.id) ?? 0;
+            if (Date.now() < nextTryAt || fallbacksThisPass >= MAX_FALLBACKS_PER_PASS) {
+              continue;
+            }
+            fallbacksThisPass++;
+            try {
+              maestroInstance = await maestroService.getInstance(
+                connectionId,
+                workflow.maestroWorkflowId,
+                instance.maestroInstanceId!,
+              );
+              instanceFallbackBackoff.delete(instance.id);
+            } catch (fetchErr: any) {
+              if (String(fetchErr?.message || '').includes('HOURLY_APIINVOCATION_LIMIT_EXCEEDED')) throw fetchErr;
+              if (instanceFallbackBackoff.size > 10_000) instanceFallbackBackoff.clear();
+              instanceFallbackBackoff.set(instance.id, Date.now() + FALLBACK_RETRY_MS);
+              logDebug('Workflow Builder instance not found in list response or by direct fetch', {
+                instanceId: instance.id,
+                maestroInstanceId: instance.maestroInstanceId,
+                error: fetchErr?.message,
+              });
+              continue;
+            }
           }
 
           // Only update if the status actually changed
@@ -318,8 +379,12 @@ async function syncRunningInstanceStatuses(): Promise<void> {
             }
           }
 
-          // Send notification directly for terminal states
-          if (instance.launchedBy && workflow) {
+          // Send notification directly for terminal states. Batch rows are
+          // deliberately excluded: per-row notifications would fire once per
+          // file row, and 'batch' is a sentinel, not a userId - fanning out
+          // with it persisted invisible notifications addressed to 'batch'.
+          // Batch-level notification events are a spec-deferred feature.
+          if (instance.launchedBy && instance.launchedBy !== 'batch' && workflow) {
             // Automation-launched instances have launchedBy='automation' (a sentinel,
             // not a userId). Fan out to all org admins so the in-app notification
             // reaches a real recipient — otherwise it gets persisted with
@@ -351,10 +416,18 @@ async function syncRunningInstanceStatuses(): Promise<void> {
               const payload = buildPayload(recipients[i]);
               if (!payload) continue;
               if (i > 0) payload.channels = ['in_app', 'email'];
+              // Per-instance failures ROLL UP per automation (or workflow) per
+              // hour: "5 instances failed in X" instead of five entries.
+              if (maestroInstance.status === 'failed') {
+                payload.collapseKey = `workflow_failed:${instance.triggerRuleId ?? instance.workflowId}:${new Date().toISOString().slice(0, 13)}`;
+              }
               await sendNotification(payload);
             }
           }
-        } catch (err) {
+        } catch (err: any) {
+          // Rate-limit errors propagate to the workflow-level catch, which
+          // sets the backoff and stops the whole sync pass.
+          if (String(err?.message || '').includes('HOURLY_APIINVOCATION_LIMIT_EXCEEDED')) throw err;
           errors++;
           logError('Failed to sync instance status', err, { instanceId: instance.id });
         }

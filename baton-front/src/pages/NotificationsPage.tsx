@@ -356,8 +356,9 @@ function NotificationRow({
 
 const EVENT_META: Array<{ key: string; label: string; emoji: string; desc: string }> = [
   { key: 'workflow_failed',     label: 'Workflow Failed',            emoji: '🔴', desc: 'A workflow instance crashes or errors out' },
-  { key: 'workflow_completed',  label: 'Workflow Completed',         emoji: '🟢', desc: 'A workflow instance finishes successfully' },
-  { key: 'workflow_launched',   label: 'Workflow Launched',          emoji: '🔵', desc: 'A new workflow instance starts running' },
+  { key: 'workflow_completed',  label: 'Workflow Completed',         emoji: '🟢', desc: 'A workflow instance finishes successfully - off by default, the Activity Log covers it' },
+  { key: 'batch_run_completed', label: 'Bulk Upload Run Finished',   emoji: '🟢', desc: 'One summary per finished run - runs with failures also email' },
+  { key: 'batch_run_stopped',   label: 'Bulk Upload Run Stopped',    emoji: '🔴', desc: 'A run auto-stopped on consecutive failures - rows wait until resumed' },
   { key: 'automation_failed',   label: 'Automation Failed',          emoji: '🔴', desc: 'All retry attempts exhausted - needs manual action' },
   { key: 'connection_degraded', label: 'Connection Degraded',        emoji: '🔴', desc: 'Platform connection down - blocks all API requests' },
   { key: 'webhook_failed',     label: 'Webhook Failed',             emoji: '🟡', desc: 'Incoming webhook HMAC signature rejected' },
@@ -542,7 +543,8 @@ function AddToSlackButton({ onClick, loading }: { onClick: () => void; loading: 
 const EVENT_TYPES: Array<{ key: keyof SlackChannelRouting; label: string; severity: string; emoji: string }> = [
   { key: 'workflow_failed',          label: 'Workflow Failed',              severity: 'error',   emoji: '🔴' },
   { key: 'workflow_completed',       label: 'Workflow Completed',           severity: 'success', emoji: '🟢' },
-  { key: 'workflow_launched',        label: 'Workflow Launched',            severity: 'info',    emoji: '🔵' },
+  { key: 'batch_run_completed',      label: 'Bulk Upload Run Finished',     severity: 'success', emoji: '🟢' },
+  { key: 'batch_run_stopped',        label: 'Bulk Upload Run Stopped',      severity: 'error',   emoji: '🔴' },
   { key: 'automation_failed',        label: 'Automation Failed',            severity: 'error',   emoji: '🔴' },
   { key: 'connection_degraded',      label: 'Connection Degraded',          severity: 'error',   emoji: '🔴' },
   { key: 'webhook_failed',          label: 'Webhook Failed',               severity: 'warning', emoji: '🟡' },

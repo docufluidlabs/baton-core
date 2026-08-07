@@ -55,33 +55,41 @@ interface BulkUploadCardProps {
   workflowName: string;
   workflowStatus?: string;
   onUpload: () => void;
-  onPause?: () => void;
-  onResume?: () => void;
+  /** Pause/resume the given runs of this Bulk Upload (per-strip buttons pass
+   *  one id; the section-level Pause all/Resume all passes every match). */
+  onRunAction?: (runIds: string[], action: 'pause' | 'resume') => void;
+  /** Open the runs sidebar drilled straight into one run's rows. */
+  onViewRows?: (runId: string) => void;
   onViewRuns: () => void;
   onEdit: () => void;
 }
 
-export function BulkUploadCard({ processor: p, workflowName, workflowStatus, onUpload, onPause, onResume, onViewRuns, onEdit }: BulkUploadCardProps) {
-  const activeRun = p.activeRun;
+/** How many run strips show before the rest collapse behind an expander. */
+const MAX_VISIBLE_STRIPS = 2;
+
+export function BulkUploadCard({ processor: p, workflowName, workflowStatus, onUpload, onRunAction, onViewRows, onViewRuns, onEdit }: BulkUploadCardProps) {
+  // Runs execute concurrently - every active run gets its OWN strip with its
+  // own bar and status (user decision: side-by-side beats summed-together).
+  const activeRuns = p.activeRuns ?? [];
   const queuedRuns = p.queuedRuns ?? [];
+  const anyRunning = activeRuns.some((r) => r.status === 'running');
   const status: BulkUploadCardStatus =
-    activeRun?.status === 'running' ? 'running' :
-    activeRun ? 'paused' :
+    anyRunning ? 'running' :
+    activeRuns.length > 0 ? 'paused' :
     queuedRuns.length > 0 ? 'queued' :
     p.lastRun?.status === 'completed' ? 'done' : 'idle';
   const cfg = STATUS_CFG[status];
 
-  const run = activeRun ?? null;
-  const counts = run?.counts;
-  // "Processed" = no longer waiting (launched, skipped, or cancelled). Counting
-  // launches alone would miscount: cancelled rows may never have launched, and
-  // skipped rows never will - selectedRows minus queued is the only fraction
-  // that monotonically reaches its denominator.
-  const processed = run && counts ? Math.max(0, run.selectedRows - counts.queued) : 0;
-  const barTotal = counts ? counts.queued + counts.running + counts.completed + counts.failed : 0;
-  const pct = (n: number) => (barTotal > 0 ? (n / barTotal) * 100 : 0);
+  const [showAllRuns, setShowAllRuns] = useState(false);
+  const visibleRuns = showAllRuns ? activeRuns : activeRuns.slice(0, MAX_VISIBLE_STRIPS);
+  const hiddenCount = activeRuns.length - visibleRuns.length;
 
-  const throttleLine = `${p.throttleReleaseCount} ${p.throttleReleaseCount === 1 ? 'row' : 'rows'} every ${p.throttleIntervalMinutes} min`;
+  const runningIds = activeRuns.filter((r) => r.status === 'running').map((r) => r.id);
+  const pausedIds = activeRuns.filter((r) => r.status === 'paused').map((r) => r.id);
+
+  // "per file": each run throttles independently, so with several files in
+  // flight the combined launch rate is (files x this rate).
+  const throttleLine = `throttle: ${p.throttleReleaseCount} ${p.throttleReleaseCount === 1 ? 'row' : 'rows'} / ${p.throttleIntervalMinutes} min per file`;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -117,7 +125,7 @@ export function BulkUploadCard({ processor: p, workflowName, workflowStatus, onU
           </button>
           <button
             onClick={onUpload}
-            title={activeRun ? 'Queue another file - it runs after the current one' : undefined}
+            title={activeRuns.length > 0 ? 'Each file starts its own run immediately - runs execute at the same time' : undefined}
             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-lg transition-colors bg-brand-600 text-white hover:bg-brand-700 shadow-sm"
           >
             <Upload className="w-3.5 h-3.5" /> Upload file
@@ -125,61 +133,51 @@ export function BulkUploadCard({ processor: p, workflowName, workflowStatus, onU
         </div>
       </div>
 
-      {/* Active run strip */}
-      {run && counts ? (
+      {/* Active runs - one strip per run, each with its own bar and status */}
+      {activeRuns.length > 0 ? (
         <div className="border-t border-gray-100 bg-blue-50/30 px-5 py-3.5">
-          <div className="flex items-center justify-between gap-3 mb-2.5">
-            <p className="text-xs text-gray-600 truncate">
-              <span className="font-medium text-gray-800">{run.fileName}</span>
-              <span className="text-gray-400"> · run #{run.runNumber}</span>
-              {run.startedAt && (
-                <span className="text-gray-400"> · started {new Date(run.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-              )}
-            </p>
-            {status === 'running' && onPause && (
-              <button
-                onClick={onPause}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors shrink-0"
-              >
-                <Pause className="w-3 h-3" /> Pause
-              </button>
-            )}
-            {status === 'paused' && onResume && (
-              <button
-                onClick={onResume}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors shrink-0"
-              >
-                <Play className="w-3 h-3" /> Resume
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="flex-1 flex h-2 rounded-full overflow-hidden bg-gray-100">
-              {pct(counts.queued) > 0 && <div className="bg-gray-300 shrink-0" style={{ width: `${pct(counts.queued)}%` }} />}
-              {pct(counts.running) > 0 && <div className="bg-blue-400 shrink-0 animate-pulse" style={{ width: `${pct(counts.running)}%` }} />}
-              {pct(counts.completed) > 0 && <div className="bg-green-500 shrink-0" style={{ width: `${pct(counts.completed)}%` }} />}
-              {pct(counts.failed) > 0 && <div className="bg-red-500 shrink-0" style={{ width: `${pct(counts.failed)}%` }} />}
+          {activeRuns.length > 1 && (
+            <div className="flex items-center justify-between gap-3 mb-2.5">
+              <p className="text-xs font-medium text-gray-800">
+                {activeRuns.length} files processing at the same time
+              </p>
+              <span className="flex items-center gap-1.5 shrink-0">
+                {runningIds.length > 1 && onRunAction && (
+                  <button
+                    onClick={() => onRunAction(runningIds, 'pause')}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
+                  >
+                    <Pause className="w-3 h-3" /> Pause all
+                  </button>
+                )}
+                {pausedIds.length > 1 && onRunAction && (
+                  <button
+                    onClick={() => onRunAction(pausedIds, 'resume')}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-green-700 hover:bg-green-50 rounded-lg transition-colors"
+                  >
+                    <Play className="w-3 h-3" /> Resume all
+                  </button>
+                )}
+              </span>
             </div>
-            <span className="text-[11px] text-gray-500 tabular-nums shrink-0">
-              {processed}/{run.selectedRows} rows processed
-            </span>
+          )}
+
+          <div className="space-y-3">
+            {visibleRuns.map((r) => (
+              <RunStrip key={r.id} run={r} onRunAction={onRunAction} onViewRows={onViewRows} />
+            ))}
           </div>
 
-          <p className="text-[11px] mt-2 tabular-nums">
-            <Counter n={counts.queued} label="queued" cls="text-gray-500" />
-            <Dot />
-            <Counter n={counts.running} label="running" cls="text-blue-600" />
-            <Dot />
-            <Counter n={counts.completed} label="completed" cls="text-green-600" />
-            <Dot />
-            <Counter n={counts.failed} label="failed" cls="text-red-500" />
-            <Dot />
-            <Counter n={counts.cancelled} label="cancelled" cls="text-gray-400" />
-            {status === 'running' && run.nextReleaseAt && counts.queued > 0 && (
-              <span className="text-blue-500"><Dot /> next release in <ReleaseCountdown nextReleaseAt={run.nextReleaseAt} /></span>
-            )}
-          </p>
+          {(hiddenCount > 0 || showAllRuns) && activeRuns.length > MAX_VISIBLE_STRIPS && (
+            <button
+              onClick={() => setShowAllRuns((v) => !v)}
+              className="mt-2.5 w-full flex items-center justify-center gap-1 py-1 text-[11px] font-medium text-gray-500 hover:text-brand-600 hover:bg-white/60 rounded-lg transition-colors"
+            >
+              {showAllRuns
+                ? <>Show fewer runs</>
+                : <>Show all {activeRuns.length} runs ({hiddenCount} more)</>}
+            </button>
+          )}
         </div>
       ) : (
         <div className="border-t border-gray-100 px-5 py-2.5">
@@ -192,11 +190,11 @@ export function BulkUploadCard({ processor: p, workflowName, workflowStatus, onU
         </div>
       )}
 
-      {/* Files waiting their turn - runs execute strictly in sequence */}
+      {/* Transitional: pre-concurrency queued runs, promoted within ~30s */}
       {queuedRuns.length > 0 && (
         <div className="border-t border-gray-100 px-5 py-2">
           <p className="text-[11px] text-gray-500 truncate">
-            <span className="font-medium text-blue-600">Up next:</span>{' '}
+            <span className="font-medium text-blue-600">Starting shortly:</span>{' '}
             {queuedRuns.slice(0, 2).map((r, i) => (
               <span key={r.id}>
                 {i > 0 && ' · '}
@@ -216,6 +214,93 @@ export function BulkUploadCard({ processor: p, workflowName, workflowStatus, onU
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+/** One active run: its own header line, progress bar, counters, countdown and
+ *  pause/resume control - runs execute concurrently, so each reads on its own. */
+function RunStrip({ run: r, onRunAction, onViewRows }: {
+  run: NonNullable<BatchProcessor['activeRuns']>[number];
+  onRunAction?: (runIds: string[], action: 'pause' | 'resume') => void;
+  onViewRows?: (runId: string) => void;
+}) {
+  const c = r.counts;
+  // "Processed" = no longer waiting (launched, skipped, or cancelled). Counting
+  // launches alone would miscount: cancelled rows may never have launched, and
+  // skipped rows never will - selectedRows minus queued is the only fraction
+  // that monotonically reaches its denominator.
+  const processed = Math.max(0, (r.selectedRows ?? 0) - c.queued);
+  const barTotal = c.queued + c.running + c.completed + c.failed;
+  const pct = (n: number) => (barTotal > 0 ? (n / barTotal) * 100 : 0);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3 mb-1.5">
+        <p className="text-xs text-gray-600 truncate">
+          <span className={clsx('inline-block w-1.5 h-1.5 rounded-full mr-1.5 align-middle', r.status === 'running' ? 'bg-blue-400 animate-pulse' : 'bg-yellow-400')} />
+          <span className="font-medium text-gray-800">{r.fileName}</span>
+          <span className="text-gray-400"> · run #{r.runNumber}</span>
+          {r.startedAt && (
+            <span className="text-gray-400"> · started {new Date(r.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+          )}
+          {r.status === 'paused' && <span className="text-yellow-700 font-medium"> · paused</span>}
+        </p>
+        <span className="flex items-center gap-1.5 shrink-0">
+          {onViewRows && (
+            <button
+              onClick={() => onViewRows(r.id)}
+              className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium text-gray-500 hover:text-brand-600 hover:bg-white rounded-lg border border-gray-200 transition-colors"
+            >
+              <FileText className="w-3 h-3" /> See rows
+            </button>
+          )}
+          {onRunAction && (
+            r.status === 'running' ? (
+              <button
+                onClick={() => onRunAction([r.id], 'pause')}
+                className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors"
+              >
+                <Pause className="w-3 h-3" /> Pause
+              </button>
+            ) : (
+              <button
+                onClick={() => onRunAction([r.id], 'resume')}
+                className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+              >
+                <Play className="w-3 h-3" /> Resume
+              </button>
+            )
+          )}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <div className="flex-1 flex h-2 rounded-full overflow-hidden bg-gray-100">
+          {pct(c.queued) > 0 && <div className="bg-yellow-300 shrink-0" style={{ width: `${pct(c.queued)}%` }} />}
+          {pct(c.running) > 0 && <div className="bg-blue-400 shrink-0 animate-pulse" style={{ width: `${pct(c.running)}%` }} />}
+          {pct(c.completed) > 0 && <div className="bg-green-500 shrink-0" style={{ width: `${pct(c.completed)}%` }} />}
+          {pct(c.failed) > 0 && <div className="bg-red-500 shrink-0" style={{ width: `${pct(c.failed)}%` }} />}
+        </div>
+        <span className="text-[11px] text-gray-500 tabular-nums shrink-0">
+          {processed}/{r.selectedRows} rows processed
+        </span>
+      </div>
+
+      <p className="text-[11px] mt-1.5 tabular-nums">
+        <Counter n={c.queued} label="queued" cls="text-yellow-600" />
+        <Dot />
+        <Counter n={c.running} label="running" cls="text-blue-600" />
+        <Dot />
+        <Counter n={c.completed} label="completed" cls="text-green-600" />
+        <Dot />
+        <Counter n={c.failed} label="failed" cls="text-red-500" />
+        <Dot />
+        <Counter n={c.cancelled} label="cancelled" cls="text-gray-400" />
+        {r.status === 'running' && r.nextReleaseAt && c.queued > 0 && (
+          <span className="text-blue-500"><Dot /> next release in <ReleaseCountdown nextReleaseAt={r.nextReleaseAt} /></span>
+        )}
+      </p>
     </div>
   );
 }

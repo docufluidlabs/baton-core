@@ -60,15 +60,22 @@ const IN_PROGRESS_KINDS: { key: InProgressKind; label: string; activeCls: string
   { key: 'overdue', label: 'After Overdue', activeCls: 'bg-amber-50 text-amber-700 border-amber-200',    dot: 'bg-amber-400' },
 ];
 
-/** Look up the expectedDurationDays configured on the rule that launched an instance. */
+/**
+ * Overdue threshold for an instance: rule-launched instances read the rule's
+ * actionConfig; Bulk Upload instances carry the threshold themselves
+ * (snapshotted from the run at launch).
+ */
 export function getExpectedDurationDays(
-  inst: Pick<WorkflowInstance, 'triggerRuleId'>,
+  inst: Pick<WorkflowInstance, 'triggerRuleId' | 'expectedDurationDays'>,
   automationMap: Map<string, { actionConfig?: Record<string, unknown> }>,
 ): number | undefined {
-  if (!inst.triggerRuleId) return undefined;
-  const rule = automationMap.get(inst.triggerRuleId);
-  const v = rule?.actionConfig?.expectedDurationDays;
-  return typeof v === 'number' && v > 0 ? v : undefined;
+  if (inst.triggerRuleId) {
+    const rule = automationMap.get(inst.triggerRuleId);
+    const v = rule?.actionConfig?.expectedDurationDays;
+    return typeof v === 'number' && v > 0 ? v : undefined;
+  }
+  const own = inst.expectedDurationDays;
+  return typeof own === 'number' && own > 0 ? own : undefined;
 }
 
 /**
@@ -280,7 +287,7 @@ export default function ControlCenterPage() {
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Resolution Center</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Control Center</h1>
           <p className="text-sm text-gray-500 mt-1">Fix everything → leave with zeros.</p>
         </div>
         <div className="flex items-center gap-2 mt-1 shrink-0">
@@ -450,6 +457,7 @@ export default function ControlCenterPage() {
           })}
         </div>
       )}
+
     </div>
   );
 }

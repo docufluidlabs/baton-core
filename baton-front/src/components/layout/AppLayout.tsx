@@ -16,7 +16,7 @@ import {
   CircleHelp,
   LogOut,
 } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import clsx from 'clsx';
 import { NotificationsPanel } from './NotificationsPanel';
 import { useAuth } from '@/auth/AuthContext';
@@ -25,7 +25,6 @@ import { toast } from 'sonner';
 import { useLayoutStore } from '@/stores/layoutStore';
 import { useFlowStore } from '@/stores/flowStore';
 import { ActivityLogSidebar } from '@/components/flows/ActivityLogSidebar';
-import { clarityIdentify, claritySetPage } from '@/lib/clarity';
 import { useInstances, useAutomations, useConnections } from '@/hooks/useApi';
 
 const NAV_ITEMS = [
@@ -91,10 +90,9 @@ export function AppLayout() {
   const ccBadge = useControlCenterBadge();
   const { data: connectionsData } = useConnections();
   const hasDocuSign = connectionsData?.connections?.some((c) => c.platform === 'docusign') ?? false;
-  const { user, organization, logout } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const clarityIdentified = useRef(false);
 
   // Activity Log — global panel, opened from the bottom nav, rendered at the
   // AppLayout level so it works from any route (not just /flows).
@@ -118,19 +116,6 @@ export function AppLayout() {
     });
     return () => setApiErrorHandler(null);
   }, []);
-
-  // Identify user in Clarity once after auth loads.
-  useEffect(() => {
-    if (user?.id && !clarityIdentified.current) {
-      clarityIdentified.current = true;
-      clarityIdentify(user.id, organization?.id);
-    }
-  }, [user?.id, organization?.id]);
-
-  // Tag page views in Clarity on route changes.
-  useEffect(() => {
-    claritySetPage(location.pathname);
-  }, [location.pathname]);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -231,7 +216,7 @@ export function AppLayout() {
               className="relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 cursor-not-allowed select-none"
             >
               <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-              {(!collapsed || mobileSidebarOpen) && <span>Resolution Center</span>}
+              {(!collapsed || mobileSidebarOpen) && <span>Control Center</span>}
             </div>
           ) : (
             <NavLink
@@ -254,7 +239,7 @@ export function AppLayout() {
                   </span>
                 )}
               </span>
-              {(!collapsed || mobileSidebarOpen) && <span>Resolution Center</span>}
+              {(!collapsed || mobileSidebarOpen) && <span>Control Center</span>}
             </NavLink>
           )}
         </nav>
@@ -333,8 +318,8 @@ export function AppLayout() {
         </div>
       </aside>
 
-      {/* Activity Log — global push-style sidebar that resizes main, sits
-          between the nav rail and main content as a flex sibling. */}
+      {/* Activity Log — overlay drawer from the left (right-side panels
+          overlay too; one interaction model for every surface). */}
       <ActivityLogSidebar
         open={activityLogOpen}
         workflowId={activityLogWorkflowId}
@@ -370,7 +355,7 @@ export function AppLayout() {
               <CircleHelp className="w-5 h-5" />
             </a>
             <button
-              onClick={() => openActivityLog()}
+              onClick={() => (activityLogOpen ? closeActivityLog() : openActivityLog())}
               aria-label="Activity Log"
               title="Activity Log"
               className={clsx(

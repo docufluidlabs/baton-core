@@ -59,7 +59,7 @@ async function loadRun(processor: BatchProcessor, runId: string): Promise<BatchR
   return run;
 }
 
-function toRunSummary(run: BatchRun, rows: BatchRow[]) {
+function toRunSummary(run: BatchRun, counts: batchService.BatchRowCounts) {
   return {
     id: run.id,
     runNumber: run.runNumber,
@@ -67,11 +67,35 @@ function toRunSummary(run: BatchRun, rows: BatchRow[]) {
     status: run.status,
     totalRows: run.totalRows,
     selectedRows: run.selectedRows ?? null,
-    counts: batchService.computeRowCounts(rows),
+    counts,
     startedAt: run.startedAt ?? null,
     completedAt: run.completedAt ?? null,
     nextReleaseAt: run.nextReleaseAt ?? null,
+    createdBy: run.createdBy ?? null,
+    createdByName: run.createdByName ?? null,
+    stoppedReason: run.stoppedReason ?? null,
   };
+}
+
+/**
+ * Best-effort uploader display name for the run's audit trail, read from the
+ * local users table (self-contained auth). Falls back to the email, then
+ * undefined - the name is nice-to-have and must never stall the upload.
+ */
+async function resolveUserDisplayName(userId: string): Promise<string | undefined> {
+  try {
+    const docClient = getDocClient();
+    const result = await docClient.send(new GetCommand({
+      TableName: TableNames.USERS,
+      Key: { id: userId },
+    }));
+    const user = result.Item;
+    if (!user) return undefined;
+    const full = [user.firstName, user.lastName].filter(Boolean).join(' ');
+    return full || user.email || undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 async function assertTargetWorkflow(orgId: string, workflowId: string): Promise<Workflow> {
@@ -97,20 +121,28 @@ router.get('/', requireViewer, async (req: Request, res: Response, next: NextFun
     const enriched = [];
     for (const processor of processors) {
       const runs = await batchService.getRunsByProcessor(processor.id);
-      const activeRun = runs.find((r) => r.status === 'running' || r.status === 'paused');
+      // Runs execute concurrently - every running/paused run is active at
+      // once, oldest first so the card reads in upload order.
+      const activeRunRecords = runs
+        .filter((r) => r.status === 'running' || r.status === 'paused')
+        .sort((a, b) => (a.runNumber ?? 0) - (b.runNumber ?? 0));
       const lastRun = runs.find((r) => r.status !== 'draft' && r.status !== 'queued');
 
+      // Status-only counts query per run, in parallel - the active-run count
+      // is unbounded under concurrency and this endpoint is polled every 15s,
+      // so it must not transfer row payloads.
+      const summaryRuns = [...activeRunRecords, lastRun].filter(
+        (r, i, arr): r is BatchRun => !!r && arr.findIndex((x) => x?.id === r.id) === i,
+      );
+      const countsList = await Promise.all(summaryRuns.map((r) => batchService.queryRowStatusCounts(r.id)));
       const summaries = new Map<string, ReturnType<typeof toRunSummary>>();
-      for (const run of [activeRun, lastRun]) {
-        if (run && !summaries.has(run.id)) {
-          const rows = await batchService.getRowsByRun(run.id);
-          summaries.set(run.id, toRunSummary(run, rows));
-        }
-      }
+      summaryRuns.forEach((r, i) => summaries.set(r.id, toRunSummary(r, countsList[i])));
+      const activeRuns = activeRunRecords.map((r) => summaries.get(r.id)!);
 
-      // Runs waiting behind the active one, oldest first. No rows fetch -
-      // nothing has been released yet, so the counts persisted at start time
-      // (queuedRows/skippedRows) are still exact.
+      // Transitional only: 'queued' runs no longer get created (uploads start
+      // immediately), but pre-deploy queued runs may exist until the
+      // dispatcher's legacy promotion picks them up. No rows fetch - the
+      // counts persisted at start time are still exact.
       const queuedRuns = runs
         .filter((r) => r.status === 'queued')
         .sort((a, b) => (a.runNumber ?? 0) - (b.runNumber ?? 0))
@@ -131,22 +163,21 @@ router.get('/', requireViewer, async (req: Request, res: Response, next: NextFun
           },
         }));
 
-      // Sequence aggregates for the card. "Processed" counts rows that are no
-      // longer waiting: all rows of completed/cancelled runs plus the active
-      // run's released rows. Stopped runs still hold queued rows, so they are
+      // Aggregates for the card. "Processed" counts rows that are no longer
+      // waiting: all rows of completed/cancelled runs plus every active run's
+      // released rows. Stopped runs still hold queued rows, so they are
       // deliberately excluded rather than guessed at.
       const sequenced = runs.filter((r) => r.status !== 'draft');
-      const activeSummary = activeRun ? summaries.get(activeRun.id) : undefined;
       const rowsProcessed =
         sequenced
           .filter((r) => r.status === 'completed' || r.status === 'cancelled')
           .reduce((sum, r) => sum + (r.selectedRows ?? 0), 0) +
-        (activeSummary ? Math.max(0, (activeSummary.selectedRows ?? 0) - activeSummary.counts.queued) : 0);
+        activeRuns.reduce((sum, s) => sum + Math.max(0, (s.selectedRows ?? 0) - s.counts.queued), 0);
 
       enriched.push({
         ...processor,
         lastRun: lastRun ? summaries.get(lastRun.id) : undefined,
-        activeRun: activeSummary,
+        activeRuns,
         queuedRuns,
         runsTotal: sequenced.length,
         rowsTotal: sequenced.reduce((sum, r) => sum + (r.selectedRows ?? 0), 0),
@@ -246,8 +277,8 @@ router.post(
         throw new ValidationError('Attach a CSV, XLSX or TSV file in the "file" field.');
       }
 
-      // Uploading while a run is active is allowed - the new run enters the
-      // processor's queue at start time and runs after the current one.
+      // Uploading while runs are active is allowed - each file starts its own
+      // run immediately; runs execute concurrently.
       const sheet = typeof req.query.sheet === 'string' && req.query.sheet ? req.query.sheet : undefined;
       const parsed = batchService.parseSpreadsheetBuffer(req.file.buffer, req.file.originalname, sheet);
 
@@ -258,6 +289,7 @@ router.post(
         fileName: req.file.originalname,
         parsed,
         createdBy: req.auth!.userId,
+        createdByName: await resolveUserDisplayName(req.auth!.userId),
       });
 
       logAudit({
@@ -396,34 +428,29 @@ router.post('/:id/runs/:runId/start', requireMember, async (req: Request, res: R
     });
     await batchService.putRows(toPersist);
 
-    // One run at a time per processor, in strict sequence: if any sibling is
-    // active OR already waiting, this run queues behind it (a new start must
-    // never jump ahead of earlier-queued files). Rows are safe either way -
-    // the dispatcher only releases rows of runs whose status is 'running'.
-    // The dispatcher's reconciliation sweep self-heals the rare two-tabs race
-    // where two starts land on an idle processor simultaneously.
-    const siblingRuns = await batchService.getRunsByProcessor(processor.id);
-    const mustQueue = siblingRuns.some(
-      (r) => r.id !== run.id && (r.status === 'running' || r.status === 'paused' || r.status === 'queued'),
-    );
-
+    // Runs execute CONCURRENTLY per processor (product decision 2026-08-06:
+    // five sheets uploaded together should all make progress, not wait in a
+    // strict sequence). Every start goes straight to 'running' with its own
+    // release clock; each run throttles independently. Rows are safe because
+    // the dispatcher releases rows per run.
     const now = new Date().toISOString();
     await batchService.updateRun(run.id, {
-      status: mustQueue ? 'queued' : 'running',
-      ...(mustQueue ? {} : { startedAt: now, nextReleaseAt: now }),
+      status: 'running',
+      startedAt: now,
+      nextReleaseAt: now,
       mapping,
       rowSelection,
       settings,
       selectedRows: validation.selectedCount,
       // Persisted so run summaries can report exact queued/skipped counts
-      // without fetching rows (see GET / queuedRuns).
+      // without fetching rows.
       queuedRows: queuedCount,
       skippedRows: skippedCount,
       consecutiveFailures: 0,
     });
     const updated = await batchService.getRun(run.id);
 
-    logInfo(mustQueue ? 'Batch run queued behind active run' : 'Batch run started', { runId: run.id, queued: queuedCount, skipped: skippedCount });
+    logInfo('Batch run started', { runId: run.id, queued: queuedCount, skipped: skippedCount });
     logAudit({
       orgId: processor.orgId,
       userId: req.auth!.userId,
@@ -446,15 +473,13 @@ router.get('/:id/runs', requireViewer, async (req: Request, res: Response, next:
     const processor = await loadProcessor(req);
     const runs = (await batchService.getRunsByProcessor(processor.id)).filter((r) => r.status !== 'draft');
 
-    const out = [];
-    for (const run of runs) {
-      const rows = await batchService.getRowsByRun(run.id);
-      out.push({
-        ...toRunSummary(run, rows),
-        settings: run.settings ?? null,
-        columns: run.columns,
-      });
-    }
+    // Status-only counts, in parallel - same rationale as the list endpoint.
+    const countsList = await Promise.all(runs.map((r) => batchService.queryRowStatusCounts(r.id)));
+    const out = runs.map((run, i) => ({
+      ...toRunSummary(run, countsList[i]),
+      settings: run.settings ?? null,
+      columns: run.columns,
+    }));
 
     res.json({ runs: out });
   } catch (error) {
@@ -483,6 +508,9 @@ router.get('/:id/runs/:runId/rows', requireViewer, async (req: Request, res: Res
         status: r.displayStatus,
         problems: r.problems || [],
         data: r.data,
+        // The exact parameter payload the workflow receives (mapping applied) -
+        // the raw file row alone answers a different question.
+        payload: run.mapping ? batchService.buildRowInputs(run.mapping, r.data) : null,
         workflowInstanceId: r.workflowInstanceId ?? null,
         maestroInstanceId: r.maestroInstanceId ?? null,
         instance: r.instance
@@ -492,6 +520,11 @@ router.get('/:id/runs/:runId/rows', requireViewer, async (req: Request, res: Res
               lastCompletedStep: r.instance.lastCompletedStep ?? null,
               totalSteps: r.instance.totalSteps ?? null,
               instanceUrl: r.instance.instanceUrl ?? null,
+              retryCount: r.instance.retryCount ?? null,
+              retryMaxAttempts: r.instance.retryMaxAttempts ?? null,
+              // Present only once a launch actually succeeded - its absence
+              // with retryCount > 0 is the "retry ladder in progress" signal.
+              maestroInstanceId: r.instance.maestroInstanceId ?? null,
             }
           : undefined,
         errorMessage: r.errorMessage ?? null,
@@ -534,21 +567,17 @@ router.post('/:id/runs/:runId/resume', requireMember, async (req: Request, res: 
       throw new ValidationError('Only a paused or stopped run can be resumed.');
     }
 
-    // If the queue moved on while this run sat stopped (the dispatcher
-    // promotes the next queued run past a stopped one), resuming must rejoin
-    // the sequence instead of producing two concurrently running runs. Being
-    // the oldest by run number, it goes next.
-    const siblings = await batchService.getRunsByProcessor(processor.id);
-    const hasRunningSibling = siblings.some((r) => r.id !== run.id && r.status === 'running');
-
-    // Reset the failure streak so a stopped run doesn't immediately re-stop.
+    // Runs execute concurrently, so resuming never has to wait for siblings.
+    // Reset the failure streak so a stopped run doesn't immediately re-stop,
+    // and clear the auto-stop reason - it described the state being left.
     await batchService.updateRun(run.id, {
-      status: hasRunningSibling ? 'queued' : 'running',
-      ...(hasRunningSibling ? {} : { nextReleaseAt: new Date().toISOString() }),
+      status: 'running',
+      nextReleaseAt: new Date().toISOString(),
       consecutiveFailures: 0,
+      stoppedReason: null,
     });
 
-    logInfo(hasRunningSibling ? 'Batch run resume queued behind running run' : 'Batch run resumed', { runId: run.id, from: run.status });
+    logInfo('Batch run resumed', { runId: run.id, from: run.status });
     res.json({ run: await batchService.getRun(run.id) });
   } catch (error) {
     next(error);

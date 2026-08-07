@@ -219,6 +219,7 @@ export function BulkUploadWizard({ processor, onClose, onStarted }: BulkUploadWi
   const [releaseCount, setReleaseCount] = useState(String(processor.throttleReleaseCount));
   const [intervalMinutes, setIntervalMinutes] = useState(String(processor.throttleIntervalMinutes));
   const [stopAfterFailures, setStopAfterFailures] = useState(String(processor.stopAfterConsecutiveFailures));
+  const [overdueDays, setOverdueDays] = useState(processor.expectedDurationDays ? String(processor.expectedDurationDays) : '');
 
   const [preflight, setPreflight] = useState<BatchPreflightResult | null>(null);
   const [preflightLoading, setPreflightLoading] = useState(false);
@@ -268,10 +269,12 @@ export function BulkUploadWizard({ processor, onClose, onStarted }: BulkUploadWi
   const selectedCount = rowMode === 'all' ? totalRows : to - from + 1;
 
   const rowSelection: BatchRowSelection = rowMode === 'all' ? { mode: 'all' } : { mode: 'range', from, to };
+  const overdueDaysNum = parseInt(overdueDays, 10);
   const settings: BatchRunSettings = {
     releaseCount: Math.max(parseInt(releaseCount, 10) || processor.throttleReleaseCount, 1),
     intervalMinutes: Math.max(parseInt(intervalMinutes, 10) || processor.throttleIntervalMinutes, 1),
     stopAfterFailures: Math.max(parseInt(stopAfterFailures, 10) || processor.stopAfterConsecutiveFailures, 1),
+    ...(Number.isFinite(overdueDaysNum) && overdueDaysNum > 0 ? { expectedDurationDays: overdueDaysNum } : {}),
   };
 
   // Preflight when entering step 4 - pins the schema snapshot server-side.
@@ -311,14 +314,22 @@ export function BulkUploadWizard({ processor, onClose, onStarted }: BulkUploadWi
     ? (skipProblemRows ? preflight.readyRows : preflight.readyRows + preflight.problemRows.length)
     : 0;
 
+  // An entirely unmapped run would launch every row with an empty payload -
+  // syntactically valid, semantically pointless. At least one parameter must
+  // be mapped (unless the workflow declares no parameters at all).
+  const mappedCount = Object.values(mapping).filter((c) => c.kind !== 'unset').length;
+  const mappingEmpty = fields.length > 0 && mappedCount === 0;
+
   const canNext =
     step === 1 ? !!uploadResult && !uploading :
+    step === 2 ? !mappingEmpty :
     step === 3 ? selectedCount > 0 :
     true;
 
   const canStart =
     !!preflight && !preflightLoading && !starting &&
-    preflight.unmappedRequired.length === 0 && launchCount > 0;
+    preflight.unmappedRequired.length === 0 && launchCount > 0 &&
+    !mappingEmpty;
 
   // Problems grouped by problem string for the review step
   const groupedProblems = useMemo(() => {
@@ -402,8 +413,9 @@ export function BulkUploadWizard({ processor, onClose, onStarted }: BulkUploadWi
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{file?.name}</p>
                       <p className="text-xs text-gray-500">
-                        {uploadResult.totalRows} rows · {uploadResult.columns.length} columns
-                        {uploadResult.blankRowsSkipped > 0 && ` · ${uploadResult.blankRowsSkipped} blank rows skipped`}
+                        {uploadResult.blankRowsSkipped > 0
+                          ? `${uploadResult.totalRows + uploadResult.blankRowsSkipped} rows found · ${uploadResult.blankRowsSkipped} blank ${uploadResult.blankRowsSkipped === 1 ? 'row' : 'rows'} skipped · ${uploadResult.totalRows} to process · ${uploadResult.columns.length} columns`
+                          : `${uploadResult.totalRows} rows · ${uploadResult.columns.length} columns`}
                       </p>
                     </div>
                     <button
@@ -466,13 +478,24 @@ export function BulkUploadWizard({ processor, onClose, onStarted }: BulkUploadWi
 
         {/* ── Step 2: Mapping ──────────────────────────── */}
         {step === 2 && uploadResult && (
-          <WizardMappingStep
-            fields={fields}
-            columns={uploadResult.columns}
-            previewRow={uploadResult.preview[0]}
-            mapping={mapping}
-            onChange={(param, choice) => setMapping((prev) => ({ ...prev, [param]: choice }))}
-          />
+          <>
+            <WizardMappingStep
+              fields={fields}
+              columns={uploadResult.columns}
+              previewRow={uploadResult.preview[0]}
+              mapping={mapping}
+              onChange={(param, choice) => setMapping((prev) => ({ ...prev, [param]: choice }))}
+            />
+            {mappingEmpty && (
+              <div className="mt-3 bg-amber-50 rounded-lg border border-amber-100 p-3 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700">
+                  Map at least one parameter to a column or fixed value - with nothing
+                  mapped, every workflow would launch with an empty payload.
+                </p>
+              </div>
+            )}
+          </>
         )}
 
         {/* ── Step 3: Rows + throttling ───────────────── */}
@@ -523,7 +546,10 @@ export function BulkUploadWizard({ processor, onClose, onStarted }: BulkUploadWi
             </div>
 
             <div>
-              <p className="text-sm font-medium text-gray-700 mb-2">Throttling</p>
+              <p className="text-sm font-medium text-gray-700">Throttling · this run</p>
+              <p className="text-[11px] text-gray-400 mb-2 mt-0.5">
+                Prefilled from the Bulk Upload settings - changes here apply to this run only.
+              </p>
               <div className="flex items-center gap-2 flex-wrap text-sm text-gray-500">
                 <span>Release</span>
                 <input
@@ -553,6 +579,18 @@ export function BulkUploadWizard({ processor, onClose, onStarted }: BulkUploadWi
                   className="w-16 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-brand-500 outline-none"
                 />
                 <span>consecutive failures</span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap text-sm text-gray-500 mt-2">
+                <span>Mark as Overdue after</span>
+                <input
+                  type="number"
+                  min={1}
+                  placeholder="off"
+                  value={overdueDays}
+                  onChange={(e) => setOverdueDays(e.target.value.replace(/[^\d]/g, ''))}
+                  className="w-16 px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-brand-500 outline-none placeholder:text-gray-300"
+                />
+                <span>days</span>
               </div>
             </div>
 
@@ -598,6 +636,16 @@ export function BulkUploadWizard({ processor, onClose, onStarted }: BulkUploadWi
                   </div>
                 </div>
 
+                {mappingEmpty && (
+                  <div className="bg-red-50 rounded-lg border border-red-100 p-3 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-red-700">
+                      No parameters are mapped - every row would launch with an empty
+                      payload. Go back to Mapping and map at least one parameter.
+                    </p>
+                  </div>
+                )}
+
                 {preflight.unmappedRequired.length > 0 && (
                   <div className="bg-red-50 rounded-lg border border-red-100 p-3 flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
@@ -633,9 +681,14 @@ export function BulkUploadWizard({ processor, onClose, onStarted }: BulkUploadWi
                   </p>
                   <p>Estimated duration: about {formatMinutes(preflight.estimatedMinutes)}.</p>
                   {/* Usage line renders only when a relay meter reports usage -
-                      the self-hosted default meters nothing. */}
+                      the self-hosted default meters nothing. A count without a
+                      limit reads plainly instead of "of unlimited". */}
                   {preflight.planUsage?.used != null && (
-                    <p>{preflight.planUsage.used} of {preflight.planUsage.included ?? 'unlimited'} relays used.</p>
+                    <p>
+                      {preflight.planUsage.included == null
+                        ? `${preflight.planUsage.used} relays used this cycle.`
+                        : `${preflight.planUsage.used} of ${preflight.planUsage.included} relays used this cycle.`}
+                    </p>
                   )}
                 </div>
 
@@ -699,10 +752,8 @@ export function BulkUploadWizard({ processor, onClose, onStarted }: BulkUploadWi
             className="flex items-center gap-2 text-sm font-medium bg-brand-600 text-white px-5 py-2 rounded-lg hover:bg-brand-700 disabled:opacity-50"
           >
             {starting
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> {processor.activeRun ? 'Queueing...' : 'Starting...'}</>
-              : processor.activeRun
-                ? <><Play className="w-4 h-4" /> Queue run</>
-                : <><Play className="w-4 h-4" /> Start run</>}
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Starting...</>
+              : <><Play className="w-4 h-4" /> Start run</>}
           </button>
         )}
       </div>

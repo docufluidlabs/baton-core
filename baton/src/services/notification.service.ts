@@ -31,6 +31,13 @@ export interface NotificationPayload {
   metadata?: Record<string, any>;
   channels?: NotificationChannel[];
   actionUrl?: string;
+  /**
+   * Roll-up key: an in-app notification with the same key for the same
+   * recipient is INCREMENTED (count + freshness) instead of inserted, so
+   * per-instance events read "5 instances failed in X" rather than five rows.
+   * Callers bake the time window into the key (e.g. an hour bucket suffix).
+   */
+  collapseKey?: string;
 }
 
 export interface EventChannelPrefs {
@@ -136,6 +143,35 @@ async function createInAppNotification(payload: NotificationPayload): Promise<vo
   const now = new Date().toISOString();
 
   try {
+    // Roll-up: same collapseKey + recipient → bump the existing entry instead
+    // of stacking a new one. The key carries its own time window, so a simple
+    // recent-page scan is enough.
+    if (payload.collapseKey) {
+      const recent = await doc.send(new QueryCommand({
+        TableName: TableNames.NOTIFICATIONS,
+        IndexName: 'recipientId-createdAt-index',
+        KeyConditionExpression: 'recipientId = :r',
+        FilterExpression: 'collapseKey = :k AND dismissed <> :true',
+        ExpressionAttributeValues: { ':r': payload.recipientId, ':k': payload.collapseKey, ':true': true },
+        ScanIndexForward: false,
+        Limit: 50,
+      }));
+      const existing = recent.Items?.[0];
+      if (existing) {
+        await doc.send(new UpdateCommand({
+          TableName: TableNames.NOTIFICATIONS,
+          Key: { id: existing.id },
+          // count starts at 1 for the original entry; body refreshes to the
+          // latest message; the entry surfaces as new again.
+          UpdateExpression: 'SET #count = if_not_exists(#count, :one) + :one, body = :body, createdAt = :now, #read = :false REMOVE readAt',
+          ExpressionAttributeNames: { '#count': 'count', '#read': 'read' },
+          ExpressionAttributeValues: { ':one': 1, ':body': payload.body, ':now': now, ':false': false },
+        }));
+        logDebug('In-app notification rolled up', { id: existing.id, collapseKey: payload.collapseKey });
+        return;
+      }
+    }
+
     await doc.send(new PutCommand({
       TableName: TableNames.NOTIFICATIONS,
       Item: {
@@ -148,6 +184,7 @@ async function createInAppNotification(payload: NotificationPayload): Promise<vo
         category: payload.category,
         metadata: payload.metadata,
         actionUrl: payload.actionUrl,
+        ...(payload.collapseKey ? { collapseKey: payload.collapseKey } : {}),
         read: false,
         dismissed: false,
         createdAt: now,
@@ -233,14 +270,19 @@ function buildEmailHtml(payload: NotificationPayload): string {
 
 // ─── Helpers ─────────────────────────────────────────────────
 
+// Defaults follow one rule: notify when something STOPPED and needs a human,
+// when something the user deliberately started FINISHED, or when a limit is
+// about to change behavior. Routine success confirmations (sync, connect,
+// per-instance launches/completions) are the Activity Log's job - their sends
+// were removed, and workflow_completed defaults fully off for anyone who
+// re-enables it deliberately.
 const DEFAULT_EVENT_PREFS: Record<string, EventChannelPrefs> = {
   workflow_failed:           { inApp: true,  email: true  },
-  workflow_completed:        { inApp: true,  email: false },
-  workflow_launched:         { inApp: true,  email: false },
+  workflow_completed:        { inApp: false, email: false },
   automation_failed:         { inApp: true,  email: true  },
+  batch_run_completed:       { inApp: true,  email: false },
+  batch_run_stopped:         { inApp: true,  email: true  },
   connection_degraded:       { inApp: true,  email: true  },
-  execution_quota_warning:   { inApp: true,  email: true  },
-  execution_quota_exceeded:  { inApp: true,  email: true  },
   webhook_failed:            { inApp: true,  email: true  },
 };
 
@@ -288,26 +330,9 @@ async function getRecipientEmail(userId: string): Promise<string | null> {
 }
 
 // ─── Pre-built Notification Templates ────────────────────────
-
-export function workflowLaunchedNotification(
-  orgId: string,
-  recipientId: string,
-  workflowName: string,
-  instanceId: string,
-  instanceName?: string,
-  maestroInstanceUrl?: string,
-): NotificationPayload {
-  return {
-    orgId,
-    recipientId,
-    title: `Workflow "${workflowName}" launched`,
-    body: instanceName ? `Instance "${instanceName}" is now running.` : `A new instance is now running.`,
-    severity: 'info',
-    category: 'workflow_launched',
-    actionUrl: `${env.FRONTEND_URL}/workflows`,
-    metadata: { workflowName, instanceId, instanceName, maestroInstanceUrl },
-  };
-}
+// Removed on purpose (QA/product decision 2026-08-07): workflowLaunched,
+// workflowSynced and connectionCreated templates - success confirmations of
+// routine operations are the Activity Log's job, not notifications.
 
 export function workflowFailedNotification(
   orgId: string,
@@ -415,41 +440,57 @@ export function rulePausedNotification(
 
 // ─── New Event Types ─────────────────────────────────────────
 
-export function workflowSyncedNotification(
+/**
+ * One summary per finished Bulk Upload run - the answer to "can I close the
+ * tab after clicking Start". A clean run stays in-app; failures escalate to
+ * email (explicit channels, deliberate override of the per-event preference).
+ */
+export function batchRunCompletedNotification(
   orgId: string,
   recipientId: string,
-  syncedCount: number,
-  newCount?: number,
+  processorName: string,
+  runNumber: number,
+  fileName: string,
+  counts: { completed: number; failed: number; cancelled: number; skipped: number },
 ): NotificationPayload {
+  const parts = [`${counts.completed} completed`];
+  if (counts.failed > 0) parts.push(`${counts.failed} failed`);
+  if (counts.cancelled > 0) parts.push(`${counts.cancelled} cancelled`);
+  if (counts.skipped > 0) parts.push(`${counts.skipped} skipped`);
   return {
     orgId,
     recipientId,
-    title: `${syncedCount} workflow${syncedCount === 1 ? '' : 's'} synced`,
-    body: newCount
-      ? `${newCount} new and ${syncedCount - newCount} updated workflows synced from Docusign Workflow Builder.`
-      : `${syncedCount} workflows synced from Docusign Workflow Builder.`,
-    severity: 'info',
-    category: 'workflow_synced',
-    actionUrl: `${env.FRONTEND_URL}/workflows`,
-    metadata: { syncedCount, newCount },
+    title: `Run ${runNumber} finished - ${processorName}`,
+    body: `${fileName}: ${parts.join(', ')}.`,
+    severity: counts.failed > 0 ? 'warning' : 'success',
+    category: 'batch_run_completed',
+    ...(counts.failed > 0 ? { channels: ['in_app', 'email', 'slack'] as NotificationChannel[] } : {}),
+    actionUrl: `${env.FRONTEND_URL}/bulk-upload`,
+    metadata: { processorName, runNumber, fileName, ...counts },
   };
 }
 
-export function connectionCreatedNotification(
+/**
+ * The run auto-stopped on consecutive failures - rows are waiting and nothing
+ * moves until a human resumes. The loudest Bulk Upload event by design.
+ */
+export function batchRunStoppedNotification(
   orgId: string,
   recipientId: string,
-  platform: string,
-  displayName: string,
+  processorName: string,
+  runNumber: number,
+  fileName: string,
+  consecutiveFailures: number,
 ): NotificationPayload {
   return {
     orgId,
     recipientId,
-    title: `${displayName} connected`,
-    body: `New ${platform} connection "${displayName}" established successfully.`,
-    severity: 'success',
-    category: 'connection_created',
-    actionUrl: `${env.FRONTEND_URL}/connections`,
-    metadata: { platform, displayName },
+    title: `Run ${runNumber} stopped - ${processorName}`,
+    body: `${fileName} stopped automatically after ${consecutiveFailures} consecutive failures. Remaining rows are on hold - fix the cause, then resume the run.`,
+    severity: 'error',
+    category: 'batch_run_stopped',
+    actionUrl: `${env.FRONTEND_URL}/bulk-upload`,
+    metadata: { processorName, runNumber, fileName, consecutiveFailures },
   };
 }
 

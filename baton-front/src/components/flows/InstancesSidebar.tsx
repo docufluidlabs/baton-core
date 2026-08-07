@@ -564,8 +564,8 @@ export function InstanceCard({ inst, maestroBaseUrl, triggerInputSchema, expecte
           </p>
         )}
 
-        {/* Row 3: Launched by Action #N */}
-        {inst.triggerActionNumber != null && inst.triggerRuleId && inst.triggerRuleName && (
+        {/* Row 3: Launched by Relay #N (automations) / Run N (Bulk Upload) */}
+        {inst.triggerActionNumber != null && inst.triggerRuleId && inst.triggerRuleName ? (
           <div className="flex items-center gap-1 mt-1">
             <span className="text-[11px] text-gray-400">Launched by</span>
             {onActionClick ? (
@@ -579,7 +579,15 @@ export function InstanceCard({ inst, maestroBaseUrl, triggerInputSchema, expecte
               <span className="text-[11px] font-medium text-violet-600">Relay {inst.triggerActionNumber}</span>
             )}
           </div>
-        )}
+        ) : inst.batchRunId ? (
+          <div className="flex items-center gap-1 mt-1">
+            <span className="text-[11px] text-gray-400">Launched by</span>
+            <span className="text-[11px] font-medium text-violet-600">
+              {inst.batchRunNumber != null ? `Run ${inst.batchRunNumber}` : 'Bulk Upload'}
+              {inst.batchRowNumber != null && <span className="text-gray-400 font-normal"> · row {inst.batchRowNumber}</span>}
+            </span>
+          </div>
+        ) : null}
 
         {/* Row 4: meta — timeAgo | platform */}
         <div className="flex items-center gap-1 mt-1 text-[11px] text-gray-400 leading-none">

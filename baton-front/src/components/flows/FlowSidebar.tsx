@@ -875,7 +875,7 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
                 <span className="text-sm text-gray-500">days</span>
               </div>
               <p className="text-[11px] text-gray-500 mt-1.5 leading-snug">
-                Instances that take longer than set duration will be shown in Resolution Center as
+                Instances that take longer than set duration will be shown in Control Center as
                 {' '}<span className="font-medium text-amber-700">Overdue</span> for your attention.
               </p>
             </div>

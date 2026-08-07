@@ -129,6 +129,11 @@ export function NotificationsPanel() {
                   <div className="flex-1 min-w-0">
                     <p className={clsx('text-sm', notif.readAt ? 'text-gray-700' : 'text-gray-900 font-medium')}>
                       {notif.title}
+                      {(notif.count ?? 1) > 1 && (
+                        <span className="ml-1.5 text-[10px] font-semibold text-gray-500 bg-gray-100 rounded-full px-1.5 py-0.5 align-middle">
+                          ×{notif.count}
+                        </span>
+                      )}
                     </p>
                     {/* "message" is the canonical API field */}
                     <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{notif.message}</p>

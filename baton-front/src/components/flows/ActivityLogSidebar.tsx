@@ -97,8 +97,14 @@ export function ActivityLogSidebar({ open, onClose, onActionClick, workflowId, w
   // Single-workflow filter. Seeded from props whenever the panel is opened (or
   // re-targeted at a different workflow), and clearable via its chip.
   const [workflowFilter, setWorkflowFilter] = useState<string | null>(workflowId ?? null);
+  // Bulk Upload run filter (batchRunId) - see the instances a given run
+  // launched, with everything the Activity Log already offers (QA round 2).
+  const [runFilter, setRunFilter] = useState<string | null>(null);
   useEffect(() => {
-    if (open) setWorkflowFilter(workflowId ?? null);
+    if (open) {
+      setWorkflowFilter(workflowId ?? null);
+      setRunFilter(null);
+    }
   }, [open, workflowId]);
   const workflowFilterName = workflowFilter
     ? workflowMap.get(workflowFilter)?.name ?? workflowName ?? 'Selected workflow'
@@ -158,6 +164,24 @@ export function ActivityLogSidebar({ open, onClose, onActionClick, workflowId, w
       .sort((a, b) => b.count - a.count);
   }, [instances, workflowMap, activePlatformFilters]);
 
+  // Bulk Upload runs with instances in the current workflow/platform scope,
+  // newest run first. Empty unless batch instances are present.
+  const runOptions = useMemo(() => {
+    const byRun = new Map<string, { runNumber?: number; count: number }>();
+    for (const i of instances) {
+      if (!i.batchRunId) continue;
+      if (workflowFilter && i.workflowId !== workflowFilter) continue;
+      if (activePlatformFilters.size > 0 && (!i.sourcePlatform || !activePlatformFilters.has(i.sourcePlatform))) continue;
+      const entry = byRun.get(i.batchRunId) ?? { runNumber: i.batchRunNumber, count: 0 };
+      entry.count++;
+      if (entry.runNumber == null) entry.runNumber = i.batchRunNumber;
+      byRun.set(i.batchRunId, entry);
+    }
+    return [...byRun.entries()]
+      .map(([id, v]) => ({ id, runNumber: v.runNumber, count: v.count }))
+      .sort((a, b) => (b.runNumber ?? 0) - (a.runNumber ?? 0));
+  }, [instances, workflowFilter, activePlatformFilters]);
+
   // Badge count for the filter menu — how many filter dimensions are narrowing
   // the feed away from its defaults (status defaults to running/completed/failed).
   const DEFAULT_STATUS: Status[] = ['running', 'completed', 'failed'];
@@ -167,6 +191,7 @@ export function ActivityLogSidebar({ open, onClose, onActionClick, workflowId, w
     (monthsRange !== 'all' ? 1 : 0) +
     (activePlatformFilters.size > 0 ? 1 : 0) +
     (workflowFilter ? 1 : 0) +
+    (runFilter ? 1 : 0) +
     (statusNarrowed ? 1 : 0);
 
   const q = query.trim().toLowerCase();
@@ -178,6 +203,7 @@ export function ActivityLogSidebar({ open, onClose, onActionClick, workflowId, w
   // period does.
   const scoped = instances.filter((i) => {
     if (workflowFilter && i.workflowId !== workflowFilter) return false;
+    if (runFilter && i.batchRunId !== runFilter) return false;
     if (activePlatformFilters.size > 0 && (!i.sourcePlatform || !activePlatformFilters.has(i.sourcePlatform))) return false;
     if (!withinBounds(i.startedAt, dateBounds)) return false;
     if (q) {
@@ -216,27 +242,21 @@ export function ActivityLogSidebar({ open, onClose, onActionClick, workflowId, w
 
   const pagination = usePagination(filtered, {
     storageKey: 'baton-activity-page-size',
-    resetKey: `${workflowFilter ?? ''}|${[...activeFilters].sort().join(',')}|${[...activePlatformFilters].sort().join(',')}|${q}|${monthsRange}`,
+    resetKey: `${workflowFilter ?? ''}|${runFilter ?? ''}|${[...activeFilters].sort().join(',')}|${[...activePlatformFilters].sort().join(',')}|${q}|${monthsRange}`,
   });
   const { pageItems } = pagination;
 
   return (
     <>
-      {/* Mobile (<md): fixed overlay drawer sliding in from the left.
-          Desktop (md+): in-flow flex sibling between AppLayout's nav and main —
-          animates its width so it PUSHES main content instead of overlaying. */}
+      {/* Overlay drawer sliding in from the left on every breakpoint. It used
+          to push main content sideways on desktop, but the right-side panels
+          overlay - QA round 2 flagged the two models, so both overlay now. */}
       <div
         className={clsx(
-          // Mobile: fixed overlay
-          'fixed top-0 left-0 h-full w-full z-30',
+          'fixed top-0 left-0 h-full w-full md:w-[480px] z-50',
           'transform transition-transform duration-300 ease-out',
           open ? 'translate-x-0' : '-translate-x-full',
-          // Desktop: static flex item with animated width
-          'md:static md:translate-x-0 md:transform-none md:h-auto md:z-auto md:shrink-0',
-          'md:transition-[width] md:duration-300 md:ease-out md:overflow-hidden',
-          open ? 'md:w-[480px]' : 'md:w-0',
-          // Appearance
-          'border-r border-gray-200 bg-[#f8f9fb] shadow-[8px_0_24px_-12px_rgba(0,0,0,0.12)] md:shadow-none',
+          'border-r border-gray-200 bg-[#f8f9fb] shadow-[8px_0_24px_-12px_rgba(0,0,0,0.12)]',
           open ? 'pointer-events-auto' : 'pointer-events-none',
         )}
       >
@@ -413,6 +433,44 @@ export function ActivityLogSidebar({ open, onClose, onActionClick, workflowId, w
                 </div>
               )}
 
+              {/* Bulk Upload run — shown whenever batch instances are in scope,
+                  so "what did Run 3 launch?" is one click. */}
+              {runOptions.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1.5">Bulk Upload run</p>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {runOptions.map(({ id, runNumber, count }) => {
+                      const active = runFilter === id;
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => setRunFilter(active ? null : id)}
+                          className={clsx(
+                            'inline-flex items-center gap-1.5 pl-2 pr-2.5 py-[5px] rounded-full text-[11px] font-medium transition-all border',
+                            active
+                              ? 'bg-violet-50 text-violet-700 border-violet-200'
+                              : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300',
+                          )}
+                        >
+                          {runNumber != null ? `Run ${runNumber}` : 'Bulk run'} ({count})
+                        </button>
+                      );
+                    })}
+                    <button
+                      onClick={() => setRunFilter(null)}
+                      className={clsx(
+                        'inline-flex items-center gap-1 px-2.5 py-[5px] rounded-full text-[11px] font-medium transition-all border',
+                        runFilter === null
+                          ? 'bg-violet-50 text-violet-700 border-violet-200'
+                          : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300',
+                      )}
+                    >
+                      All
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Status */}
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1.5">Status</p>
@@ -482,7 +540,7 @@ export function ActivityLogSidebar({ open, onClose, onActionClick, workflowId, w
                     inst={inst}
                     maestroBaseUrl={wf?.maestroInstancesUrl}
                     triggerInputSchema={wf?.triggerInputSchema}
-                    expectedDurationDays={expectedDurationMap.get(inst.workflowId)}
+                    expectedDurationDays={expectedDurationMap.get(inst.workflowId) ?? inst.expectedDurationDays}
                     cancellingId={cancellingId}
                     retryingId={retryingId}
                     onCancel={async () => {

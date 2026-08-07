@@ -24,6 +24,9 @@ export const BatchRunSettingsInput = z.object({
   releaseCount: z.number().int().min(1).max(100),
   intervalMinutes: z.number().int().min(1).max(1440),
   stopAfterFailures: z.number().int().min(1).max(100),
+  /** Days until a still-running instance is marked Overdue (surfaces in
+   *  Control Center and stops counting toward the unfinished-instance cap). */
+  expectedDurationDays: z.number().int().min(1).max(365).optional(),
 });
 
 export const CreateBatchProcessorInput = registry.register(
@@ -35,6 +38,10 @@ export const CreateBatchProcessorInput = registry.register(
     throttleReleaseCount: z.number().int().min(1).max(100).optional(),
     throttleIntervalMinutes: z.number().int().min(1).max(1440).optional(),
     stopAfterConsecutiveFailures: z.number().int().min(1).max(100).optional(),
+    /** Cap on simultaneously unfinished instances across the processor's runs
+     *  (null/absent = no cap). Overdue instances stop counting toward it. */
+    maxUnfinishedInstances: z.number().int().min(1).max(10000).nullable().optional(),
+    expectedDurationDays: z.number().int().min(1).max(365).nullable().optional(),
   }),
 );
 
@@ -47,6 +54,8 @@ export const UpdateBatchProcessorInput = registry.register(
     throttleReleaseCount: z.number().int().min(1).max(100).optional(),
     throttleIntervalMinutes: z.number().int().min(1).max(1440).optional(),
     stopAfterConsecutiveFailures: z.number().int().min(1).max(100).optional(),
+    maxUnfinishedInstances: z.number().int().min(1).max(10000).nullable().optional(),
+    expectedDurationDays: z.number().int().min(1).max(365).nullable().optional(),
   }),
 );
 

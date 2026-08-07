@@ -35,6 +35,7 @@ import {
 } from '../services/notification.service';
 import * as usageService from '../services/usage.service';
 import { getRelayGate, getRelayMeter } from '../lib/billing-hooks';
+import { cancelWorkflowInstance } from '../services/instance.service';
 import { sendMessage, QueueNames } from '../queue/sqs-client';
 
 // ─── Retry Schedule ─────────────────────────────────────────
@@ -248,7 +249,14 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
         startedAt: now,
         retryCount: 0,
         launchedBy: batch ? 'batch' : 'automation',
-        ...(batch ? { batchRunId: batch.runId, batchRowNumber: batch.rowNumber } : {}),
+        ...(batch ? {
+          batchRunId: batch.runId,
+          batchRunNumber: batch.runNumber,
+          batchRowNumber: batch.rowNumber,
+          // Overdue threshold snapshotted from the run so Control Center and
+          // the cap can compute overdue without joining the run.
+          expectedDurationDays: batch.expectedDurationDays,
+        } : {}),
       };
 
       await docClient.send(new PutCommand({
@@ -259,26 +267,96 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
 
     // 5. Record the launch: batch row for Bulk Upload, pipeline entry otherwise
     if (batch) {
-      await docClient.send(new UpdateCommand({
-        TableName: TableNames.BATCH_ROWS,
-        Key: { runId: batch.runId, rowNumber: batch.rowNumber },
-        UpdateExpression: 'SET #st = :status, workflowInstanceId = :wid, maestroInstanceId = :mid, launchedAt = :now',
-        ExpressionAttributeValues: {
-          ':status': 'launched',
-          ':wid': resolvedInstanceId,
-          ':mid': result.instanceId,
-          ':now': now,
-        },
-        ExpressionAttributeNames: { '#st': 'status' },
-      }));
+      // REMOVE clears the stale-launching sweep's error fields when the launch
+      // reports back after the sweep already failed the row - a no-op on the
+      // normal path where neither attribute exists yet.
+      const recordLaunch = (fromStatus: 'launching' | 'failed') =>
+        docClient.send(new UpdateCommand({
+          TableName: TableNames.BATCH_ROWS,
+          Key: { runId: batch.runId, rowNumber: batch.rowNumber },
+          UpdateExpression: 'SET #st = :status, workflowInstanceId = :wid, maestroInstanceId = :mid, launchedAt = :now REMOVE errorMessage, completedAt',
+          ConditionExpression: '#st = :from',
+          ExpressionAttributeValues: {
+            ':status': 'launched',
+            ':wid': resolvedInstanceId,
+            ':mid': result.instanceId,
+            ':now': now,
+            ':from': fromStatus,
+          },
+          ExpressionAttributeNames: { '#st': 'status' },
+        }));
 
-      // A successful launch resets the run's consecutive-failure streak
-      await docClient.send(new UpdateCommand({
-        TableName: TableNames.BATCH_RUNS,
-        Key: { id: batch.runId },
-        UpdateExpression: 'SET consecutiveFailures = :zero',
-        ExpressionAttributeValues: { ':zero': 0 },
-      }));
+      let recorded = false;
+      try {
+        await recordLaunch('launching');
+        recorded = true;
+      } catch (err: any) {
+        if (err.name !== 'ConditionalCheckFailedException') throw err;
+      }
+
+      if (!recorded) {
+        // The row left 'launching' before this launch reported back - the
+        // stale-row sweep failed it (>90 min late). Whether the launch may
+        // stand depends on the run: an open run adopts the late launch (it
+        // really happened, and completion tracking picks it up); a closed
+        // run must not gain a live instance nobody is watching.
+        const runRecord = await docClient.send(new GetCommand({
+          TableName: TableNames.BATCH_RUNS,
+          Key: { id: batch.runId },
+        }));
+        const runStatus = (runRecord.Item as any)?.status;
+        const runOpen = runStatus === 'running' || runStatus === 'paused' || runStatus === 'stopped' || runStatus === 'queued';
+
+        if (runOpen) {
+          try {
+            await recordLaunch('failed');
+            recorded = true;
+            log.info({ rowNumber: batch.rowNumber }, 'Late batch launch adopted onto swept row');
+          } catch (err: any) {
+            if (err.name !== 'ConditionalCheckFailedException') throw err;
+          }
+        }
+
+        if (!recorded) {
+          // Run terminal (or the row moved somewhere unexpected): cancel the
+          // freshly launched instance so a completed/cancelled run can never
+          // accumulate live workflows.
+          try {
+            await cancelWorkflowInstance({
+              id: resolvedInstanceId,
+              orgId,
+              workflowId: workflow.id,
+              maestroInstanceId: result.instanceId,
+            } as WorkflowInstance);
+            await docClient.send(new UpdateCommand({
+              TableName: TableNames.BATCH_ROWS,
+              Key: { runId: batch.runId, rowNumber: batch.rowNumber },
+              UpdateExpression: 'SET errorMessage = :err',
+              ConditionExpression: '#st = :failed',
+              ExpressionAttributeValues: {
+                ':err': 'The launch reported back after the run closed - the instance was cancelled.',
+                ':failed': 'failed',
+              },
+              ExpressionAttributeNames: { '#st': 'status' },
+            }));
+          } catch (lateErr: any) {
+            if (lateErr.name !== 'ConditionalCheckFailedException') {
+              logError('Failed to cancel late batch launch on a closed run', lateErr);
+            }
+          }
+          log.info({ rowNumber: batch.rowNumber, runStatus }, 'Late batch launch cancelled - run already closed');
+        }
+      }
+
+      if (recorded) {
+        // A successful launch resets the run's consecutive-failure streak
+        await docClient.send(new UpdateCommand({
+          TableName: TableNames.BATCH_RUNS,
+          Key: { id: batch.runId },
+          UpdateExpression: 'SET consecutiveFailures = :zero',
+          ExpressionAttributeValues: { ':zero': 0 },
+        }));
+      }
     } else if (pipelineEntryId) {
       await docClient.send(new UpdateCommand({
         TableName: TableNames.TRIGGER_PIPELINE,
@@ -361,7 +439,12 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
           nextRetryAt: new Date(Date.now() + delaySec * 1000).toISOString(),
           errorMessage: `Retry ${nextAttempt} of ${MAX_RETRY_ATTEMPTS}: ${error.message || 'Unknown error'}`,
           launchedBy: batch ? 'batch' : 'automation',
-          ...(batch ? { batchRunId: batch.runId, batchRowNumber: batch.rowNumber } : {}),
+          ...(batch ? {
+            batchRunId: batch.runId,
+            batchRunNumber: batch.runNumber,
+            batchRowNumber: batch.rowNumber,
+            expectedDurationDays: batch.expectedDurationDays,
+          } : {}),
         };
         await docClient.send(new PutCommand({
           TableName: TableNames.WORKFLOW_INSTANCES,
@@ -381,6 +464,26 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
             ':err': `Retry ${nextAttempt} of ${MAX_RETRY_ATTEMPTS}: ${error.message || 'Unknown error'}`,
           },
         }));
+      }
+
+      // Give the batch row a reference to the retry-tracking instance so the
+      // Bulk Upload rows drill-in can surface the Auto-retry state while the
+      // ladder runs (the row itself stays 'launching'). Best-effort.
+      if (batch) {
+        try {
+          await docClient.send(new UpdateCommand({
+            TableName: TableNames.BATCH_ROWS,
+            Key: { runId: batch.runId, rowNumber: batch.rowNumber },
+            UpdateExpression: 'SET workflowInstanceId = :wid',
+            ConditionExpression: '#st = :launching',
+            ExpressionAttributeValues: { ':wid': instanceId, ':launching': 'launching' },
+            ExpressionAttributeNames: { '#st': 'status' },
+          }));
+        } catch (refErr: any) {
+          if (refErr.name !== 'ConditionalCheckFailedException') {
+            logError('Failed to reference retry instance on batch row', refErr);
+          }
+        }
       }
 
       // Update pipeline entry to reflect retry-in-progress (not fully failed).

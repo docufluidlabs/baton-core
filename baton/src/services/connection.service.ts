@@ -16,7 +16,7 @@ import { encryptToken, decryptToken } from '../lib/encryption';
 import { logInfo, logError, logDebug } from '../lib/logger';
 import { PlatformConnection, Platform, ConnectionStatus } from '../lib/types';
 import { OAuthTokens } from './connectors';
-import { sendNotification, connectionCreatedNotification, connectionDisconnectedNotification } from './notification.service';
+import { sendNotification, connectionDisconnectedNotification } from './notification.service';
 
 // ─── Create ──────────────────────────────────────────────────
 
@@ -62,13 +62,8 @@ export async function createConnection(params: {
 
   logInfo('Connection created', { id, orgId: params.orgId, platform: params.platform });
 
-  // Send notification (fire-and-forget)
-  if (params.createdBy) {
-    sendNotification(connectionCreatedNotification(
-      params.orgId, params.createdBy, params.platform, params.displayName,
-    )).catch(() => {});
-  }
-
+  // No notification on purpose: the user just connected it and is looking at
+  // the result. Only connection PROBLEMS notify.
   return connection;
 }
 

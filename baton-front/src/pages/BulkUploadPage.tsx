@@ -11,7 +11,8 @@
  * edit), BulkUploadWizard (upload -> map -> launch) and BatchLogsSidebar
  * (runs -> rows drill-in), around the page's own wide BulkUploadCard list.
  */
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
+import { toast } from 'sonner';
 import {
   useBatchProcessors,
   useWorkflows,
@@ -44,10 +45,49 @@ export default function BulkUploadPage() {
 
   const workflowById = useMemo(() => new Map(workflows.map((wf) => [wf.id, wf])), [workflows]);
 
-  async function handleRunAction(processorId: string, runId: string, action: 'pause' | 'resume') {
-    if (action === 'pause') await pauseBatchRun(processorId, runId);
-    else await resumeBatchRun(processorId, runId);
-    mutate('/batch-processors');
+  /** Panel buttons TOGGLE: pressing the button that opened a panel closes it
+   *  again; pressing it for a different processor switches the panel over. */
+  function toggleBatchLogs(processorId: string, initialRunId?: string) {
+    if (batchLogsProcessorId === processorId && !initialRunId) closeBatchLogs();
+    else openBatchLogs(processorId, initialRunId ?? null);
+  }
+  function toggleBatchSidebar(processorId?: string) {
+    const target = processorId ?? null;
+    if (batchSidebarOpen && editingBatchProcessorId === target) closeBatchSidebar();
+    else openBatchSidebar(processorId);
+  }
+
+  /** Card-level Pause/Resume acts on every matching active run - runs execute
+   *  concurrently, so the card controls the whole set. Per-run controls live
+   *  in the runs sidebar. Individual failures are tolerated: the run ids come
+   *  from a poll snapshot up to 15s stale, so a run may have completed or
+   *  been cancelled in another tab - skipping it IS the desired outcome. */
+  const bulkActionBusy = useRef(false);
+  async function handleRunAction(processorId: string, runIds: string[], action: 'pause' | 'resume') {
+    if (bulkActionBusy.current) return;
+    bulkActionBusy.current = true;
+    let done = 0;
+    try {
+      for (const runId of runIds) {
+        try {
+          if (action === 'pause') await pauseBatchRun(processorId, runId, { silent: true });
+          else await resumeBatchRun(processorId, runId, { silent: true });
+          done++;
+        } catch {
+          // Stale snapshot: the run already left the pausable/resumable state.
+        }
+      }
+      if (done > 0) {
+        toast.success(
+          action === 'pause'
+            ? done === 1 ? 'Run paused' : `${done} runs paused`
+            : done === 1 ? 'Run resumed' : `${done} runs resumed`,
+        );
+      }
+    } finally {
+      bulkActionBusy.current = false;
+      mutate('/batch-processors');
+    }
   }
 
   return (
@@ -63,7 +103,7 @@ export default function BulkUploadPage() {
             </p>
           </div>
           <button
-            onClick={() => openBatchSidebar()}
+            onClick={() => toggleBatchSidebar()}
             className="shrink-0 inline-flex items-center gap-2 px-4 py-2 bg-brand-600 text-white text-sm font-medium rounded-lg hover:bg-brand-700 shadow-sm transition-colors"
           >
             <Plus className="w-4 h-4" /> New Bulk Upload
@@ -90,7 +130,6 @@ export default function BulkUploadPage() {
           <div className="space-y-4">
             {processors.map((p) => {
               const wf = workflowById.get(p.targetWorkflowId);
-              const activeRun = p.activeRun;
               return (
                 <BulkUploadCard
                   key={p.id}
@@ -98,10 +137,10 @@ export default function BulkUploadPage() {
                   workflowName={wf?.name ?? 'Unknown workflow'}
                   workflowStatus={wf?.maestroStatus}
                   onUpload={() => openBatchWizard(p.id)}
-                  onPause={activeRun ? () => handleRunAction(p.id, activeRun.id, 'pause') : undefined}
-                  onResume={activeRun ? () => handleRunAction(p.id, activeRun.id, 'resume') : undefined}
-                  onViewRuns={() => openBatchLogs(p.id)}
-                  onEdit={() => openBatchSidebar(p.id)}
+                  onViewRows={(runId) => toggleBatchLogs(p.id, runId)}
+                  onRunAction={(runIds, action) => handleRunAction(p.id, runIds, action)}
+                  onViewRuns={() => toggleBatchLogs(p.id)}
+                  onEdit={() => toggleBatchSidebar(p.id)}
                 />
               );
             })}

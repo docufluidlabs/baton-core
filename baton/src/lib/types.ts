@@ -26,11 +26,16 @@ export type NotificationChannel = 'email' | 'slack' | 'in_app';
 export type NotificationSeverity = 'info' | 'warning' | 'error' | 'success';
 export type EnvelopeStatus = 'sent' | 'delivered' | 'signed' | 'completed' | 'declined';
 
+// workflow_launched / workflow_synced / connection_created remain in the
+// union so historical stored notifications still render, but nothing sends
+// them anymore (killed as routine-success noise, 2026-08-07).
 export type NotificationEventType =
   | 'workflow_launched'
   | 'workflow_completed'
   | 'workflow_failed'
   | 'workflow_synced'
+  | 'batch_run_completed'
+  | 'batch_run_stopped'
   | 'retry_exhausted'
   | 'webhook_failed'
   | 'connection_degraded'
@@ -229,6 +234,17 @@ export interface WorkflowInstance {
    * member is visible to all. Set via PUT /api/instances/:id/tags.
    */
   tags?: string[];
+  /** Set when this instance was launched by a Bulk Upload run (launchedBy: 'batch'). */
+  batchRunId?: string;
+  /** The run's per-processor sequence number - "Launched by Run 3" labels and
+   *  the Activity Log run filter (not to be confused with batchRowNumber). */
+  batchRunNumber?: number;
+  /** 1-based file data row number within the Bulk Upload run. */
+  batchRowNumber?: number;
+  /** Overdue threshold (days) snapshotted from the Bulk Upload run at launch,
+   *  so overdue can be computed without a rule (automation instances read the
+   *  rule's actionConfig.expectedDurationDays instead). */
+  expectedDurationDays?: number;
 }
 
 /** DB-mapped type. Frontend refers to this as `Automation`. */
@@ -349,8 +365,11 @@ export interface Notification {
 }
 
 export type BatchFileType = 'csv' | 'xlsx' | 'tsv';
-// 'queued' = started while another run was active; the dispatcher promotes it
-// to 'running' when the processor's active run finishes (strict run sequence).
+// 'queued' is transitional-only: runs execute concurrently and every start
+// goes straight to 'running'. Runs queued by the old strict-sequence build
+// are promoted by the dispatcher's legacy shim (to 'paused' when the
+// processor has a paused sibling - preserving the operator's hold - else to
+// 'running').
 export type BatchRunStatus = 'draft' | 'queued' | 'running' | 'paused' | 'completed' | 'stopped' | 'cancelled';
 export type BatchRowStatus = 'staged' | 'queued' | 'launching' | 'launched' | 'completed' | 'failed' | 'cancelled' | 'skipped';
 
@@ -376,6 +395,14 @@ export interface BatchProcessor {
   throttleIntervalMinutes: number;
   /** Auto-stop a run after this many consecutive launch failures. Default 5. */
   stopAfterConsecutiveFailures: number;
+  /** Cap on simultaneously unfinished instances across ALL of this
+   *  processor's runs (absent/null = no cap, the default - a signature
+   *  workflow only completes when a human signs, so a cap can stall a batch).
+   *  Overdue instances stop counting toward it: Overdue is the release valve. */
+  maxUnfinishedInstances?: number | null;
+  /** Days until a still-running instance is marked Overdue (surfaces in
+   *  Control Center, frees its cap slot). Per-run override in run settings. */
+  expectedDurationDays?: number | null;
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
@@ -396,6 +423,8 @@ export interface BatchRunSettings {
   releaseCount: number;
   intervalMinutes: number;
   stopAfterFailures: number;
+  /** Overdue threshold for this run's instances (days). */
+  expectedDurationDays?: number;
 }
 
 export interface BatchRun {
@@ -422,12 +451,16 @@ export interface BatchRun {
   queuedRows?: number;
   skippedRows?: number;
   consecutiveFailures?: number;
+  /** Why the dispatcher auto-stopped the run (cleared on resume). */
+  stoppedReason?: string | null;
   /** ISO string — dispatcher releases the next batch of rows when due. */
   nextReleaseAt?: string;
   createdAt: string;
   startedAt?: string;
   completedAt?: string;
   createdBy?: string;
+  /** Uploader display name, resolved best-effort at upload time (audit trail). */
+  createdByName?: string;
 }
 
 export interface BatchRow {
@@ -448,6 +481,9 @@ export interface BatchRow {
   errorMessage?: string;
   /** Display order among selected rows (1-based). */
   seq?: number;
+  /** Set when the dispatcher releases the row - the stale-launching sweep
+   *  ages rows from this timestamp. */
+  launchingAt?: string;
   launchedAt?: string;
   completedAt?: string;
 }
@@ -497,6 +533,10 @@ export interface WorkflowLaunchJob {
   batch?: {
     runId: string;
     rowNumber: number;
+    /** Run sequence number, stamped onto the instance for "Launched by Run N". */
+    runNumber?: number;
+    /** Overdue threshold (days) from the run's settings, stamped onto the instance. */
+    expectedDurationDays?: number;
   };
   /** Retry metadata — present when this is a retry attempt */
   retry?: {
@@ -550,6 +590,8 @@ export interface SlackConfig {
     connection_disconnected?: string | null;
     execution_quota_exceeded?: string | null;
     execution_quota_warning?: string | null;
+    batch_run_completed?: string | null;
+    batch_run_stopped?: string | null;
   };
   /** Optional per-org bot token (future multi-workspace).
    *  If absent, global env.SLACK_BOT_TOKEN is used. */

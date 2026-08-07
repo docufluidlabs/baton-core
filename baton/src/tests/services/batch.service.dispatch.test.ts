@@ -101,6 +101,11 @@ interface MockDb {
   instances: Record<string, any>;
   /** rowNumber values for which the conditional queued→launching update fails */
   conditionalFailRows?: number[];
+  /** Extra runs returned by the per-processor runs query (legacy promotion's
+   *  paused-sibling check). db.run is always included. */
+  siblingRuns?: BatchRun[];
+  /** Merged over the base processor fixture (e.g. maxUnfinishedInstances). */
+  processorOverrides?: Record<string, any>;
 }
 
 function installMockDb(db: MockDb) {
@@ -109,15 +114,33 @@ function installMockDb(db: MockDb) {
     const input = cmd.input;
 
     if (name === 'ScanCommand' && input.TableName === 'batch-runs') {
-      return { Items: [db.run] };
+      // Status-aware: the dispatcher scans 'running', the legacy-promotion
+      // shim 'queued', and the stale-launching sweep 'paused'/'stopped'.
+      const wanted = input.ExpressionAttributeValues?.[':status'];
+      return { Items: db.run.status === wanted ? [db.run] : [] };
     }
     if (name === 'GetCommand' && input.TableName === 'batch-processors') {
-      return { Item: processor };
+      return { Item: { ...processor, ...db.processorOverrides } };
+    }
+    if (name === 'QueryCommand' && input.TableName === 'batch-runs') {
+      return { Items: [db.run, ...(db.siblingRuns ?? [])] };
     }
     if (name === 'QueryCommand' && input.TableName === 'batch-rows') {
-      // Queued-row query has a FilterExpression; the full-partition query does not
-      if (input.FilterExpression) return { Items: db.queuedRows };
+      // Route by the filter's status values: the release query filters on
+      // ':queued', the cap counter on ':launching' + ':launched', the sweep
+      // on ':launching' alone; the full-partition query has no filter.
+      const v = input.ExpressionAttributeValues ?? {};
+      if (v[':queued']) return { Items: db.queuedRows };
+      if (v[':launching'] && v[':launched']) {
+        return { Items: db.allRows.filter((r) => r.status === 'launching' || r.status === 'launched') };
+      }
+      if (v[':launching']) {
+        return { Items: db.allRows.filter((r) => r.status === 'launching') };
+      }
       return { Items: db.allRows };
+    }
+    if (name === 'UpdateCommand' && input.TableName === 'instances') {
+      return {};
     }
     if (name === 'UpdateCommand' && input.TableName === 'batch-rows') {
       const isReleaseGuard = input.ConditionExpression === '#st = :queued';
@@ -180,10 +203,10 @@ describe('dispatchDueBatchRuns — release', () => {
       orgId: 'org-1',
       inputData: { customerName: 'Alice', customerEmail: 'a@x.com' },
       instanceName: '1 · Alice · row 1',
-      batch: { runId: 'run-1', rowNumber: 1 },
+      batch: expect.objectContaining({ runId: 'run-1', rowNumber: 1, runNumber: 1 }),
     }));
     expect(mockSendMessage).toHaveBeenCalledWith('workflow-launcher', expect.objectContaining({
-      batch: { runId: 'run-1', rowNumber: 2 },
+      batch: expect.objectContaining({ runId: 'run-1', rowNumber: 2 }),
     }));
   });
 
@@ -223,7 +246,7 @@ describe('dispatchDueBatchRuns — release', () => {
     // Row 1 lost the race — only row 2 gets a launch job
     expect(mockSendMessage).toHaveBeenCalledTimes(1);
     expect(mockSendMessage).toHaveBeenCalledWith('workflow-launcher', expect.objectContaining({
-      batch: { runId: 'run-1', rowNumber: 2 },
+      batch: expect.objectContaining({ runId: 'run-1', rowNumber: 2 }),
     }));
   });
 });
@@ -247,6 +270,113 @@ describe('dispatchDueBatchRuns — stop after failures', () => {
     expect(stopUpdate.ConditionExpression).toBe('#st = :running');
     // No release, no nextReleaseAt advance
     expect(updateCalls('batch-runs').some((u) => u.UpdateExpression.includes('nextReleaseAt'))).toBe(false);
+  });
+});
+
+describe('dispatchDueBatchRuns — unfinished-instance cap', () => {
+  function launchedRow(rowNumber: number, instanceId: string): BatchRow {
+    return {
+      ...makeQueuedRow(rowNumber, rowNumber, { Name: `N${rowNumber}`, Email: `${rowNumber}@x.com` }),
+      status: 'launched',
+      workflowInstanceId: instanceId,
+    };
+  }
+
+  it('releases only up to the shared budget (cap minus unfinished instances)', async () => {
+    installMockDb({
+      run: makeRun({ settings: { releaseCount: 5, intervalMinutes: 10, stopAfterFailures: 5 } }),
+      queuedRows: [10, 11, 12, 13].map((n) => makeQueuedRow(n, n, { Name: `N${n}`, Email: `${n}@x.com` })),
+      allRows: [launchedRow(1, 'i-1'), launchedRow(2, 'i-2'), launchedRow(3, 'i-3')],
+      instances: {
+        'i-1': { id: 'i-1', status: 'running', startedAt: new Date().toISOString() },
+        'i-2': { id: 'i-2', status: 'running', startedAt: new Date().toISOString() },
+        'i-3': { id: 'i-3', status: 'running', startedAt: new Date().toISOString() },
+      },
+      processorOverrides: { maxUnfinishedInstances: 5 },
+    });
+
+    await dispatchDueBatchRuns();
+
+    // 3 unfinished, cap 5 → budget 2, even though the run's throttle allows 5
+    expect(mockSendMessage).toHaveBeenCalledTimes(2);
+  });
+
+  it('overdue instances free their slots (the release valve)', async () => {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60_000).toISOString();
+    installMockDb({
+      run: makeRun({ settings: { releaseCount: 5, intervalMinutes: 10, stopAfterFailures: 5 } }),
+      queuedRows: [10, 11, 12, 13].map((n) => makeQueuedRow(n, n, { Name: `N${n}`, Email: `${n}@x.com` })),
+      allRows: [launchedRow(1, 'i-1'), launchedRow(2, 'i-2'), launchedRow(3, 'i-3')],
+      instances: {
+        // Two instances past their 1-day threshold: Overdue, slots freed
+        'i-1': { id: 'i-1', status: 'running', startedAt: threeDaysAgo, expectedDurationDays: 1 },
+        'i-2': { id: 'i-2', status: 'running', startedAt: threeDaysAgo, expectedDurationDays: 1 },
+        'i-3': { id: 'i-3', status: 'running', startedAt: new Date().toISOString() },
+      },
+      processorOverrides: { maxUnfinishedInstances: 5 },
+    });
+
+    await dispatchDueBatchRuns();
+
+    // Only 1 counts as unfinished → budget 4 → all 4 queued rows released
+    expect(mockSendMessage).toHaveBeenCalledTimes(4);
+  });
+
+  it('a postponed overdue instance counts again (admin chose to keep waiting)', async () => {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60_000).toISOString();
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
+    installMockDb({
+      run: makeRun({ settings: { releaseCount: 5, intervalMinutes: 10, stopAfterFailures: 5 } }),
+      queuedRows: [10, 11].map((n) => makeQueuedRow(n, n, { Name: `N${n}`, Email: `${n}@x.com` })),
+      allRows: [launchedRow(1, 'i-1')],
+      instances: {
+        'i-1': { id: 'i-1', status: 'running', startedAt: threeDaysAgo, expectedDurationDays: 1, overdueSnoozedUntil: tomorrow },
+      },
+      processorOverrides: { maxUnfinishedInstances: 1 },
+    });
+
+    await dispatchDueBatchRuns();
+
+    // The snoozed instance occupies the only slot → nothing released
+    expect(mockSendMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe('dispatchDueBatchRuns — legacy queued runs', () => {
+  it('promotes a pre-concurrency queued run straight to running', async () => {
+    installMockDb({
+      run: makeRun({ status: 'queued' }),
+      queuedRows: [],
+      allRows: [],
+      instances: {},
+    });
+
+    await dispatchDueBatchRuns();
+
+    const promote = updateCalls('batch-runs').find(
+      (u) => u.ExpressionAttributeValues?.[':next'] === 'running' && u.ConditionExpression === '#st = :queued',
+    );
+    expect(promote).toBeDefined();
+    expect(promote.UpdateExpression).toContain('nextReleaseAt');
+    expect(promote.ExpressionAttributeValues[':zero']).toBe(0);
+  });
+
+  it('promotes to paused instead when the processor has a paused sibling (operator hold)', async () => {
+    installMockDb({
+      run: makeRun({ status: 'queued' }),
+      queuedRows: [],
+      allRows: [],
+      instances: {},
+      siblingRuns: [makeRun({ id: 'run-0', runNumber: 0, status: 'paused' })],
+    });
+
+    await dispatchDueBatchRuns();
+
+    const promote = updateCalls('batch-runs').find((u) => u.ConditionExpression === '#st = :queued');
+    expect(promote).toBeDefined();
+    expect(promote.ExpressionAttributeValues[':next']).toBe('paused');
+    // A held run must not get a release clock - resume sets it explicitly.
+    expect(promote.UpdateExpression).not.toContain('nextReleaseAt');
   });
 });
 
@@ -278,6 +408,121 @@ describe('dispatchDueBatchRuns — completion', () => {
     );
     expect(completeUpdate).toBeDefined();
     expect(completeUpdate.ConditionExpression).toBe('#st = :running');
+  });
+
+  it('fails a stale launching row so the run can eventually close (sweep)', async () => {
+    const staleRow: BatchRow = {
+      ...makeQueuedRow(1, 1, { Name: 'Alice', Email: 'a@x.com' }),
+      status: 'launching',
+      launchingAt: new Date(Date.now() - 2 * 60 * 60_000).toISOString(), // 2h ago
+    };
+    installMockDb({
+      run: makeRun({ nextReleaseAt: new Date(Date.now() + 60_000).toISOString() }), // not due
+      queuedRows: [],
+      allRows: [staleRow],
+      instances: {},
+    });
+
+    await dispatchDueBatchRuns();
+
+    const sweepUpdate = updateCalls('batch-rows').find(
+      (u) => u.ExpressionAttributeValues?.[':failed'] === 'failed',
+    );
+    expect(sweepUpdate).toBeDefined();
+    expect(sweepUpdate.Key).toEqual({ runId: 'run-1', rowNumber: 1 });
+    expect(sweepUpdate.ConditionExpression).toContain('launchingAt <= :cutoff');
+
+    // Swept failures feed the stop-after-failures breaker
+    const streakAdd = updateCalls('batch-runs').find(
+      (u) => u.UpdateExpression === 'ADD consecutiveFailures :n',
+    );
+    expect(streakAdd).toBeDefined();
+    expect(streakAdd.ExpressionAttributeValues[':n']).toBe(1);
+  });
+
+  it('cancels the stranded retry-tracking instance when sweeping its row (sweep)', async () => {
+    const staleRowWithTracker: BatchRow = {
+      ...makeQueuedRow(1, 1, { Name: 'Alice', Email: 'a@x.com' }),
+      status: 'launching',
+      launchingAt: new Date(Date.now() - 2 * 60 * 60_000).toISOString(),
+      workflowInstanceId: 'inst-tracker',
+    };
+    installMockDb({
+      run: makeRun({ nextReleaseAt: new Date(Date.now() + 60_000).toISOString() }),
+      queuedRows: [],
+      allRows: [staleRowWithTracker],
+      instances: {},
+    });
+
+    await dispatchDueBatchRuns();
+
+    const trackerCancel = updateCalls('instances').find(
+      (u) => u.ExpressionAttributeValues?.[':cancelled'] === 'cancelled',
+    );
+    expect(trackerCancel).toBeDefined();
+    expect(trackerCancel.Key).toEqual({ id: 'inst-tracker' });
+    // Never touches an instance that actually launched
+    expect(trackerCancel.ConditionExpression).toContain('attribute_not_exists(maestroInstanceId)');
+  });
+
+  it('adopts a pre-timestamp launching row instead of failing it (sweep)', async () => {
+    const untimedRow: BatchRow = {
+      ...makeQueuedRow(1, 1, { Name: 'Alice', Email: 'a@x.com' }),
+      status: 'launching',
+    };
+    installMockDb({
+      run: makeRun({ nextReleaseAt: new Date(Date.now() + 60_000).toISOString() }),
+      queuedRows: [],
+      allRows: [untimedRow],
+      instances: {},
+    });
+
+    await dispatchDueBatchRuns();
+
+    const adopt = updateCalls('batch-rows').find(
+      (u) => u.ConditionExpression === '#st = :launching AND attribute_not_exists(launchingAt)',
+    );
+    expect(adopt).toBeDefined();
+    expect(updateCalls('batch-rows').some((u) => u.ExpressionAttributeValues?.[':failed'] === 'failed')).toBe(false);
+  });
+
+  it('leaves a fresh launching row alone (sweep)', async () => {
+    const freshRow: BatchRow = {
+      ...makeQueuedRow(1, 1, { Name: 'Alice', Email: 'a@x.com' }),
+      status: 'launching',
+      launchingAt: new Date(Date.now() - 5 * 60_000).toISOString(), // 5 min ago
+    };
+    installMockDb({
+      run: makeRun({ nextReleaseAt: new Date(Date.now() + 60_000).toISOString() }),
+      queuedRows: [],
+      allRows: [freshRow],
+      instances: {},
+    });
+
+    await dispatchDueBatchRuns();
+
+    expect(updateCalls('batch-rows').some((u) => u.ExpressionAttributeValues?.[':failed'] === 'failed')).toBe(false);
+    expect(updateCalls('batch-rows').some(
+      (u) => u.ConditionExpression === '#st = :launching AND attribute_not_exists(launchingAt)',
+    )).toBe(false);
+  });
+
+  it('sweeps stale launching rows of stopped runs too', async () => {
+    const staleRow: BatchRow = {
+      ...makeQueuedRow(1, 1, { Name: 'Alice', Email: 'a@x.com' }),
+      status: 'launching',
+      launchingAt: new Date(Date.now() - 2 * 60 * 60_000).toISOString(),
+    };
+    installMockDb({
+      run: makeRun({ status: 'stopped' }),
+      queuedRows: [],
+      allRows: [staleRow],
+      instances: {},
+    });
+
+    await dispatchDueBatchRuns();
+
+    expect(updateCalls('batch-rows').some((u) => u.ExpressionAttributeValues?.[':failed'] === 'failed')).toBe(true);
   });
 
   it('does NOT complete the run while a launched row is still running', async () => {

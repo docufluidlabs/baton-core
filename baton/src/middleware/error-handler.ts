@@ -11,6 +11,10 @@ export class AppError extends Error {
 
   constructor(message: string, statusCode: number = 500, isOperational: boolean = true) {
     super(message);
+    // Without this, err.name is the inherited 'Error' and every API error
+    // response carries { error: 'Error' } - which the frontend used to toast
+    // verbatim, discarding the real message.
+    this.name = this.constructor.name;
     this.statusCode = statusCode;
     this.isOperational = isOperational;
     Error.captureStackTrace(this, this.constructor);
@@ -57,9 +61,14 @@ export function errorHandler(err: Error, req: Request, res: Response, _next: Nex
       { path: req.path, method: req.method, errors: err.errors.map((e) => ({ path: e.path.join('.'), message: e.message })) },
       'Validation error (Zod)',
     );
+    // Lead with the first field error so the client toast is actionable -
+    // 'Request validation failed' alone tells the user nothing.
+    const first = err.errors[0];
     res.status(400).json({
       error: 'Validation Error',
-      message: 'Request validation failed',
+      message: first
+        ? `${first.path.length > 0 ? `${first.path.join('.')}: ` : ''}${first.message}`
+        : 'Request validation failed',
       statusCode: 400,
       requestId,
       details: err.errors.map((e) => ({

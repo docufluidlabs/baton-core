@@ -39,6 +39,9 @@ export function BatchSidebar({ open, onClose, editingProcessor, onSaved }: Batch
   const [releaseCount, setReleaseCount] = useState('5');
   const [intervalMinutes, setIntervalMinutes] = useState('10');
   const [stopAfterFailures, setStopAfterFailures] = useState('5');
+  // Both empty by default - see the explanatory copy next to the inputs.
+  const [maxUnfinished, setMaxUnfinished] = useState('');
+  const [overdueDays, setOverdueDays] = useState('');
   const [syncing, setSyncing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -52,12 +55,16 @@ export function BatchSidebar({ open, onClose, editingProcessor, onSaved }: Batch
       setReleaseCount(String(editingProcessor.throttleReleaseCount));
       setIntervalMinutes(String(editingProcessor.throttleIntervalMinutes));
       setStopAfterFailures(String(editingProcessor.stopAfterConsecutiveFailures));
+      setMaxUnfinished(editingProcessor.maxUnfinishedInstances ? String(editingProcessor.maxUnfinishedInstances) : '');
+      setOverdueDays(editingProcessor.expectedDurationDays ? String(editingProcessor.expectedDurationDays) : '');
     } else {
       setName('');
       setWorkflowId('');
       setReleaseCount('5');
       setIntervalMinutes('10');
       setStopAfterFailures('5');
+      setMaxUnfinished('');
+      setOverdueDays('');
     }
     setConfirmingDelete(false);
     setDeleting(false);
@@ -100,6 +107,11 @@ export function BatchSidebar({ open, onClose, editingProcessor, onSaved }: Batch
     const release = parseInt(releaseCount, 10);
     const interval = parseInt(intervalMinutes, 10);
     const stopAfter = parseInt(stopAfterFailures, 10);
+    const cap = parseInt(maxUnfinished, 10);
+    const overdue = parseInt(overdueDays, 10);
+    // Clearing the field turns the setting off - null clears it server-side.
+    const capValue = Number.isFinite(cap) && cap > 0 ? cap : null;
+    const overdueValue = Number.isFinite(overdue) && overdue > 0 ? overdue : null;
 
     setSaving(true);
     try {
@@ -110,6 +122,8 @@ export function BatchSidebar({ open, onClose, editingProcessor, onSaved }: Batch
           throttleReleaseCount: Number.isFinite(release) && release > 0 ? release : undefined,
           throttleIntervalMinutes: Number.isFinite(interval) && interval > 0 ? interval : undefined,
           stopAfterConsecutiveFailures: Number.isFinite(stopAfter) && stopAfter > 0 ? stopAfter : undefined,
+          maxUnfinishedInstances: capValue,
+          expectedDurationDays: overdueValue,
         });
       } else {
         await createBatchProcessor({
@@ -118,6 +132,8 @@ export function BatchSidebar({ open, onClose, editingProcessor, onSaved }: Batch
           throttleReleaseCount: Number.isFinite(release) && release > 0 ? release : undefined,
           throttleIntervalMinutes: Number.isFinite(interval) && interval > 0 ? interval : undefined,
           stopAfterConsecutiveFailures: Number.isFinite(stopAfter) && stopAfter > 0 ? stopAfter : undefined,
+          maxUnfinishedInstances: capValue,
+          expectedDurationDays: overdueValue,
         });
       }
       mutate('/batch-processors');
@@ -132,11 +148,14 @@ export function BatchSidebar({ open, onClose, editingProcessor, onSaved }: Batch
 
   return (
     <>
-      {open && <div className="fixed inset-0 bg-black/20 z-40" onClick={onClose} />}
+      {/* z-[65]/z-[70]: the settings drawer must open ABOVE the Runs & rows
+          panel (z-50) - QA round 2 found the gear dimming the screen while the
+          drawer mounted underneath the open logs panel. */}
+      {open && <div className="fixed inset-0 bg-black/20 z-[65]" onClick={onClose} />}
 
       <div
         className={clsx(
-          'fixed top-0 right-0 h-full w-full md:w-[400px] bg-white border-l border-gray-200 z-50 transition-transform duration-200',
+          'fixed top-0 right-0 h-full w-full md:w-[400px] bg-white border-l border-gray-200 z-[70] transition-transform duration-200',
           open ? 'translate-x-0' : 'translate-x-full',
         )}
       >
@@ -240,6 +259,53 @@ export function BatchSidebar({ open, onClose, editingProcessor, onSaved }: Batch
             <p className="text-[11px] text-gray-500 mt-1.5 leading-snug">
               A run stops automatically when this many rows fail back to back, so one bad file
               does not keep launching workflows.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Unfinished instances cap</label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">No more than</span>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                inputMode="numeric"
+                placeholder="off"
+                value={maxUnfinished}
+                onChange={(e) => setMaxUnfinished(e.target.value.replace(/[^\d]/g, ''))}
+                className="w-20 px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-brand-500 outline-none placeholder:text-gray-300"
+              />
+              <span className="text-sm text-gray-500">unfinished at once</span>
+            </div>
+            <p className="text-[11px] text-gray-500 mt-1.5 leading-snug">
+              Off by default on purpose: a signature workflow only completes when a human
+              signs, so a cap alone could stall a batch forever. Set Mark as Overdue below
+              as the release valve - an Overdue instance stops counting toward the cap, so
+              the next row can launch.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Mark as Overdue</label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">after</span>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                inputMode="numeric"
+                placeholder="off"
+                value={overdueDays}
+                onChange={(e) => setOverdueDays(e.target.value.replace(/[^\d]/g, ''))}
+                className="w-20 px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-brand-500 outline-none placeholder:text-gray-300"
+              />
+              <span className="text-sm text-gray-500">days</span>
+            </div>
+            <p className="text-[11px] text-gray-500 mt-1.5 leading-snug">
+              Instances that take longer than this surface in Control Center as{' '}
+              <span className="font-medium text-amber-700">Overdue</span> and free their cap
+              slot. Postpone an Overdue instance there to keep waiting on it instead.
             </p>
           </div>
         </div>

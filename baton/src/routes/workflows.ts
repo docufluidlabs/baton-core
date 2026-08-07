@@ -18,7 +18,6 @@ import * as connectionService from '../services/connection.service';
 import { logAudit } from '../services/audit.service';
 import { countCompletionIfNeeded } from '../services/usage.service';
 import { sendMessage, QueueNames } from '../queue/sqs-client';
-import { workflowLaunchedNotification, workflowSyncedNotification } from '../services/notification.service';
 import type { NotificationJob } from '../workers/notification-sender.worker';
 import env from '../env';
 import {
@@ -368,15 +367,8 @@ router.post('/sync', requireAdmin, async (req: Request, res: Response, next: Nex
       metadata: { connectionId, syncedCount: synced.length },
     });
 
-    // Notify user about synced workflows
-    if (synced.length > 0) {
-      const syncNotif: NotificationJob = {
-        type: 'notification',
-        payload: workflowSyncedNotification(orgId, req.auth!.userId, synced.length),
-      };
-      sendMessage(QueueNames.NOTIFICATION_SENDER, syncNotif).catch(() => {});
-    }
-
+    // No notification here on purpose: a successful sync is a routine
+    // confirmation - the workflows page and the sync toast already show it.
     res.json({ workflows: synced, syncedCount: synced.length });
   } catch (error) {
     next(error);
@@ -429,13 +421,6 @@ router.post('/:id/sync', requireMember, async (req: Request, res: Response, next
     }));
 
     logInfo('Single workflow synced', { workflowId: workflow.id, maestroId: workflow.maestroWorkflowId });
-
-    // Notify user about synced workflow
-    const syncNotif: NotificationJob = {
-      type: 'notification',
-      payload: workflowSyncedNotification(orgId, req.auth!.userId, 1),
-    };
-    sendMessage(QueueNames.NOTIFICATION_SENDER, syncNotif).catch(() => {});
 
     res.json({
       message: 'Workflow synced',
@@ -514,13 +499,8 @@ router.post('/:id/launch', requireMember, async (req: Request, res: Response, ne
 
     logInfo('Workflow launched manually', { workflowId: workflow.id, instanceId: result.instanceId });
 
-    // Queue Slack/email notification
-    const launchedNotif: NotificationJob = {
-      type: 'notification',
-      payload: workflowLaunchedNotification(orgId, req.auth!.userId, workflow.name, instance.id, instanceName, result.instanceUrl),
-    };
-    sendMessage(QueueNames.NOTIFICATION_SENDER, launchedNotif).catch(() => {});
-
+    // No launch notification on purpose: the user just clicked the button and
+    // sees the result; the Activity Log records it.
     logAudit({
       orgId,
       userId: req.auth!.userId,

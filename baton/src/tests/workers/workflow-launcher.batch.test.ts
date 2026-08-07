@@ -2,7 +2,8 @@
  * Workflow launcher — Bulk Upload (batch) path tests
  * Verifies: no TRIGGER_PIPELINE writes on the batch path, row updated to
  * 'launched' + run failure streak reset on success, row 'failed' + streak
- * increment on final failure, relay-gate denial marks the row 'skipped',
+ * increment on final failure, relay-gate denial marks the row 'skipped'
+ * (resolving a retry's tracking instance so it isn't stranded 'running'),
  * retry ladder preserved with batch metadata, metering unchanged.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -194,6 +195,44 @@ describe('processWorkflowLaunchJob — batch relay gate', () => {
     expect(rowUpdates[0].ExpressionAttributeValues[':status']).toBe('skipped');
     expect(rowUpdates[0].ExpressionAttributeValues[':err']).toContain('usage limit');
     expect(callsFor('pipeline')).toHaveLength(0);
+
+    // Initial attempt — no tracking instance exists, so none is touched
+    expect(callsFor('instances')).toHaveLength(0);
+  });
+
+  it('resolves the retry tracking instance to cancelled when the gate denies a retry attempt', async () => {
+    setRelayGate({ check: async () => ({ allowed: false, reason: 'hard_cap_reached' }) });
+    // Retry guard lookup: instance still running with the matching sequence
+    mockSend.mockImplementation(async (cmd: any) => {
+      const name = cmd.constructor.name;
+      const input = cmd.input;
+      if (name === 'GetCommand' && input.TableName === 'instances') {
+        return { Item: { id: 'inst-1', status: 'running', retrySequenceId: 'seq-1' } };
+      }
+      if (name === 'GetCommand' && input.TableName === 'workflows') return { Item: workflow };
+      return {};
+    });
+
+    await processWorkflowLaunchJob({
+      ...batchJob,
+      retry: { attempt: 2, maxAttempts: 6, sequenceId: 'seq-1', instanceId: 'inst-1' },
+    });
+
+    expect(mockLaunchWorkflow).not.toHaveBeenCalled();
+
+    // Row still skipped exactly as on the initial-attempt denial
+    const rowUpdates = callsFor('batch-rows', 'UpdateCommand');
+    expect(rowUpdates).toHaveLength(1);
+    expect(rowUpdates[0].ExpressionAttributeValues[':status']).toBe('skipped');
+
+    // Tracking instance resolved — not stranded in 'running' forever
+    const instUpdates = callsFor('instances', 'UpdateCommand');
+    expect(instUpdates).toHaveLength(1);
+    expect(instUpdates[0].Key).toEqual({ id: 'inst-1' });
+    expect(instUpdates[0].ConditionExpression).toBe('#st = :running');
+    expect(instUpdates[0].ExpressionAttributeValues[':status']).toBe('cancelled');
+    expect(instUpdates[0].ExpressionAttributeValues[':err']).toContain('Relay gate');
+    expect(instUpdates[0].ExpressionAttributeValues[':now']).toBeDefined();
   });
 });
 
@@ -242,8 +281,13 @@ describe('processWorkflowLaunchJob — batch failure', () => {
       expect.objectContaining({ delaySeconds: 2 }),
     );
 
-    // The row is still mid-flight — not failed yet
-    expect(callsFor('batch-rows', 'UpdateCommand')).toHaveLength(0);
+    // The row is still mid-flight — not failed, status untouched. The only
+    // row write is the tracking-instance reference (guarded on 'launching')
+    // so the rows drill-in can show the Auto-retry state during the ladder.
+    const rowUpdates = callsFor('batch-rows', 'UpdateCommand');
+    expect(rowUpdates).toHaveLength(1);
+    expect(rowUpdates[0].UpdateExpression).toBe('SET workflowInstanceId = :wid');
+    expect(rowUpdates[0].ConditionExpression).toBe('#st = :launching');
     expect(callsFor('pipeline')).toHaveLength(0);
   });
 

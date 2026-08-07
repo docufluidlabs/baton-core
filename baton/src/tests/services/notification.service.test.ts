@@ -40,12 +40,11 @@ vi.stubGlobal('fetch', mockFetch);
 import {
   sendNotification,
   workflowFailedNotification,
-  workflowLaunchedNotification,
+  batchRunCompletedNotification,
+  batchRunStoppedNotification,
   workflowCompletedNotification,
-  workflowSyncedNotification,
   retryExhaustedNotification,
   connectionErrorNotification,
-  connectionCreatedNotification,
   connectionDisconnectedNotification,
   rulePausedNotification,
   webhookFailedNotification,
@@ -720,7 +719,7 @@ describe('getOrgPreferences — event merging', () => {
     expect(prefs.events?.workflow_failed).toEqual({ inApp: true, email: false });
     // New event type should have default value
     expect(prefs.events?.automation_failed).toEqual({ inApp: true, email: true });
-    expect(prefs.events?.execution_quota_exceeded).toEqual({ inApp: true, email: true });
+    expect(prefs.events?.batch_run_stopped).toEqual({ inApp: true, email: true });
   });
 
   it('returns defaults with full DEFAULT_EVENT_PREFS when no DB record exists', async () => {
@@ -758,24 +757,31 @@ describe('getOrgPreferences — event merging', () => {
 
 // ── Template functions ──────────────────────────────────────
 
-describe('workflowLaunchedNotification', () => {
-  it('returns info severity with workflow_launched category', () => {
-    const p = workflowLaunchedNotification('org-1', 'user-1', 'Daily Sync', 'inst-1');
-    expect(p.severity).toBe('info');
-    expect(p.category).toBe('workflow_launched');
+describe('batchRunCompletedNotification', () => {
+  it('clean run: success severity, in-app defaults (no channel override)', () => {
+    const p = batchRunCompletedNotification('org-1', 'user-1', 'Vendors', 4, 'vendors.xlsx', { completed: 48, failed: 0, cancelled: 0, skipped: 0 });
+    expect(p.severity).toBe('success');
+    expect(p.category).toBe('batch_run_completed');
+    expect(p.channels).toBeUndefined();
+    expect(p.body).toBe('vendors.xlsx: 48 completed.');
   });
 
-  it('metadata contains workflowName and instanceId', () => {
-    const p = workflowLaunchedNotification('org-1', 'user-1', 'Daily Sync', 'inst-1');
-    expect(p.metadata).toEqual(expect.objectContaining({ workflowName: 'Daily Sync', instanceId: 'inst-1' }));
+  it('failures escalate: warning severity + explicit email channel', () => {
+    const p = batchRunCompletedNotification('org-1', 'user-1', 'Vendors', 4, 'vendors.xlsx', { completed: 46, failed: 2, cancelled: 1, skipped: 0 });
+    expect(p.severity).toBe('warning');
+    expect(p.channels).toEqual(['in_app', 'email', 'slack']);
+    expect(p.body).toContain('2 failed');
+    expect(p.body).toContain('1 cancelled');
   });
+});
 
-  it('body uses instanceName when provided, generic text when absent', () => {
-    const withName = workflowLaunchedNotification('org-1', 'user-1', 'WF', 'inst-1', 'My Instance');
-    expect(withName.body).toContain('My Instance');
-
-    const withoutName = workflowLaunchedNotification('org-1', 'user-1', 'WF', 'inst-1');
-    expect(withoutName.body).toContain('A new instance is now running');
+describe('batchRunStoppedNotification', () => {
+  it('returns error severity with batch_run_stopped category and resume guidance', () => {
+    const p = batchRunStoppedNotification('org-1', 'user-1', 'Vendors', 4, 'vendors.xlsx', 5);
+    expect(p.severity).toBe('error');
+    expect(p.category).toBe('batch_run_stopped');
+    expect(p.body).toContain('5 consecutive failures');
+    expect(p.body).toContain('resume');
   });
 });
 
@@ -792,28 +798,6 @@ describe('workflowCompletedNotification', () => {
   });
 });
 
-describe('workflowSyncedNotification', () => {
-  it('returns info severity with workflow_synced category', () => {
-    const p = workflowSyncedNotification('org-1', 'user-1', 3);
-    expect(p.severity).toBe('info');
-    expect(p.category).toBe('workflow_synced');
-  });
-
-  it('pluralizes title correctly for count=1 vs count>1', () => {
-    const one = workflowSyncedNotification('org-1', 'user-1', 1);
-    expect(one.title).toBe('1 workflow synced');
-
-    const many = workflowSyncedNotification('org-1', 'user-1', 5);
-    expect(many.title).toBe('5 workflows synced');
-  });
-
-  it('body includes new/updated breakdown when newCount provided', () => {
-    const p = workflowSyncedNotification('org-1', 'user-1', 5, 2);
-    expect(p.body).toContain('2 new');
-    expect(p.body).toContain('3 updated');
-  });
-});
-
 describe('retryExhaustedNotification', () => {
   it('returns error severity with automation_failed category', () => {
     const p = retryExhaustedNotification('org-1', 'user-1', 'Import', 'inst-3', 3);
@@ -824,19 +808,6 @@ describe('retryExhaustedNotification', () => {
   it('body includes retryMaxAttempts count', () => {
     const p = retryExhaustedNotification('org-1', 'user-1', 'Import', 'inst-3', 5);
     expect(p.body).toContain('5');
-  });
-});
-
-describe('connectionCreatedNotification', () => {
-  it('returns success severity with connection_created category', () => {
-    const p = connectionCreatedNotification('org-1', 'user-1', 'HubSpot', 'My HubSpot');
-    expect(p.severity).toBe('success');
-    expect(p.category).toBe('connection_created');
-  });
-
-  it('title contains displayName', () => {
-    const p = connectionCreatedNotification('org-1', 'user-1', 'HubSpot', 'My HubSpot');
-    expect(p.title).toContain('My HubSpot');
   });
 });
 
@@ -857,3 +828,4 @@ describe('connectionDisconnectedNotification', () => {
     expect(p.body).toContain('has been removed');
   });
 });
+

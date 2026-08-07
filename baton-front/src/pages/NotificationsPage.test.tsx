@@ -391,7 +391,11 @@ describe('PreferencesTab', () => {
 
     expect(screen.getByText('Workflow Failed')).toBeInTheDocument();
     expect(screen.getByText('Workflow Completed')).toBeInTheDocument();
-    expect(screen.getByText('Workflow Launched')).toBeInTheDocument();
+    // Workflow Launched was killed as routine-success noise (2026-08-07);
+    // the Bulk Upload run events replaced it in the matrix.
+    expect(screen.queryByText('Workflow Launched')).not.toBeInTheDocument();
+    expect(screen.getByText('Bulk Upload Run Finished')).toBeInTheDocument();
+    expect(screen.getByText('Bulk Upload Run Stopped')).toBeInTheDocument();
     expect(screen.getByText('Automation Failed')).toBeInTheDocument();
     expect(screen.getByText('Connection Degraded')).toBeInTheDocument();
     expect(screen.getByText('Webhook Failed')).toBeInTheDocument();

@@ -19,7 +19,7 @@ import {
 import { timeAgo } from '@/lib/utils';
 import {
   X, Loader2, Clock, Copy, CheckCircle2, XCircle, Loader,
-  ChevronRight, ChevronLeft, Play, Pause, Ban, ExternalLink, Download, AlertTriangle,
+  ChevronRight, ChevronLeft, Play, Pause, Ban, ExternalLink, Download, AlertTriangle, Search,
 } from 'lucide-react';
 import clsx from 'clsx';
 import batonLogo from '@/assets/baton.svg';
@@ -38,9 +38,13 @@ const RUN_BADGE: Record<string, string> = {
   cancelled: 'bg-gray-100 text-gray-600',
 };
 
+// 'staged' shows as 'Excluded' (not part of this run's selection) - QA round 1
+// flagged 'Staged' as misleading. 'Skipped' (amber) stays reserved for problem
+// rows skipped at start. Queued is yellow so waiting is visually distinct from
+// not participating (grey).
 const ROW_CFG: Record<BatchRowStatus, { border: string; dot: string; bg: string; text: string; label: string }> = {
-  staged:    { border: 'border-l-gray-300', dot: 'bg-gray-400',               bg: 'bg-gray-100',   text: 'text-gray-600',   label: 'Staged'    },
-  queued:    { border: 'border-l-gray-300', dot: 'bg-gray-400',               bg: 'bg-gray-100',   text: 'text-gray-600',   label: 'Queued'    },
+  staged:    { border: 'border-l-gray-300', dot: 'bg-gray-400',               bg: 'bg-gray-100',   text: 'text-gray-600',   label: 'Excluded'  },
+  queued:    { border: 'border-l-yellow-400', dot: 'bg-yellow-400',           bg: 'bg-yellow-50',  text: 'text-yellow-700', label: 'Queued'    },
   launching: { border: 'border-l-blue-400', dot: 'bg-blue-400 animate-pulse', bg: 'bg-blue-50',    text: 'text-blue-700',   label: 'Launching' },
   launched:  { border: 'border-l-blue-500', dot: 'bg-blue-500',               bg: 'bg-blue-50',    text: 'text-blue-700',   label: 'Launched'  },
   running:   { border: 'border-l-blue-500', dot: 'bg-blue-500 animate-pulse', bg: 'bg-blue-50',    text: 'text-blue-700',   label: 'Running'   },
@@ -55,6 +59,14 @@ const ROW_FILTER_ORDER: BatchRowStatus[] = [
 ];
 
 const CANCELLABLE_ROW_STATUSES = new Set<BatchRowStatus>(['queued', 'launching', 'launched', 'running']);
+
+/** Relative time for fresh runs, absolute date+time once it is older than a
+ *  day - "1d ago" tells an auditor nothing a week later (QA round 2). */
+function runTimeLabel(startedAt: string): string {
+  const ageMs = Date.now() - new Date(startedAt).getTime();
+  if (ageMs < 24 * 60 * 60_000) return timeAgo(startedAt);
+  return new Date(startedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 
 function countsLine(run: BatchRunSummary): string {
   const c = run.counts;
@@ -88,11 +100,15 @@ export function BatchLogsSidebar({ open, processor, workflowName, onClose }: Bat
   const [cancellingRun, setCancellingRun] = useState<BatchRunSummary | null>(null);
   const [pausingRunId, setPausingRunId] = useState<string | null>(null);
 
-  // Land directly on the active run's rows when one is live.
+  // Land on the runs LIST by default (user decision - the list is the
+  // overview). A card strip's "See rows" passes the run to drill straight
+  // into; the nonce re-lands even when the same run is asked for twice.
+  const initialRunId = useFlowStore((s) => s.batchLogsInitialRunId);
+  const logsNonce = useFlowStore((s) => s.batchLogsNonce);
   useEffect(() => {
     if (!open) return;
-    setSelectedRunId(processor?.activeRun?.id ?? null);
-  }, [open, processor?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+    setSelectedRunId(initialRunId);
+  }, [open, processor?.id, initialRunId, logsNonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close on ESC - like ActionLogsSidebar, the canvas stays interactive.
   useEffect(() => {
@@ -191,16 +207,27 @@ export function BatchLogsSidebar({ open, processor, workflowName, onClose }: Bat
                           <span className={clsx('text-[10px] font-medium px-1.5 py-0.5 rounded-full', RUN_BADGE[run.status] || RUN_BADGE.draft)}>
                             {run.status}
                           </span>
-                          <span className="text-[10px] text-gray-400 ml-auto shrink-0">
-                            {run.startedAt ? timeAgo(run.startedAt) : ''}
+                          <span
+                            className="text-[10px] text-gray-400 ml-auto shrink-0"
+                            title={run.startedAt ? new Date(run.startedAt).toLocaleString() : undefined}
+                          >
+                            {run.startedAt ? runTimeLabel(run.startedAt) : ''}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-1 truncate">{run.fileName}</p>
+                        <p className="text-xs text-gray-500 mt-1 truncate">
+                          {run.fileName}
+                          {run.createdByName ? ` · uploaded by ${run.createdByName}` : ''}
+                        </p>
                         <p className="text-[11px] text-gray-400 mt-1">{countsLine(run)}</p>
                         {run.settings && (
                           <p className="text-[10px] text-gray-400 mt-0.5">
                             Release {run.settings.releaseCount} every {run.settings.intervalMinutes} min · stop
                             after {run.settings.stopAfterFailures} failures
+                          </p>
+                        )}
+                        {run.status === 'stopped' && run.stoppedReason && (
+                          <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1 mt-1.5">
+                            {run.stoppedReason}
                           </p>
                         )}
                       </div>
@@ -373,6 +400,7 @@ function RunRowsView({ processor, run, workflowName, onBack, onOpenInstance, onC
   const { data, isLoading, mutate: mutateRows } = useBatchRows(processor.id, run.id);
   const rows = data?.rows || [];
   const [activeFilters, setActiveFilters] = useState<Set<BatchRowStatus>>(new Set());
+  const [search, setSearch] = useState('');
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
   const [cancellingRow, setCancellingRow] = useState<number | null>(null);
 
@@ -388,11 +416,23 @@ function RunRowsView({ processor, run, workflowName, onBack, onOpenInstance, onC
     });
   }
 
-  const filtered = rows.filter((r) => activeFilters.size === 0 || activeFilters.has(r.status));
+  // Excluded rows are hidden by DEFAULT: with 23 of 30 rows excluded, the 7
+  // that matter drown (QA round 2). Clicking the Excluded chip still filters
+  // to them, and search always looks at every row.
+  const q = search.trim().toLowerCase();
+  const matchesSearch = (r: BatchRow) =>
+    !q ||
+    r.name.toLowerCase().includes(q) ||
+    String(r.rowNumber).includes(q) ||
+    Object.values(r.data).some((v) => v.toLowerCase().includes(q));
+  const filtered = rows.filter((r) =>
+    matchesSearch(r) &&
+    (activeFilters.size === 0 ? (q ? true : r.status !== 'staged') : activeFilters.has(r.status)),
+  );
 
   const pagination = usePagination(filtered, {
     storageKey: 'baton-batch-rows-page-size',
-    resetKey: `${run.id}|${[...activeFilters].sort().join(',')}`,
+    resetKey: `${run.id}|${[...activeFilters].sort().join(',')}|${q}`,
   });
   const { pageItems } = pagination;
 
@@ -429,6 +469,20 @@ function RunRowsView({ processor, run, workflowName, onBack, onOpenInstance, onC
             </span>
           </div>
         </div>
+
+        {rows.length > 0 && (
+          <div className="px-5 pb-2">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search rows by name, number or any value..."
+                className="w-full pl-8 pr-3 py-1.5 text-xs border border-gray-200 rounded-lg bg-white outline-none focus:ring-1 focus:ring-brand-500 placeholder:text-gray-400"
+              />
+            </div>
+          </div>
+        )}
 
         {rows.length > 0 && (
           <div className="flex items-center gap-1.5 px-5 pb-3 flex-wrap">
@@ -513,6 +567,21 @@ function RowCard({ row, workflowName, expanded, onToggle, onOpenInstance, cancel
   const hasProblems = row.problems.length > 0;
   const canCancel = CANCELLABLE_ROW_STATUSES.has(row.status);
 
+  // Payload = what the workflow actually received; the raw file row stays
+  // available behind its own tab ("the wrong ID went out - what was in the
+  // file for this row?").
+  const payloadEntries = Object.entries(row.payload ?? {});
+  const [detailTab, setDetailTab] = useState<'payload' | 'file'>(payloadEntries.length > 0 ? 'payload' : 'file');
+
+  // In the ladder = tracking instance exists (running, retryCount > 0) but
+  // nothing launched yet (no maestroInstanceId). A successfully launched
+  // instance always carries a maestroInstanceId, so a recovered retry never
+  // false-positives here.
+  const isAutoRetrying =
+    row.instance?.status === 'running' &&
+    (row.instance.retryCount ?? 0) > 0 &&
+    !row.instance.maestroInstanceId;
+
   // Workflow trigger stage: launched once an instance id exists.
   const triggerState: 'success' | 'running' | 'error' | 'pending' =
     row.workflowInstanceId ? 'success' :
@@ -553,15 +622,37 @@ function RowCard({ row, workflowName, expanded, onToggle, onOpenInstance, cancel
       {/* Expanded details */}
       {expanded && (
         <div className="px-4 pb-4 space-y-2.5">
-          {/* File row values */}
-          <div className="bg-gray-50 rounded-lg p-3 max-h-[180px] overflow-y-auto">
-            <div className="flex flex-col gap-y-1 text-xs">
-              {Object.entries(row.data).map(([k, v]) => (
-                <div key={k} className="flex items-start gap-2">
-                  <span className="text-gray-400 w-28 shrink-0 truncate" title={k}>{k}</span>
-                  <span className="text-gray-700 font-mono text-[11px] break-all flex-1">{v || '·'}</span>
-                </div>
-              ))}
+          {/* Payload (mapped parameters) with the raw file row behind a tab */}
+          <div className="bg-gray-50 rounded-lg overflow-hidden">
+            {payloadEntries.length > 0 && (
+              <div className="flex items-center gap-1 px-3 pt-2.5">
+                {([['payload', 'Payload'], ['file', 'File row']] as const).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setDetailTab(key); }}
+                    className={clsx(
+                      'px-2 py-0.5 text-[11px] font-medium rounded-md transition-colors',
+                      detailTab === key ? 'bg-white text-gray-700 shadow-sm border border-gray-200' : 'text-gray-400 hover:text-gray-600',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+                {detailTab === 'payload' && (
+                  <span className="text-[10px] text-gray-400 ml-auto">sent to the workflow</span>
+                )}
+              </div>
+            )}
+            <div className="p-3 max-h-[180px] overflow-y-auto">
+              <div className="flex flex-col gap-y-1 text-xs">
+                {(detailTab === 'payload' && payloadEntries.length > 0 ? payloadEntries : Object.entries(row.data)).map(([k, v]) => (
+                  <div key={k} className="flex items-start gap-2">
+                    <span className="text-gray-400 w-28 shrink-0 truncate" title={k}>{k}</span>
+                    <span className="text-gray-700 font-mono text-[11px] break-all flex-1">{v || '·'}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -594,6 +685,11 @@ function RowCard({ row, workflowName, expanded, onToggle, onOpenInstance, cancel
             {stepLine && (
               <p className="text-[11px] text-blue-600 pl-5">{stepLine}</p>
             )}
+            {isAutoRetrying && (
+              <p className="text-[11px] text-amber-600 pl-5">
+                Auto-retry {row.instance?.retryCount}/{row.instance?.retryMaxAttempts ?? 6} - the launch failed and is being retried automatically
+              </p>
+            )}
           </div>
 
           {/* Instance ID */}
@@ -624,13 +720,24 @@ function RowCard({ row, workflowName, expanded, onToggle, onOpenInstance, cancel
           {/* Actions */}
           {(row.workflowInstanceId || canCancel) && (
             <div className="flex items-center gap-2 pt-0.5">
+              {row.instance?.instanceUrl && (
+                <a
+                  href={row.instance.instanceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-brand-600 hover:bg-brand-50 rounded-lg border border-brand-200 transition-colors"
+                >
+                  <ExternalLink className="w-3 h-3" /> Open in Docusign
+                </a>
+              )}
               {row.workflowInstanceId && (
                 <button
                   onClick={onOpenInstance}
-                  title={workflowName ? `Open ${workflowName} instances` : 'Open instances'}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-brand-600 hover:bg-brand-50 rounded-lg border border-brand-200 transition-colors"
+                  title={workflowName ? `Open the ${workflowName} Activity Log` : 'Open the Activity Log'}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-gray-500 hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors"
                 >
-                  <ExternalLink className="w-3 h-3" /> Open instance
+                  <ExternalLink className="w-3 h-3" /> Activity Log
                 </button>
               )}
               {canCancel && (

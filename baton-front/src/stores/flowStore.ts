@@ -30,7 +30,12 @@ interface FlowStore {
 
   // Bulk Upload — run/row logs sidebar
   batchLogsProcessorId: string | null;
-  openBatchLogs: (processorId: string) => void;
+  /** Run to drill into on open (See rows on a card strip); null = runs list. */
+  batchLogsInitialRunId: string | null;
+  /** Bumped on every openBatchLogs so the sidebar re-lands even when the
+   *  processor and run are unchanged. */
+  batchLogsNonce: number;
+  openBatchLogs: (processorId: string, initialRunId?: string | null) => void;
   closeBatchLogs: () => void;
 
   // Activity log sidebar (all instances across canvas). Can carry an optional
@@ -108,8 +113,16 @@ export const useFlowStore = create<FlowStore>((set, get) => ({
   // Bulk Upload logs — like openLogs, closes the edit sidebars but leaves the
   // Activity Log alone so both can sit side by side.
   batchLogsProcessorId: null,
-  openBatchLogs: (processorId) => set({ batchLogsProcessorId: processorId, sidebarOpen: false, batchSidebarOpen: false }),
-  closeBatchLogs: () => set({ batchLogsProcessorId: null }),
+  batchLogsInitialRunId: null,
+  batchLogsNonce: 0,
+  openBatchLogs: (processorId, initialRunId = null) => set((s) => ({
+    batchLogsProcessorId: processorId,
+    batchLogsInitialRunId: initialRunId,
+    batchLogsNonce: s.batchLogsNonce + 1,
+    sidebarOpen: false,
+    batchSidebarOpen: false,
+  })),
+  closeBatchLogs: () => set({ batchLogsProcessorId: null, batchLogsInitialRunId: null }),
 
   // Activity log — keeps the relay log open if it is; only closes the automation editor.
   activityLogOpen: false,

@@ -149,6 +149,14 @@ export interface WorkflowInstance {
   overdueSnoozedUntil?: string;
   /** Org-shared free-form labels. Undefined means tags were never set on the server. */
   tags?: string[];
+  /** Set when launched by a Bulk Upload run (launchedBy: 'batch'). */
+  batchRunId?: string;
+  /** The run's per-processor sequence number — "Launched by Run 3". */
+  batchRunNumber?: number;
+  batchRowNumber?: number;
+  /** Overdue threshold (days) snapshotted from the Bulk Upload run at launch —
+   *  automation instances read the rule's actionConfig instead. */
+  expectedDurationDays?: number;
 }
 
 export interface Automation {
@@ -296,6 +304,9 @@ export interface Notification {
   readAt?: string;
   dismissedAt?: string;
   createdAt: string;
+  /** Roll-up count — same-key events collapse into one entry that increments
+   *  ("5 instances failed in X") instead of stacking rows. */
+  count?: number;
 }
 
 export interface NotificationsResponse {
@@ -759,6 +770,8 @@ export interface SlackChannelRouting {
   workflow_failed?: string | null;
   workflow_completed?: string | null;
   workflow_launched?: string | null;
+  batch_run_completed?: string | null;
+  batch_run_stopped?: string | null;
   automation_failed?: string | null;
   connection_degraded?: string | null;
   webhook_failed?: string | null;
@@ -854,6 +867,8 @@ export interface BatchRunSettings {
   releaseCount: number;
   intervalMinutes: number;
   stopAfterFailures: number;
+  /** Overdue threshold for this run's instances (days). */
+  expectedDurationDays?: number;
 }
 
 export interface BatchRunSummary {
@@ -868,6 +883,11 @@ export interface BatchRunSummary {
   completedAt?: string;
   /** Dispatcher due time — present on active runs so the bubble can count down. */
   nextReleaseAt?: string;
+  createdBy?: string | null;
+  /** Uploader display name, resolved at upload time (audit trail). */
+  createdByName?: string | null;
+  /** Why the dispatcher auto-stopped the run (cleared on resume). */
+  stoppedReason?: string | null;
   // GET /:id/runs enriches summaries with the run's settings and file columns.
   settings?: BatchRunSettings;
   columns?: string[];
@@ -883,12 +903,18 @@ export interface BatchProcessor {
   throttleReleaseCount: number;
   throttleIntervalMinutes: number;
   stopAfterConsecutiveFailures: number;
+  /** Cap on simultaneously unfinished instances across all runs (null = off).
+   *  Overdue instances stop counting toward it. */
+  maxUnfinishedInstances?: number | null;
+  /** Days until a still-running instance is marked Overdue. */
+  expectedDurationDays?: number | null;
   createdAt: string;
   updatedAt?: string;
   createdBy?: string;
   lastRun?: BatchRunSummary;
-  activeRun?: BatchRunSummary;
-  /** Runs waiting behind the active one, oldest first (strict run sequence). */
+  /** Every running/paused run, oldest first — runs execute concurrently. */
+  activeRuns?: BatchRunSummary[];
+  /** Transitional: pre-concurrency queued runs awaiting legacy promotion. */
   queuedRuns?: BatchRunSummary[];
   /** Sequence aggregates across all non-draft runs of this processor. */
   runsTotal?: number;
@@ -903,6 +929,8 @@ export interface BatchRow {
   status: BatchRowStatus;
   problems: string[];
   data: Record<string, string>;
+  /** The mapped parameter payload the workflow receives (null before mapping). */
+  payload?: Record<string, string> | null;
   workflowInstanceId?: string;
   maestroInstanceId?: string;
   instance?: {
@@ -911,6 +939,11 @@ export interface BatchRow {
     lastCompletedStep?: number;
     totalSteps?: number;
     instanceUrl?: string;
+    retryCount?: number | null;
+    retryMaxAttempts?: number | null;
+    /** Present only once a launch actually succeeded — absent with
+     *  retryCount > 0 means the retry ladder is in progress. */
+    maestroInstanceId?: string | null;
   };
   errorMessage?: string;
   launchedAt?: string;
@@ -968,6 +1001,8 @@ export async function createBatchProcessor(data: {
   throttleReleaseCount?: number;
   throttleIntervalMinutes?: number;
   stopAfterConsecutiveFailures?: number;
+  maxUnfinishedInstances?: number | null;
+  expectedDurationDays?: number | null;
 }) {
   const res = await api.post<{ processor: BatchProcessor }>('/batch-processors', data);
   toast.success('Bulk Upload created');
@@ -981,6 +1016,8 @@ export async function updateBatchProcessor(id: string, data: Partial<{
   throttleReleaseCount: number;
   throttleIntervalMinutes: number;
   stopAfterConsecutiveFailures: number;
+  maxUnfinishedInstances: number | null;
+  expectedDurationDays: number | null;
 }>) {
   const res = await api.patch<{ processor: BatchProcessor }>(`/batch-processors/${id}`, data);
   toast.success('Bulk Upload updated');
@@ -1017,26 +1054,20 @@ export async function startBatchRun(processorId: string, runId: string, data: {
   skipProblemRows: boolean;
 }): Promise<{ run: BatchRunSummary }> {
   const res = await api.post<{ run: BatchRunSummary }>(`/batch-processors/${processorId}/runs/${runId}/start`, data);
-  if (res.run?.status === 'queued') {
-    toast.success('Run queued - it starts when the current run finishes');
-  } else {
-    toast.success('Bulk Upload run started');
-  }
+  toast.success('Bulk Upload run started');
   return res;
 }
 
-export async function pauseBatchRun(processorId: string, runId: string): Promise<void> {
+/** `silent` suppresses the per-run toast - the card's Pause all/Resume all
+ *  fires one summary toast instead of one per run. */
+export async function pauseBatchRun(processorId: string, runId: string, opts?: { silent?: boolean }): Promise<void> {
   await api.post(`/batch-processors/${processorId}/runs/${runId}/pause`);
-  toast.success('Run paused');
+  if (!opts?.silent) toast.success('Run paused');
 }
 
-export async function resumeBatchRun(processorId: string, runId: string): Promise<void> {
-  const res = await api.post<{ run?: BatchRunSummary }>(`/batch-processors/${processorId}/runs/${runId}/resume`);
-  if (res.run?.status === 'queued') {
-    toast.success('Run re-queued - another run took over while this one was stopped');
-  } else {
-    toast.success('Run resumed');
-  }
+export async function resumeBatchRun(processorId: string, runId: string, opts?: { silent?: boolean }): Promise<void> {
+  await api.post(`/batch-processors/${processorId}/runs/${runId}/resume`);
+  if (!opts?.silent) toast.success('Run resumed');
 }
 
 export async function cancelBatchRun(processorId: string, runId: string, scope: 'queued' | 'all'): Promise<void> {
@@ -1088,10 +1119,13 @@ export interface NotificationPreferencesData {
   events: Record<string, EventChannelPrefs>;
 }
 
+// Mirrors the backend defaults: interrupts and conclusions only - routine
+// success confirmations are off (workflow_completed) or gone entirely.
 const DEFAULT_EVENT_PREFS: Record<string, EventChannelPrefs> = {
   workflow_failed:           { inApp: true,  email: true  },
-  workflow_completed:        { inApp: true,  email: false },
-  workflow_launched:         { inApp: true,  email: false },
+  workflow_completed:        { inApp: false, email: false },
+  batch_run_completed:       { inApp: true,  email: false },
+  batch_run_stopped:         { inApp: true,  email: true  },
   automation_failed:         { inApp: true,  email: true  },
   connection_degraded:       { inApp: true,  email: true  },
   webhook_failed:            { inApp: true,  email: true  },
