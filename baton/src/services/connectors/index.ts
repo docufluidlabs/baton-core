@@ -13,6 +13,7 @@ import { smartsheetConnector } from './smartsheet.connector';
 import { bamboohrConnector } from './bamboohr.connector';
 import { zendeskConnector } from './zendesk.connector';
 import { powerautomateConnector } from './powerautomate.connector';
+import { airtableConnector } from './airtable.connector';
 
 const connectorRegistry = new Map<Platform, PlatformConnector>();
 
@@ -25,6 +26,7 @@ connectorRegistry.set('smartsheet', smartsheetConnector);
 connectorRegistry.set('bamboohr', bamboohrConnector);
 connectorRegistry.set('zendesk', zendeskConnector);
 connectorRegistry.set('powerautomate', powerautomateConnector);
+connectorRegistry.set('airtable', airtableConnector);
 
 /**
  * Get connector for a specific platform

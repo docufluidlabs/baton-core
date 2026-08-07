@@ -22,6 +22,7 @@ const SHIP_SET = [
   'bamboohr',
   'smartsheet',
   'powerautomate',
+  'airtable',
 ] as const;
 
 describe('Connector Registry', () => {

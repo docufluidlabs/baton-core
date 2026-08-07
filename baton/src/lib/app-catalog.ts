@@ -190,6 +190,41 @@ export const APP_TEMPLATES: Partial<Record<AppSlug, AppTemplate>> = {
     webhookCapable: true,
   },
 
+  // Airtable ships as webhook-only via Airtable Automations + Run a script
+  // (Option A). The scripting environment has no crypto primitives, so the
+  // auth is a static shared token compared timing-safe - NOT the native
+  // Webhooks API MAC (that thin-ping + payloads-fetch + 7-day-refresh model
+  // is the future full-connector upgrade).
+  airtable: {
+    slug: 'airtable',
+    name: 'Airtable',
+    description: 'Collaborative database - automations push record events into Baton via Run a script',
+    logoUrl: '/assets/logos/airtable.svg',
+    category: 'Database',
+    icon: '🗃️',
+    secretKeyLabel: 'Webhook Token',
+    secretKeyHint: 'Choose a long random token - your automation script sends it in the X-Baton-Token header',
+    verificationMethod: {
+      type: 'static_token',
+      headerName: 'X-Baton-Token',
+    },
+    setupInstructions: [
+      { step: 1, title: 'Choose a token', description: 'Create a long random token for this webhook (a password generator works well). Paste it below - the same value goes into your script in step 4.' },
+      { step: 2, title: 'Create an Airtable Automation', description: 'In your base, open Automations and add a trigger such as "When record created" or "When record matches conditions", then add a "Run a script" action.' },
+      { step: 3, title: 'Pass record fields into the script', description: 'In the script action, add input variables for the fields you want to send (e.g. recordId from Record ID, plus any columns your workflow needs).' },
+      { step: 4, title: 'Send the event to Baton', description: 'Paste a fetch call into the script: POST to the Baton URL shown above with headers Content-Type: application/json and X-Baton-Token: your token from step 1, and a JSON body with at least "event" and "recordId". Turn the automation on.', screenshotHint: '{ "event": "record.created", "recordId": "recXXXXXXXX", "data": { "Name": "...", "Email": "..." } }' },
+    ],
+    supportedEvents: [
+      { eventType: 'record.created', label: 'Record Created', description: 'A new record was created in a table' },
+      { eventType: 'record.updated', label: 'Record Updated', description: 'A record was updated' },
+      { eventType: 'record.matches_conditions', label: 'Record Matches Conditions', description: 'A record entered a view or matched the automation conditions' },
+      { eventType: 'form.submitted', label: 'Form Submitted', description: 'An Airtable form response created a record' },
+      { eventType: '*', label: 'Any Event', description: 'Match any event string sent by the automation' },
+    ],
+    webhookCapable: true,
+  },
+
+
   smartsheet: {
     slug: 'smartsheet',
     name: 'Smartsheet',

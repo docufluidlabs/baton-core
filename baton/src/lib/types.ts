@@ -11,8 +11,8 @@ export type OrgPlan = 'free_demo' | 'starter' | 'growth' | 'enterprise';
 // zendesk, bamboohr, powerautomate (inbound). greenhouse/mondaycom/slack are
 // catalog/webhook-only integrations without a connector class.
 // Legacy platforms kept for backward compat with existing connectors/routes
-export type Platform = 'salesforce' | 'hubspot' | 'zohocrm' | 'bamboohr' | 'smartsheet' | 'docusign' | 'zendesk' | 'slack' | 'greenhouse' | 'mondaycom' | 'powerautomate';
-export type AppSlug = 'salesforce' | 'hubspot' | 'zohocrm' | 'bamboohr' | 'smartsheet' | 'zendesk' | 'slack' | 'greenhouse' | 'mondaycom' | 'powerautomate';
+export type Platform = 'salesforce' | 'hubspot' | 'zohocrm' | 'bamboohr' | 'smartsheet' | 'docusign' | 'zendesk' | 'slack' | 'greenhouse' | 'mondaycom' | 'powerautomate' | 'airtable';
+export type AppSlug = 'salesforce' | 'hubspot' | 'zohocrm' | 'bamboohr' | 'smartsheet' | 'zendesk' | 'slack' | 'greenhouse' | 'mondaycom' | 'powerautomate' | 'airtable';
 export type ConnectionStatus = 'pending' | 'healthy' | 'warning' | 'error' | 'disconnected';
 export type MaestroStatus = 'draft' | 'active' | 'paused';
 export type TriggerType = 'http' | 'link' | 'api_call' | 'form';
