@@ -98,7 +98,9 @@ export function AddPlatformModal({
                   <p className="text-xs text-gray-500 truncate mt-0.5">{t.description}</p>
                   <div className="flex items-center gap-1 mt-1 text-[10px] text-gray-400">
                     <ShieldCheck className="w-3 h-3 text-green-400" />
-                    {(t.secretUsernameLabel || t.secretPasswordLabel) ? 'Basic Auth Credentials' : 'HMAC Auth'}
+                    {(t.secretUsernameLabel || t.secretPasswordLabel)
+                      ? 'Basic Auth Credentials'
+                      : t.secretKeyLabel === 'Webhook Token' ? 'Token Auth' : 'HMAC Auth'}
                   </div>
                 </div>
                 <div className="shrink-0">
