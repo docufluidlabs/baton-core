@@ -1,10 +1,10 @@
 # Production Deployment (Real AWS)
 
-This guide takes Baton from the LocalStack quickstart to a production deployment in **your own AWS account**: CloudFormation-managed tables and queues, pinned container images, TLS in front, backups on. Nothing in this setup sends data outside your environment - Baton makes no third-party calls beyond the platforms you connect (see [security-review.md](security-review.md)).
+This guide takes Baton from the local-emulator quickstart to a production deployment in **your own AWS account**: CloudFormation-managed tables and queues, pinned container images, TLS in front, backups on. Nothing in this setup sends data outside your environment - Baton makes no third-party calls beyond the platforms you connect (see [security-review.md](security-review.md)).
 
 **Shape:** the two containers (API + frontend) run on any Docker host - a single EC2 VM is enough to start - while state lives in DynamoDB and SQS in your AWS account. Scale out later by running more API containers behind your load balancer (set `SCHEDULER_ENABLED=false` on the extras).
 
-> ⚠️ **LocalStack is for evaluation only.** The quickstart `docker-compose.yml` stores everything in a LocalStack container volume. Never run production on it.
+> ⚠️ **The local emulators are for evaluation only.** The quickstart `docker-compose.yml` stores everything in a local Docker volume. Never run production on it.
 
 ## Prerequisites
 

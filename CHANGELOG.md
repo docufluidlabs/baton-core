@@ -4,6 +4,10 @@ All notable changes to Baton are documented here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+### Changed
+- Local evaluation stack now uses **DynamoDB Local + ElasticMQ** instead of LocalStack: `localstack/localstack:latest` requires a license auth token since March 2026 and exits without one, which broke the quickstart for new installs. The replacements are free with no accounts, and table data now genuinely persists across restarts (the `dynamodb-data` volume). Existing evaluation setups: `docker compose down`, pull the new compose file, `docker compose up -d` - evaluation data in the old LocalStack volume is not migrated.
+- The API retries table/queue initialization at boot (5 × 3s) instead of failing immediately when infrastructure answers late.
+
 ## [1.0.0-rc.1] - 2026-08-08
 
 First release candidate for the initial public release. Baton is a self-hostable webhook → Docusign Workflow Builder automation platform:
@@ -20,7 +24,7 @@ Release engineering added for the open-core distribution:
 
 ### Added
 - Versioned multi-arch container images published to GHCR on every tag (`ghcr.io/docufluidlabs/baton-api`, `baton-front`) with a GitHub Release
-- Boot-time infrastructure verification: missing DynamoDB tables/SQS queues are created automatically on LocalStack (TTL included) and fail fast with the resource name on real AWS
+- Boot-time infrastructure verification: missing DynamoDB tables/SQS queues are created automatically in the local emulators (TTL included) and fail fast with the resource name on real AWS
 - Boot-time headless owner seed from `BATON_OWNER_*` env vars (idempotent)
 - `docker-compose.prod.yml` - pull-only production compose against real AWS
 - Production deployment guide ([docs/deploy-production.md](docs/deploy-production.md)) and security review guide ([docs/security-review.md](docs/security-review.md))

@@ -53,6 +53,7 @@ import { startAllWorkers, stopAllWorkers } from './workers';
 import { ensureAllQueuesExist } from './queue/sqs-client';
 import { ensureAllTablesExist } from './db/ensure-tables';
 import { seedOwnerFromEnv } from './services/seed-owner';
+import { retry } from './lib/retry';
 
 // Scheduled Jobs
 import { startScheduledJobs } from './lib/scheduler';
@@ -290,11 +291,22 @@ const server = app.listen(PORT, () => {
   logger.info(`🌍 Environment: ${env.NODE_ENV}`);
 
   // Ensure DynamoDB tables and SQS queues exist before starting workers
-  // (idempotent — safe on every boot; on LocalStack missing ones are created,
-  // on real AWS they must pre-exist via CloudFormation), then seed the owner
-  // account from env if configured.
-  ensureAllTablesExist()
-    .then(() => ensureAllQueuesExist())
+  // (idempotent — safe on every boot; on the local emulators missing ones are
+  // created, on real AWS they must pre-exist via CloudFormation), then seed
+  // the owner account from env if configured. Retries cover emulators that
+  // answer a moment after the API starts.
+  retry(
+    async () => {
+      await ensureAllTablesExist();
+      await ensureAllQueuesExist();
+    },
+    {
+      attempts: 5,
+      delayMs: 3_000,
+      onRetry: (err, attempt) =>
+        logger.warn({ err, attempt }, 'Infrastructure not ready yet — retrying in 3s'),
+    },
+  )
     .then(() => seedOwnerFromEnv())
     .then(() => startAllWorkers())
     .catch((err) => {

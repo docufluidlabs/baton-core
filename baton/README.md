@@ -30,7 +30,7 @@ Express + TypeScript API for Baton: receives webhooks from business platforms, v
 |-------|------|
 | API | Express 4, TypeScript, Zod |
 | Auth | Self-contained email/password sessions - JWT cookie (`AUTH_JWT_SECRET`), first-run `/setup` owner flow, invite links, roles: owner / admin / member / viewer |
-| Data | DynamoDB (18 tables) + SQS (6 queues) - AWS or LocalStack |
+| Data | DynamoDB (21 tables) + SQS (6 queues) - AWS, or local emulators for dev |
 | Encryption | AES-256-GCM for tokens/secrets at rest (`TOKEN_ENCRYPTION_KEY`) |
 | Scheduling | node-cron (token refresh, instance sync, cleanup) |
 | Notifications | Resend (email), Slack (distributed OAuth app), in-app |
@@ -168,4 +168,4 @@ Swagger UI is served at `/api/docs` (raw OpenAPI 3.0 spec at `/api/docs.json`) w
 
 ## Environment
 
-Copy `.env.example` to `.env` and see [docs/SETUP.md](docs/SETUP.md) for the full variable reference. The two required secrets are `TOKEN_ENCRYPTION_KEY` and `AUTH_JWT_SECRET` (generate each with `openssl rand -hex 32`). The DynamoDB/SQS endpoints default to LocalStack at `http://localhost:4566` - leave them empty to use real AWS.
+Copy `.env.example` to `.env` and see [docs/SETUP.md](docs/SETUP.md) for the full variable reference. The two required secrets are `TOKEN_ENCRYPTION_KEY` and `AUTH_JWT_SECRET` (generate each with `openssl rand -hex 32`). The DynamoDB/SQS endpoints default to the local emulators (`http://localhost:8000` for DynamoDB Local, `http://localhost:9324` for ElasticMQ) - leave them empty to use real AWS.

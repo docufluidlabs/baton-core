@@ -1,12 +1,13 @@
-# Docker Compose Setup (with Persistent LocalStack)
+# Docker Compose Setup (local evaluation stack)
 
-This guide explains how to run the full Baton stack locally using Docker Compose with LocalStack for DynamoDB and SQS. Data is persisted in a Docker named volume and survives container restarts.
+This guide explains how to run the full Baton stack locally using Docker Compose with free local emulators for DynamoDB and SQS - no AWS account, no license keys. Table data is persisted in a Docker named volume and survives container restarts.
 
 ## Services
 
 | Service | Description | Port |
 |---------|-------------|------|
-| `localstack` | AWS services emulator (DynamoDB, SQS) | 4566 |
+| `dynamodb` | DynamoDB Local (Amazon's official emulator) | 8000 |
+| `elasticmq` | ElasticMQ - SQS-compatible queue emulator | 9324 |
 | `baton-api` | Express.js backend | 3001 (internal) |
 | `baton-front` | React SPA + Nginx | 80 |
 
@@ -23,7 +24,7 @@ openssl rand -hex 32
 openssl rand -hex 32
 ```
 
-The `.env.example` defaults already point DynamoDB and SQS at LocalStack (`http://localhost:4566`), so nothing else is required to start.
+The `.env.example` defaults already point DynamoDB and SQS at the local emulators (`http://localhost:8000` / `http://localhost:9324`), so nothing else is required to start.
 
 ### 2. Start all containers
 
@@ -35,7 +36,7 @@ docker compose up -d --build
 
 To pin a specific release, set `BATON_VERSION` in a root-level `.env` next to `docker-compose.yml` (e.g. `BATON_VERSION=1.0.0`) - see the [releases page](https://github.com/docufluidlabs/baton-core/releases).
 
-Compose waits for LocalStack to be healthy, then the API creates all 21 DynamoDB tables and 6 SQS queues automatically on first boot - no host-side Node/npm required.
+Compose waits for DynamoDB Local to be healthy, then the API creates all 21 DynamoDB tables and 6 SQS queues automatically on first boot (retrying briefly while the emulators finish starting) - no host-side Node/npm required.
 
 That's it. The app is now running at `http://localhost` - the first visit walks you through the `/setup` screen, which creates your organization and owner account (no external auth service involved). Alternatively, seed the owner headlessly with `npm run seed` (set `BATON_OWNER_EMAIL` / `BATON_OWNER_PASSWORD`).
 
@@ -75,22 +76,19 @@ docker compose down -v          # removes the volume with all data
 docker compose up -d            # start fresh - tables/queues are re-created on boot
 ```
 
-## Verify LocalStack is Running
+## Verify the Emulators are Running
 
 ```bash
-curl http://localhost:4566/_localstack/health
+docker compose ps                                                    # dynamodb should be "healthy"
+aws --endpoint-url=http://localhost:8000 dynamodb list-tables --region us-east-1
+aws --endpoint-url=http://localhost:9324 sqs list-queues --region us-east-1
 ```
 
-**List DynamoDB tables:**
-```bash
-aws --endpoint-url=http://localhost:4566 dynamodb list-tables --region us-east-1
-```
-
-> Requires [AWS CLI](https://aws.amazon.com/cli/) installed. Credentials can be anything (LocalStack doesn't validate them).
+> Requires [AWS CLI](https://aws.amazon.com/cli/) installed. Credentials can be anything (the emulators don't validate them).
 
 ## How Persistence Works
 
-LocalStack is configured with `PERSISTENCE: 1`, which saves all state to `/var/lib/localstack` inside the container. This directory is mounted to a Docker named volume (`localstack-data`), so data survives:
+DynamoDB Local runs with `-sharedDb -dbPath /data`, and `/data` is a Docker named volume (`dynamodb-data`), so **table data** survives:
 
 - `docker compose down` / `up`
 - Container crashes or restarts
@@ -98,7 +96,9 @@ LocalStack is configured with `PERSISTENCE: 1`, which saves all state to `/var/l
 
 Data is only lost when you explicitly run `docker compose down -v` (the `-v` flag removes volumes).
 
+ElasticMQ is in-memory: queues are re-created automatically on every boot, but **in-flight queue messages are not retained** across restarts. For evaluation this is harmless (events are stored in DynamoDB before queueing); production uses real SQS.
+
 ## Notes
 
-- The `baton-api` container overrides `DYNAMODB_ENDPOINT` and `SQS_ENDPOINT` to `http://localstack:4566` (internal Docker network). The `baton/.env` file retains `localhost:4566` for running the API outside Docker.
+- The `baton-api` container overrides `DYNAMODB_ENDPOINT`/`SQS_ENDPOINT` to the internal service names (`http://dynamodb:8000`, `http://elasticmq:9324`). The `baton/.env` file retains `localhost` endpoints for running the API outside Docker.
 - The `baton-front` container does **not** expose the API directly - Nginx proxies `/api` requests to `baton-api`.

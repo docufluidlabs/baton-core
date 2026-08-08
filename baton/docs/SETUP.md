@@ -4,7 +4,7 @@
 
 - **Node.js** ≥ 20.x
 - **npm** ≥ 9.x
-- **Docker** - for [LocalStack](https://localstack.cloud/) (local DynamoDB + SQS), or a real **AWS account**
+- **Docker** - for the local emulators ([DynamoDB Local](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html) + [ElasticMQ](https://github.com/softwaremill/elasticmq) for SQS), or a real **AWS account**
 - **AWS CLI** v2 - optional, for inspecting tables/queues and enabling TTL
 - **Docusign Developer Account** - https://developers.docusign.com (only needed to sync/launch real Workflow Builder workflows)
 
@@ -45,19 +45,19 @@ API_URL=http://localhost:3001
 FRONTEND_URL=http://localhost:3002
 RATE_LIMIT_PER_MINUTE=300
 
-# AWS (LocalStack accepts any credentials)
+# AWS (the local emulators accept any credentials)
 AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=test
-AWS_SECRET_ACCESS_KEY=test
+AWS_ACCESS_KEY_ID=local
+AWS_SECRET_ACCESS_KEY=local
 
 # DynamoDB
 DYNAMODB_REGION=us-east-1
-DYNAMODB_ENDPOINT=http://localhost:4566   # LocalStack - leave empty for real AWS
+DYNAMODB_ENDPOINT=http://localhost:8000   # DynamoDB Local - leave empty for real AWS
 DYNAMODB_TABLE_PREFIX=baton-
 
 # SQS
 SQS_REGION=us-east-1
-SQS_ENDPOINT=http://localhost:4566        # LocalStack - leave empty for real AWS
+SQS_ENDPOINT=http://localhost:9324        # ElasticMQ - leave empty for real AWS
 SQS_QUEUE_PREFIX=baton-
 
 # Encryption (generate: openssl rand -hex 32)
@@ -101,29 +101,27 @@ No `.env` is required for local development - the Vite proxy handles API routing
 
 ## 3. Infrastructure Setup
 
-### Option A: LocalStack (recommended for local development)
+### Option A: Local emulators (recommended for local development)
 
-The simplest path is the Docker Compose file at the repo root (starts LocalStack with persistence):
+The simplest path is the Docker Compose file at the repo root - it starts **DynamoDB Local** (data persists in a named volume) and **ElasticMQ** (SQS-compatible). Both are free with no accounts or license keys:
 
 ```bash
 # from the repo root
-docker compose up -d localstack
+docker compose up -d dynamodb elasticmq
 ```
 
-Or run LocalStack standalone:
+Or run them standalone:
 
 ```bash
-docker run -d --name localstack \
-  -p 4566:4566 \
-  -e SERVICES=dynamodb,sqs \
-  -e DEFAULT_REGION=us-east-1 \
-  localstack/localstack
+docker run -d --name baton-dynamodb -p 8000:8000 amazon/dynamodb-local \
+  -jar DynamoDBLocal.jar -sharedDb -inMemory
+docker run -d --name baton-elasticmq -p 9324:9324 softwaremill/elasticmq-native
 
 # Verify
-aws --endpoint-url=http://localhost:4566 dynamodb list-tables
+aws --endpoint-url=http://localhost:8000 dynamodb list-tables
 ```
 
-Both DynamoDB and SQS are served from the single LocalStack endpoint `http://localhost:4566` - the `.env.example` defaults already point there.
+DynamoDB is served at `http://localhost:8000` and SQS at `http://localhost:9324` - the `.env.example` defaults already point there.
 
 ### Option B: AWS (dev account)
 
@@ -138,7 +136,7 @@ Leave `DYNAMODB_ENDPOINT` and `SQS_ENDPOINT` empty to use real AWS.
 
 ### Create tables and queues
 
-> **Running against LocalStack?** This step is optional: whenever `DYNAMODB_ENDPOINT`/`SQS_ENDPOINT` are set, the API creates any missing tables and queues automatically on boot (including TTL). The scripts below do the same thing explicitly — and are the way to create tables on **real AWS** if you don't use the CloudFormation templates.
+> **Running against the local emulators?** This step is optional: whenever `DYNAMODB_ENDPOINT`/`SQS_ENDPOINT` are set, the API creates any missing tables and queues automatically on boot (including TTL). The scripts below do the same thing explicitly — and are the way to create tables on **real AWS** if you don't use the CloudFormation templates.
 
 ```bash
 cd baton
@@ -193,12 +191,12 @@ Both scripts are idempotent - existing tables/queues are skipped.
 aws dynamodb update-time-to-live \
   --table-name baton-oauth-states \
   --time-to-live-specification Enabled=true,AttributeName=ttl \
-  --endpoint-url http://localhost:4566   # drop this flag on real AWS
+  --endpoint-url http://localhost:8000   # drop this flag on real AWS
 
 aws dynamodb update-time-to-live \
   --table-name baton-bootstrap-tokens \
   --time-to-live-specification Enabled=true,AttributeName=expiresAt \
-  --endpoint-url http://localhost:4566   # drop this flag on real AWS
+  --endpoint-url http://localhost:8000   # drop this flag on real AWS
 ```
 
 ---
@@ -386,8 +384,8 @@ curl -X POST http://localhost:3001/api/webhooks/rule/YOUR_WEBHOOK_KEY \
 
 ### "Cannot connect to DynamoDB"
 
-- Check that LocalStack is running: `docker ps | grep localstack`
-- Check `DYNAMODB_ENDPOINT` in `.env` (LocalStack default: `http://localhost:4566`)
+- Check that the emulator is running: `docker ps | grep dynamodb`
+- Check `DYNAMODB_ENDPOINT` in `.env` (DynamoDB Local default: `http://localhost:8000`)
 - For AWS - check `aws sts get-caller-identity`
 
 ### "No healthy DocuSign connection"

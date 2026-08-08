@@ -1,39 +1,51 @@
 # Baton self-host quickstart: frontend (/) and backend (/api) on one domain (http://localhost).
 #
-# By default this pulls the published release images:
-#   docker compose up -d
-# Pin a version (recommended for production) by setting BATON_VERSION, e.g. in a
-# root-level .env file next to this compose file:
-#   BATON_VERSION=1.0.0
-# Build from source instead (contributors / unreleased changes):
+# Images: pulls the published release images by default (set BATON_VERSION to pin, e.g. "1.0.0"
+# in a root-level .env file next to this compose file):
+#   docker compose pull && docker compose up -d
+# Building from source instead (contributors / unreleased changes):
 #   docker compose up -d --build
 #
-# First boot creates all DynamoDB tables and SQS queues in LocalStack automatically —
-# no host-side tooling beyond Docker is required.
+# Local AWS emulation (no accounts, no license keys):
+#   - DynamoDB → amazon/dynamodb-local (data persists in the dynamodb-data volume)
+#   - SQS      → softwaremill/elasticmq-native (queues are recreated on boot;
+#                in-flight messages are not retained across restarts)
+# First boot creates all tables and queues automatically — no host-side tooling
+# beyond Docker is required.
 #
-# For production deployments, set APP_URL / API_URL / FRONTEND_URL to your public URL,
-# terminate SSL externally (reverse proxy / load balancer), and use real AWS instead of
-# LocalStack (see baton/infrastructure/ for CloudFormation templates).
+# For production deployments use docker-compose.prod.yml with real AWS —
+# see docs/deploy-production.md.
 
 services:
-  localstack:
-    image: localstack/localstack:latest
-    container_name: localstack
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    container_name: baton-dynamodb
     restart: unless-stopped
+    # Named volumes are root-owned; the image's default user can't write there.
+    user: root
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "/data"]
     ports:
-      - "4566:4566"
-    environment:
-      SERVICES: dynamodb,sqs
-      DEFAULT_REGION: us-east-1
-      PERSISTENCE: 1
+      - "8000:8000"
     volumes:
-      - localstack-data:/var/lib/localstack
+      - dynamodb-data:/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:4566/_localstack/health"]
+      # DynamoDB Local answers 400 to a bare GET — any HTTP response means it's up.
+      test: ["CMD-SHELL", "curl -s http://localhost:8000 >/dev/null || exit 1"]
       interval: 5s
       timeout: 5s
       retries: 12
-      start_period: 10s
+      start_period: 5s
+    networks:
+      - baton-net
+
+  elasticmq:
+    image: softwaremill/elasticmq-native:latest
+    container_name: baton-elasticmq
+    restart: unless-stopped
+    # Scratch-based image (no shell) → no container healthcheck; the API retries
+    # its queue setup at boot until ElasticMQ answers.
+    ports:
+      - "9324:9324"
     networks:
       - baton-net
 
@@ -50,11 +62,16 @@ services:
       APP_URL: "${APP_URL:-http://localhost}"
       API_URL: "${API_URL:-http://localhost}"
       FRONTEND_URL: "${FRONTEND_URL:-http://localhost}"
-      DYNAMODB_ENDPOINT: "http://localstack:4566"
-      SQS_ENDPOINT: "http://localstack:4566"
+      DYNAMODB_ENDPOINT: "http://dynamodb:8000"
+      SQS_ENDPOINT: "http://elasticmq:9324"
+      # The emulators don't validate credentials, but the AWS SDK needs some.
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:-local}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:-local}"
     depends_on:
-      localstack:
+      dynamodb:
         condition: service_healthy
+      elasticmq:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health >/dev/null 2>&1 || exit 1"]
       interval: 10s
@@ -87,4 +104,4 @@ networks:
     driver: bridge
 
 volumes:
-  localstack-data:
+  dynamodb-data:

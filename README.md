@@ -21,7 +21,7 @@ openssl rand -hex 32
 docker compose up -d   # pulls the published images; add --build to build from source
 ```
 
-Open **http://localhost** - the first boot creates all DynamoDB tables and SQS queues automatically (LocalStack), and the first visit walks you through creating your organization and owner account. No external auth or billing service is required.
+Open **http://localhost** - the first boot creates all DynamoDB tables and SQS queues automatically in the bundled local emulators (DynamoDB Local + ElasticMQ - free, no accounts), and the first visit walks you through creating your organization and owner account. No external auth or billing service is required.
 
 To receive real webhooks from external platforms, expose the app on a public URL (reverse proxy or tunnel) and set `APP_URL`/`API_URL` accordingly. To launch real workflows, add your Docusign developer app credentials (`DOCUSIGN_*` in `baton/.env` - the defaults point at Docusign's free developer sandbox).
 
@@ -34,7 +34,7 @@ echo "BATON_VERSION=1.0.0" > .env
 docker compose pull && docker compose up -d
 ```
 
-Upgrades never touch your data - it lives in your DynamoDB (or the `localstack-data` volume) and `baton/.env`. New tables and queues are created automatically on boot.
+Upgrades never touch your data - it lives in your DynamoDB (or the `dynamodb-data` volume) and `baton/.env`. New tables and queues are created automatically on boot.
 
 ## How it works
 
@@ -77,7 +77,7 @@ Adding a platform is one connector class + one catalog entry - see [CONTRIBUTING
 
 ## Tech stack
 
-Node 20 + Express + TypeScript · DynamoDB + SQS (AWS or LocalStack) · React 18 + Vite + Tailwind · ReactFlow canvas · Vitest + Playwright · Pino logging · Helmet + per-IP rate limiting
+Node 20 + Express + TypeScript · DynamoDB + SQS (AWS, or local emulators for evaluation) · React 18 + Vite + Tailwind · ReactFlow canvas · Vitest + Playwright · Pino logging · Helmet + per-IP rate limiting
 
 ## Local development
 
@@ -85,7 +85,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev-server setup, test commands, 
 
 ## Deploying on AWS
 
-The quickstart compose file uses LocalStack for evaluation. For production, follow **[docs/deploy-production.md](docs/deploy-production.md)**: CloudFormation stacks for the tables/queues/IAM (in [baton/infrastructure/](baton/infrastructure/)), the pull-only [docker-compose.prod.yml](docker-compose.prod.yml), TLS, backups, and upgrades ([UPGRADING.md](UPGRADING.md)). Security teams: start at **[docs/security-review.md](docs/security-review.md)** - the full outbound-connection inventory, crypto details, and verification commands.
+The quickstart compose file uses free local emulators (DynamoDB Local + ElasticMQ) for evaluation. For production, follow **[docs/deploy-production.md](docs/deploy-production.md)**: CloudFormation stacks for the tables/queues/IAM (in [baton/infrastructure/](baton/infrastructure/)), the pull-only [docker-compose.prod.yml](docker-compose.prod.yml), TLS, backups, and upgrades ([UPGRADING.md](UPGRADING.md)). Security teams: start at **[docs/security-review.md](docs/security-review.md)** - the full outbound-connection inventory, crypto details, and verification commands.
 
 ## License & hosted edition
 

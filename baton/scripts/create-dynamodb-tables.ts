@@ -6,7 +6,7 @@
  * Safe to run multiple times — skips existing tables.
  *
  * The server also runs the same ensure step on boot (see src/db/ensure-tables.ts):
- * against LocalStack it creates missing tables automatically; on real AWS this
+ * against a local emulator it creates missing tables automatically; on real AWS this
  * script (or CloudFormation) is the explicit way to create them.
  */
 

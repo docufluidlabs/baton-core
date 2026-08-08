@@ -198,7 +198,7 @@ export async function ensureAllQueuesExist(): Promise<void> {
   ];
 
   // In production queues are pre-created by CloudFormation — only attempt CreateQueue
-  // in local dev (SQS_ENDPOINT indicates LocalStack or similar).
+  // in local dev (SQS_ENDPOINT indicates a local emulator such as ElasticMQ).
   const isLocalDev = Boolean(env.SQS_ENDPOINT);
 
   for (const q of queues) {

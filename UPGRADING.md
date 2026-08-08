@@ -14,20 +14,20 @@ Every release ships notes on the [releases page](https://github.com/docufluidlab
 
 ## Standard upgrade (any patch/minor)
 
-Your data lives in DynamoDB (or the LocalStack volume) and your config in `baton/.env` - upgrades replace only the running code.
+Your data lives in DynamoDB (or the local `dynamodb-data` volume) and your config in `baton/.env` - upgrades replace only the running code.
 
 ```bash
 # 1. Pin the new version (root-level .env next to the compose file)
 sed -i 's/^BATON_VERSION=.*/BATON_VERSION=1.1.0/' .env   # or edit by hand
 
 # 2. Pull and roll
-docker compose pull && docker compose up -d               # quickstart (LocalStack)
+docker compose pull && docker compose up -d               # quickstart (local emulators)
 # docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d
 ```
 
 **Schema changes are handled automatically or fail loudly - never silently.** On boot the API verifies every table and queue:
 
-- **LocalStack (quickstart):** anything missing is created automatically, TTL included.
+- **Local emulators (quickstart):** anything missing is created automatically, TTL included.
 - **Real AWS:** infrastructure is CloudFormation-managed, so when a release adds tables/queues (the notes will say so), re-run the stack first - it only adds what's new:
 
   ```bash

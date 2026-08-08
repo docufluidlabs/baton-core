@@ -4,15 +4,15 @@ Thanks for your interest in improving Baton! This document covers the practical 
 
 ## Development setup
 
-Prerequisites: Node 20+, Docker (for LocalStack).
+Prerequisites: Node 20+, Docker (for the local DynamoDB/SQS emulators).
 
 ```bash
-# 1. Infrastructure (DynamoDB + SQS via LocalStack)
-docker compose up -d localstack
+# 1. Infrastructure (DynamoDB Local + ElasticMQ)
+docker compose up -d dynamodb elasticmq
 
 # 2. Backend
 cd baton
-cp .env.example .env          # defaults point at LocalStack
+cp .env.example .env          # defaults point at the local emulators
 npm install
 npm run setup                 # creates tables + queues (idempotent)
 npm run dev                   # API on :3001

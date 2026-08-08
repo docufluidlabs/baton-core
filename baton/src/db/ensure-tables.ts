@@ -1,8 +1,8 @@
 /**
  * Boot-time DynamoDB table setup — mirrors ensureAllQueuesExist() in queue/sqs-client.ts.
  *
- * Local dev (DYNAMODB_ENDPOINT set → LocalStack): missing tables are created and TTL is
- * enabled, so `docker compose up` works with no host-side tooling.
+ * Local dev (DYNAMODB_ENDPOINT set → DynamoDB Local or similar emulator): missing tables
+ * are created and TTL is enabled, so `docker compose up` works with no host-side tooling.
  * Real AWS (no endpoint): tables are pre-created by CloudFormation (baton/infrastructure/)
  * and a missing table is a fatal misconfiguration — the app role does not need CreateTable.
  *
@@ -36,7 +36,7 @@ export async function ensureAllTablesExist(opts?: {
   createMissing?: boolean;
 }): Promise<EnsureTablesResult> {
   const client = getDynamoDBClient();
-  // Same convention as ensureAllQueuesExist: an explicit endpoint means LocalStack.
+  // Same convention as ensureAllQueuesExist: an explicit endpoint means a local emulator.
   const createMissing = opts?.createMissing ?? Boolean(env.DYNAMODB_ENDPOINT);
 
   const created: string[] = [];
