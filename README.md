@@ -1,12 +1,76 @@
-# Baton
+<p align="center">
+  <img src=".github/media/baton-logo.svg" alt="Baton" width="72" height="92">
+</p>
 
-**Baton is a self-hostable webhook → Docusign Workflow Builder automation platform.** It listens for events from the business platforms you already use - Salesforce, HubSpot, Zendesk, BambooHR, and more - verifies them, and launches the matching **Docusign Workflow Builder** workflow automatically, with a visual flow builder to create, watch, and troubleshoot every automation.
+<h1 align="center">Baton</h1>
 
-Maintained by [FluidLabs](https://fluidlabs.com) under the fair-code [Sustainable Use License](LICENSE.md): free to self-host, modify, and use for your own business.
+<p align="center"><strong>Self-hostable webhook → Docusign Workflow Builder automation.</strong><br>
+Listen to the platforms you already use, verify every event, and launch the matching Docusign workflow - with a visual canvas to build, watch, and fix every automation.</p>
+
+<p align="center">
+  <a href="https://github.com/docufluidlabs/baton-core/actions/workflows/ci.yml"><img src="https://github.com/docufluidlabs/baton-core/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/docufluidlabs/baton-core/actions/workflows/codeql.yml"><img src="https://github.com/docufluidlabs/baton-core/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
+  <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-Sustainable%20Use%20·%20fair--code-2f6f4f" alt="License: Sustainable Use (fair-code)"></a>
+  <a href="https://github.com/docufluidlabs/baton-core/releases"><img src="https://img.shields.io/badge/release-v1.0.0--rc.2-355f9e" alt="Latest release"></a>
+</p>
+
+<p align="center">
+  <a href="#quickstart-docker">Quickstart</a> ·
+  <a href="docs/deploy-production.md">Production deploy</a> ·
+  <a href="docs/security-review.md">Security review</a> ·
+  <a href="UPGRADING.md">Upgrading</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="https://github.com/docufluidlabs/baton-core/releases">Releases</a>
+</p>
+
+<p align="center">
+  <img src=".github/media/flow-builder.png" alt="The Flow Builder canvas: platforms, automations with live run counts, and Docusign workflows" width="900">
+</p>
+
+Baton is maintained by [FluidLabs](https://fluidlabs.com) under the fair-code [Sustainable Use License](LICENSE.md): free to self-host, modify, and use for your own business. Everything runs in **your** environment - your AWS account, your data, [no telemetry](docs/security-review.md).
+
+## Why Baton
+
+- **Visual Flow Builder** - a live canvas of platform → automation → workflow with per-automation relay counts, logs, and inline editing
+- **Bulk Upload** - launch a workflow for every row of a CSV, XLSX, or TSV file: map columns to workflow inputs, throttle the release rate, run files concurrently, and track every row to its instance
+- **Resolution Center** - every failed workflow run in one queue: retry, cancel, postpone; automations auto-pause when their failure rate spikes
+- **Verified ingress** - every source is checked with HMAC signatures (constant-time) or Basic Auth and fails closed; secrets are stored encrypted (AES-256-GCM)
+- **Async pipeline** - webhooks are stored idempotently, queued to SQS, and processed by workers with retries and dead-letter queues
+- **Self-contained auth** - first-run owner setup, email/password sessions, copyable invite links (no SMTP), owner/admin/member/viewer roles - no external auth or billing service
+- **Notifications** - in-app and [Slack](docs/slack-notifications.md) (optional email via Resend), with per-user preferences
+- **Docs built in** - a full documentation site ships inside the app at `/docs`
+
+| Workflow Checker - sync & test Docusign workflows | Resolution Center - fix everything, leave with zeros |
+|---|---|
+| ![Workflow Checker](.github/media/workflow-checker.png) | ![Resolution Center](.github/media/resolution-center.png) |
+
+## How it works
+
+```mermaid
+flowchart LR
+    P["Salesforce · HubSpot · Zendesk<br/>Smartsheet · Airtable · CSV uploads …"] -- "signed webhooks" --> V["Verify<br/>HMAC / Basic Auth, fail-closed"]
+    V --> R["Rules engine<br/>conditions + field mapping"]
+    R --> Q[["SQS workers<br/>retries · DLQ · auto-pause"]]
+    Q -- "launch" --> D["Docusign<br/>Workflow Builder"]
+    F["Flow Builder UI<br/>build · watch · fix"] -.-> R
+```
+
+| Package | Description | Port |
+|---------|-------------|------|
+| [baton/](baton/) | Express + TypeScript API, SQS workers, rule engine | 3001 |
+| [baton-front/](baton-front/) | React 18 + Vite SPA (flow builder, resolution center, docs) | 3002 (dev) / 80 (Docker) |
+
+## Supported platforms
+
+**Destination:** Docusign Workflow Builder (OAuth).
+
+**Sources:** Salesforce, HubSpot, Zoho CRM, Zendesk, BambooHR, Microsoft Power Automate, Smartsheet, Airtable, Greenhouse, monday.com - plus **custom POST webhooks** for any system that can send JSON.
+
+Adding a platform is one connector class + one catalog entry - see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Quickstart (Docker)
 
-Prerequisites: Docker with Compose.
+Prerequisites: Docker with Compose. No accounts, no license keys, no host-side Node.
 
 ```bash
 git clone https://github.com/docufluidlabs/baton-core.git
@@ -21,9 +85,13 @@ openssl rand -hex 32
 docker compose up -d   # pulls the published images; add --build to build from source
 ```
 
-Open **http://localhost** - the first boot creates all DynamoDB tables and SQS queues automatically in the bundled local emulators (DynamoDB Local + ElasticMQ - free, no accounts), and the first visit walks you through creating your organization and owner account. No external auth or billing service is required.
+Open **http://localhost** - the first boot creates all DynamoDB tables and SQS queues automatically in the bundled local emulators (DynamoDB Local + ElasticMQ - free, no accounts), and the first visit walks you through creating your organization and owner account.
 
-To receive real webhooks from external platforms, expose the app on a public URL (reverse proxy or tunnel) and set `APP_URL`/`API_URL` accordingly. To launch real workflows, add your Docusign developer app credentials (`DOCUSIGN_*` in `baton/.env` - the defaults point at Docusign's free developer sandbox).
+<p align="center">
+  <img src=".github/media/tour.gif" alt="Signing in, the guided Docusign setup, and the built-in docs" width="820">
+</p>
+
+To receive real webhooks from external platforms, expose the app on a public URL (reverse proxy or tunnel) and set `APP_URL`/`API_URL` accordingly. To launch real workflows, add your Docusign developer app credentials - the in-app guided setup walks through every field (the defaults point at Docusign's free developer sandbox).
 
 ### Updating
 
@@ -34,46 +102,13 @@ echo "BATON_VERSION=1.0.0" > .env
 docker compose pull && docker compose up -d
 ```
 
-Upgrades never touch your data - it lives in your DynamoDB (or the `dynamodb-data` volume) and `baton/.env`. New tables and queues are created automatically on boot.
+Upgrades never touch your data - it lives in your DynamoDB (or the `dynamodb-data` volume) and `baton/.env`. New tables and queues are created automatically on boot. Full guide: [UPGRADING.md](UPGRADING.md).
 
-## How it works
+## Deploying on AWS
 
-```
-┌──────────────────┐        ┌───────────────────────┐        ┌─────────────────┐
-│  Your platforms  │──────▶ │  Baton                │──────▶ │  Docusign       │
-│  Salesforce,     │webhooks│  verify (HMAC/Basic)  │ launch │  Workflow       │
-│  HubSpot, Zendesk│        │  → rules → SQS queue  │        │  Builder        │
-└──────────────────┘        │  → workflow launcher  │        └─────────────────┘
-                            └──────────┬────────────┘
-                                       │
-                            ┌──────────┴───────────┐
-                            │  Flow Builder UI     │
-                            │  build · watch · fix │
-                            └──────────────────────┘
-```
+The quickstart runs on free local emulators for evaluation. For production, follow **[docs/deploy-production.md](docs/deploy-production.md)**: CloudFormation stacks for the tables/queues/IAM (in [baton/infrastructure/](baton/infrastructure/), generated from the app's own schema), the pull-only [docker-compose.prod.yml](docker-compose.prod.yml), TLS, backups, and upgrades.
 
-| Package | Description | Port |
-|---------|-------------|------|
-| [baton/](baton/) | Express + TypeScript API, SQS workers, rule engine | 3001 |
-| [baton-front/](baton-front/) | React 18 + Vite SPA (flow builder, resolution center, docs) | 3002 (dev) / 80 (Docker) |
-
-## Supported platforms
-
-**Destination:** Docusign Workflow Builder (OAuth).
-
-**Sources:** Salesforce, HubSpot, Zoho CRM, Zendesk, BambooHR, Microsoft Power Automate, Smartsheet, Airtable, Greenhouse, monday.com - plus **custom POST webhooks** for any system that can send JSON. Every source is verified with HMAC signatures or Basic Auth; secrets are stored encrypted (AES-256-GCM).
-
-Adding a platform is one connector class + one catalog entry - see [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Features
-
-- **Visual Flow Builder** - a live canvas of platform → automation → workflow with per-automation relay counts, logs, and inline editing
-- **Bulk Upload** - launch a workflow for every row of a CSV, XLSX, or TSV file from any system: map columns to workflow inputs, throttle the release rate, queue multiple files, and track every row to its instance
-- **Resolution Center** - every failed workflow run in one queue: retry, cancel, postpone
-- **Async pipeline** - webhooks are verified, stored idempotently, queued to SQS, and processed by background workers with retries
-- **Self-contained auth** - first-run owner setup, email/password sessions, member invites via copyable links (no SMTP required), owner/admin/member/viewer roles
-- **Notifications** - in-app, email (Resend), and [Slack](docs/slack-notifications.md), with per-user preferences
-- **Auto-pause** - automations pause automatically when their failure rate spikes
+**Security teams:** start at **[docs/security-review.md](docs/security-review.md)** - the complete outbound-connection inventory, crypto details, auth model, and commands to verify every claim yourself.
 
 ## Tech stack
 
@@ -83,12 +118,8 @@ Node 20 + Express + TypeScript · DynamoDB + SQS (AWS, or local emulators for ev
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev-server setup, test commands, and the connector-contribution guide. Detailed environment reference: [baton/docs/SETUP.md](baton/docs/SETUP.md).
 
-## Deploying on AWS
-
-The quickstart compose file uses free local emulators (DynamoDB Local + ElasticMQ) for evaluation. For production, follow **[docs/deploy-production.md](docs/deploy-production.md)**: CloudFormation stacks for the tables/queues/IAM (in [baton/infrastructure/](baton/infrastructure/)), the pull-only [docker-compose.prod.yml](docker-compose.prod.yml), TLS, backups, and upgrades ([UPGRADING.md](UPGRADING.md)). Security teams: start at **[docs/security-review.md](docs/security-review.md)** - the full outbound-connection inventory, crypto details, and verification commands.
-
 ## License & hosted edition
 
 This repository is licensed under the [Sustainable Use License](LICENSE.md) (fair-code): use it freely inside your business; don't resell it as a hosted service. FluidLabs offers a managed cloud edition with multi-org management, SSO, and the Salesforce AppExchange package - the core you see here is the same engine.
 
-Security reports: see [SECURITY.md](SECURITY.md).
+Security reports: see [SECURITY.md](SECURITY.md). Questions & ideas: [GitHub Discussions](https://github.com/docufluidlabs/baton-core/discussions).
