@@ -115,6 +115,7 @@ Because `FRONTEND_URL` is `https://…`, session cookies are automatically `Secu
 1. **Docusign app:** in-app **Connections → Docusign** has the field-by-field guide (integration key, secret, RSA keypair, redirect URI - which must be your public `API_URL`, not localhost; the UI warns if it isn't). Set the Connect HMAC key (`DOCUSIGN_CONNECT_HMAC_KEY`) so workflow status callbacks are signature-verified.
 2. **Source platforms:** each platform's setup lives in the in-app docs and [the per-platform guides](./) - webhook URLs are generated from `APP_URL` and every source is verified (HMAC or Basic Auth, failing closed).
 3. **Quick win with zero webhook plumbing:** Bulk Upload (CSV/XLSX → workflow per row) works the moment Docusign is connected.
+4. **Optional integrations:** Slack notifications need a one-time Slack app registration in your workspace - [docs/slack-notifications.md](slack-notifications.md). Email notifications need only a Resend API key.
 
 ## 6. Operations
 

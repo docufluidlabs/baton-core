@@ -28,6 +28,13 @@ export default function Notifications() {
         through the bell and Slack.
       </Callout>
 
+      <Callout type="note" title="Self-hosting? Register your Slack app first">
+        On a self-hosted Baton, <strong>Connect Slack</strong> works once your administrator has registered a
+        Slack app for your workspace and set the <code>SLACK_*</code> environment variables - a one-time,
+        ~10-minute step. The walkthrough (with a copy-paste app manifest) is in{' '}
+        <code>docs/slack-notifications.md</code> in the Baton repository.
+      </Callout>
+
       <h3>Preferences</h3>
       <p>
         The <strong>Preferences</strong> tab is a per-event toggle matrix. For each event type you choose

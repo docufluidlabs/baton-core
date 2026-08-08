@@ -72,7 +72,7 @@ Adding a platform is one connector class + one catalog entry - see [CONTRIBUTING
 - **Resolution Center** - every failed workflow run in one queue: retry, cancel, postpone
 - **Async pipeline** - webhooks are verified, stored idempotently, queued to SQS, and processed by background workers with retries
 - **Self-contained auth** - first-run owner setup, email/password sessions, member invites via copyable links (no SMTP required), owner/admin/member/viewer roles
-- **Notifications** - in-app, email (Resend), and Slack, with per-user preferences
+- **Notifications** - in-app, email (Resend), and [Slack](docs/slack-notifications.md), with per-user preferences
 - **Auto-pause** - automations pause automatically when their failure rate spikes
 
 ## Tech stack

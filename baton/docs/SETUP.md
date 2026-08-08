@@ -86,7 +86,7 @@ Add the remaining OAuth credentials (BambooHR, Zoho CRM) as you connect those pl
 | `ZOHO_ACCOUNTS_BASE` | Zoho regional accounts server (`.com`, `.eu`, `.in`, …) |
 | `HUBSPOT_WEBHOOK_SECRET` | HubSpot Private App client secret for webhook signature verification |
 | `RESEND_API_KEY` | Email notifications (optional) |
-| `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` / `SLACK_SIGNING_SECRET` | Slack notifications (optional) |
+| `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` / `SLACK_SIGNING_SECRET` | Slack notifications (optional) - register your own app, see [docs/slack-notifications.md](../../docs/slack-notifications.md) |
 | `BATON_DOCS_USER` / `BATON_DOCS_PASS` | Both set → enables Swagger UI at `/api/docs` (basic auth) |
 
 ### Frontend (`baton-front/.env`)
