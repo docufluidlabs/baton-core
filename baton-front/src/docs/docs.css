@@ -343,7 +343,7 @@
 @keyframes bd-lightbox-in { from { opacity: 0; } to { opacity: 1; } }
 
 /* interactive filter demos --------------------------------------------------
-   Faithful re-creations of the Resolution Center filter controls (see
+   Faithful re-creations of the Control Center filter controls (see
    FilterDemo.tsx). Colours mirror the app's Tailwind tokens. */
 .baton-docs .bd-demo {
   border: 1px solid var(--border); border-radius: var(--radius);
@@ -397,7 +397,7 @@
 .baton-docs .bd-chip svg { display: block; }
 
 /* instance-card replicas ----------------------------------------------------
-   Faithful re-creations of the Resolution Center per-instance card (see
+   Faithful re-creations of the Control Center per-instance card (see
    CardDemo.tsx). Colours mirror the app's STATUS tokens. */
 .baton-docs .bd-cardgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; margin: 20px 0; align-items: start; }
 .baton-docs .bd-card { background: #fff; border: 1px solid rgba(229,231,235,.85); border-left-width: 3px; border-radius: 10px; overflow: hidden; }

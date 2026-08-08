@@ -9,6 +9,7 @@ import Salesforce from './salesforce';
 import CustomWebhook from './custom-webhook';
 import FlowBuilder from './flow-builder';
 import Conditions from './conditions';
+import BulkUpload from './bulk-upload';
 import Workflows from './workflows';
 import ControlCenter from './control-center';
 import Logs from './logs';
@@ -30,6 +31,7 @@ export const DOC_COMPONENTS: Record<string, ComponentType> = {
   'custom-webhook': CustomWebhook,
   'flow-builder': FlowBuilder,
   conditions: Conditions,
+  'bulk-upload': BulkUpload,
   workflows: Workflows,
   'control-center': ControlCenter,
   logs: Logs,

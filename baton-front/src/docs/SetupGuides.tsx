@@ -11,10 +11,20 @@ import { Lead, Callout, Cards, Card, Steps, Step, TableWrap, DocLink } from './u
 // Salesforce needs a hand-built outbound call — it has its own docs page.
 const SPECIAL_CASE_SLUGS = new Set(['salesforce']);
 
+/**
+ * Which of the four secret models a platform uses. The public catalog endpoint
+ * deliberately strips `verificationMethod`, so this has to be read off the
+ * labels - the same three signals the in-app connector page uses.
+ *
+ * The shared-token case matters because the copy direction is reversed: with
+ * HMAC you copy a secret *out of* the platform, but with a token you invent it
+ * and paste it *into* the platform (Airtable, "Webhook Token").
+ */
 function secretModel(t: PlatformTemplate) {
   const isBasicAuth = !!(t.secretUsernameLabel || t.secretPasswordLabel);
   const hasNoSecret = /no secret/i.test(t.secretKeyLabel);
-  return { isBasicAuth, hasNoSecret };
+  const isSharedToken = !isBasicAuth && !hasNoSecret && /\btoken\b/i.test(t.secretKeyLabel);
+  return { isBasicAuth, hasNoSecret, isSharedToken };
 }
 
 // ─── Overview: list every platform with a setup guide ───────────────────────
@@ -50,8 +60,9 @@ export function SetupOverview() {
       </p>
 
       <Callout type="note" title="Salesforce works differently">
-        Salesforce has no native outbound webhook - you build the outbound call in your org with a Flow
-        and Apex callout (or an Outbound Message). See the{' '}
+        Salesforce has no native outbound webhook - you build the outbound call in your org with a
+        Record-Triggered Flow and an Apex callout. (A classic Outbound Message can't be used: it sends SOAP
+        XML and cannot set the signature header.) See the{' '}
         <DocLink to="salesforce">Salesforce setup</DocLink> guide.
       </Callout>
 
@@ -89,7 +100,7 @@ export function SetupOverview() {
 // ─── Per-platform guide ─────────────────────────────────────────────────────
 export function SetupGuide({ template }: { template: PlatformTemplate }) {
   const { name } = template;
-  const { isBasicAuth, hasNoSecret } = secretModel(template);
+  const { isBasicAuth, hasNoSecret, isSharedToken } = secretModel(template);
 
   return (
     <>
@@ -116,6 +127,13 @@ export function SetupGuide({ template }: { template: PlatformTemplate }) {
             {template.secretUsernameLabel ?? 'username'} and {template.secretPasswordLabel ?? 'password'} and
             enter the <strong>same values</strong> in both Baton and {name} so Baton can verify each request.
           </>
+        ) : isSharedToken ? (
+          <>
+            {name} can't sign its payloads, so it sends a <strong>shared token</strong> instead. You choose
+            this one: generate a long random <strong>{template.secretKeyLabel}</strong>, save it in Baton, and
+            paste the <strong>same value</strong> into {name}.
+            {template.secretKeyHint ? ` ${template.secretKeyHint}` : ''}
+          </>
         ) : (
           <>
             Copy the <strong>{template.secretKeyLabel}</strong> from {name} into Baton so it can verify every
@@ -139,7 +157,7 @@ export function SetupGuide({ template }: { template: PlatformTemplate }) {
         ))}
         <Step title="Send a test event">
           Trigger one of the events below in {name} (for example, create or update a record). Within a few
-          seconds it appears in Baton's <DocLink to="logs">action log</DocLink> and any matching automation
+          seconds it appears in Baton's <DocLink to="logs">relay log</DocLink> and any matching automation
           runs.
         </Step>
       </Steps>
@@ -190,11 +208,13 @@ export function SetupGuide({ template }: { template: PlatformTemplate }) {
             </tr>
             {!hasNoSecret && (
               <tr>
-                <td>Baton returns 401 ({isBasicAuth ? 'Unauthorized' : 'Invalid signature'})</td>
+                <td>Baton returns 401 ({isBasicAuth ? 'Unauthorized' : isSharedToken ? 'Invalid token' : 'Invalid signature'})</td>
                 <td>
                   {isBasicAuth
                     ? `The Basic Auth username / password in ${name} doesn't match what you entered in Baton - re-enter the same values in both.`
-                    : `The ${template.secretKeyLabel} in Baton doesn't match the one in ${name} - re-copy it and save again.`}
+                    : isSharedToken
+                      ? `The ${template.secretKeyLabel} sent by ${name} doesn't match the one saved in Baton - re-paste the same value into both, with no stray whitespace.`
+                      : `The ${template.secretKeyLabel} in Baton doesn't match the one in ${name} - re-copy it and save again.`}
                 </td>
               </tr>
             )}

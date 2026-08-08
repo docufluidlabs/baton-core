@@ -1,79 +1,78 @@
-import { Lead, Callout, TableWrap, KV, KVRow, Badge, Cards, Card, DocLink } from '../ui';
+import { Lead, Callout, TableWrap, Badge, Cards, Card, DocLink } from '../ui';
 
 export default function Catalog() {
   return (
     <>
       <h1>Supported platforms</h1>
       <Lead>
-        Baton has connectors for a broad set of business platforms, each grouped by category and using
-        one verification method to prove its webhooks are genuine.
+        Baton's catalog holds ten source platforms. Each one is grouped by category and uses exactly one
+        verification method to prove its webhooks are genuine.
       </Lead>
 
       <h2>How the catalog is organized</h2>
       <p>
-        Every platform in Baton's catalog has two key facts: a <strong>category</strong> (CRM, Accounting,
-        HR, and so on) that tells you how it is grouped, and a <strong>verification method</strong> that
-        tells you what Baton needs to trust its webhooks. For a full explanation of the methods, see{' '}
+        Every platform carries two facts worth knowing before you add it: a <strong>category</strong>{' '}
+        (CRM, Support, HR, and so on) that tells you how it is grouped, and a{' '}
+        <strong>verification method</strong> that tells you what Baton needs in order to trust its
+        webhooks. For a full explanation of the methods, see{' '}
         <DocLink to="verification">Webhook verification methods</DocLink>.
       </p>
-      <p>Platforms come in two states:</p>
-      <KV>
-        <KVRow label={<Badge color="green">Available now</Badge>}>
-          Fully verified end-to-end. Add it and start building automations right away.
-        </KVRow>
-        <KVRow label={<Badge color="blue">Available to set up</Badge>}>
-          Present in the Add-Platform list with its verification method shown. You can add it now; if you
-          would like help certifying one for your setup, reach out to support.
-        </KVRow>
-      </KV>
-
-      <h2>Available now</h2>
-      <p>These platforms are fully verified end-to-end.</p>
-      <TableWrap>
-        <table>
-          <thead>
-            <tr><th>Platform</th><th>Category</th><th>Verification</th><th>Notes</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>HubSpot</td><td>CRM</td><td>HMAC (HubSpot signature using the App Client Secret)</td><td>The reference integration.</td></tr>
-            <tr><td>Salesforce</td><td>CRM</td><td>HMAC</td><td>You build the outbound webhook in your org - see the <DocLink to="salesforce">Salesforce</DocLink> page.</td></tr>
-          </tbody>
-        </table>
-      </TableWrap>
-
-      <h2>Available to set up</h2>
       <p>
-        These platforms are present in the Add-Platform list. Each shows its verification method, so you
-        know whether you will copy an HMAC secret, set a Basic Authentication username and password, or
-        rely on URL secrecy.
+        You meet the catalog in two places. <strong>Add Platform</strong> on{' '}
+        <DocLink to="connections">Connections</DocLink> lists every entry with its category badge - for
+        example <Badge color="gray">CRM</Badge> - and the style of credential it asks for. Each platform's{' '}
+        <DocLink to="setup">setup guide</DocLink> then gives you the exact steps, the events you can
+        trigger on, and a troubleshooting checklist. The platform names below link straight to those
+        guides.
       </p>
+
+      <h2>The catalog</h2>
       <TableWrap>
         <table>
           <thead>
-            <tr><th>Platform</th><th>Category</th><th>Verification</th></tr>
+            <tr><th>Platform</th><th>Category</th><th>Verification</th><th>What you enter in Baton</th></tr>
           </thead>
           <tbody>
-            <tr><td>Salesforce</td><td>CRM</td><td>HMAC</td></tr>
-            <tr><td>HubSpot</td><td>CRM</td><td>HMAC</td></tr>
-            <tr><td>Zoho CRM</td><td>CRM</td><td>Basic Auth</td></tr>
-            <tr><td>Zendesk</td><td>Support</td><td>HMAC</td></tr>
-            <tr><td>Power Automate</td><td>Automation</td><td>Basic Auth</td></tr>
-            <tr><td>Greenhouse</td><td>HR / ATS</td><td>HMAC</td></tr>
-            <tr><td>monday.com</td><td>Project management</td><td>No signing (URL secrecy)</td></tr>
-            <tr><td>BambooHR</td><td>HR</td><td>HMAC</td></tr>
+            <tr><td><DocLink to="salesforce">Salesforce</DocLink></td><td>CRM</td><td>HMAC signature</td><td>Webhook Secret Key</td></tr>
+            <tr><td><DocLink to="setup/hubspot">HubSpot</DocLink></td><td>CRM</td><td>HMAC signature</td><td>App Client Secret</td></tr>
+            <tr><td><DocLink to="setup/zohocrm">Zoho CRM</DocLink></td><td>CRM</td><td>Basic Authentication</td><td>A username and password you choose</td></tr>
+            <tr><td><DocLink to="setup/powerautomate">Microsoft Power Automate</DocLink></td><td>Automation</td><td>Basic Authentication</td><td>A username and password you choose</td></tr>
+            <tr><td><DocLink to="setup/airtable">Airtable</DocLink></td><td>Database</td><td>Shared token</td><td>A long random Webhook Token, sent in <code>X-Baton-Token</code></td></tr>
+            <tr><td><DocLink to="setup/smartsheet">Smartsheet</DocLink></td><td>Productivity</td><td>HMAC signature</td><td>The Shared Secret the Smartsheet API returns</td></tr>
+            <tr><td><DocLink to="setup/zendesk">Zendesk</DocLink></td><td>Support</td><td>HMAC signature</td><td>Webhook Signing Secret</td></tr>
+            <tr><td><DocLink to="setup/greenhouse">Greenhouse</DocLink></td><td>HR / Recruiting</td><td>HMAC signature</td><td>Secret Key</td></tr>
+            <tr><td><DocLink to="setup/mondaycom">monday.com</DocLink></td><td>Project Management</td><td>No signing (URL secrecy)</td><td>Nothing - keep the webhook URL private</td></tr>
+            <tr><td><DocLink to="setup/bamboohr">BambooHR</DocLink></td><td>HR</td><td>HMAC signature</td><td>A Webhook Secret Key you choose</td></tr>
           </tbody>
         </table>
       </TableWrap>
+
+      <p>
+        Every platform above follows the same data-driven walkthrough, with one exception:{' '}
+        <strong>Salesforce</strong> has no native outbound webhook, so you build the outbound call in your
+        own org. It has its own <DocLink to="salesforce">setup guide</DocLink>.
+      </p>
+
+      <p>
+        Not every launch needs a source platform at all. <strong>Bulk Upload</strong> in the sidebar takes
+        a CSV, XLSX or TSV file as the trigger and launches a workflow for every row - no platform, no
+        webhook and no secret.
+      </p>
 
       <h2>Two special cases: Docusign and Slack</h2>
       <p>
-        <strong>Docusign</strong> plays two roles. It is the destination Baton triggers - your Docusign
-        workflows - and it can also be an inbound <em>source</em>: Docusign Connect can post envelope and
-        recipient events to Baton like any other webhook source.
+        <strong>Docusign</strong> plays two roles, and neither is a catalog entry. It is the destination
+        every automation launches into - your Docusign Workflow Builder workflows - and it is the one
+        platform that also reports back: Docusign Connect posts envelope and recipient events to{' '}
+        <code>/api/webhooks/docusign</code>, verified against the{' '}
+        <code>DOCUSIGN_CONNECT_HMAC_KEY</code> set on your API. You never add Docusign under Add Platform;
+        the single OAuth link you make on Connections covers both directions. See{' '}
+        <DocLink to="connect-docusign">Connect Docusign</DocLink>.
       </p>
       <p>
-        <strong>Slack</strong> is not a source platform - it is an <em>outbound</em> notification channel,
-        the place Baton sends you alerts. For that side of Slack, see the Notifications guide.
+        <strong>Slack</strong> is not a source platform either - it is an <em>outbound</em> notification
+        channel, the place Baton sends you alerts. You configure it on the Notifications page; see{' '}
+        <DocLink to="notifications">Notifications &amp; alerts</DocLink>.
       </p>
 
       <Callout type="note" title="Don't see your platform?">
@@ -85,9 +84,10 @@ export default function Catalog() {
 
       <h2>Related pages</h2>
       <Cards>
-        <Card to="connections" title="Connections">Add a platform from the catalog and set its secret.</Card>
+        <Card to="connections" title="Connections">Add a platform from the catalog and see what each card offers.</Card>
+        <Card to="setup" title="Setup guides">Step-by-step webhook setup for every platform in the catalog.</Card>
+        <Card to="verification" title="Webhook verification methods">Understand HMAC, shared tokens, Basic Authentication, and URL secrecy.</Card>
         <Card to="custom-webhook" title="Custom POST webhooks">Bring in any source that can post JSON but is not in the catalog.</Card>
-        <Card to="verification" title="Webhook verification methods">Understand the HMAC, Basic Auth, and URL-secrecy methods.</Card>
       </Cards>
     </>
   );

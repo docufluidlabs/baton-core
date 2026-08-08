@@ -53,7 +53,7 @@ async function build(): Promise<IndexEntry[]> {
   const parse = (node: ReactElement): { text: string; headings: { id: string; text: string }[] } => {
     const html = renderToStaticMarkup(createElement(MemoryRouter, null, node));
     // Insert a space before block-closing tags so adjacent blocks don't run
-    // together in the extracted text (e.g. "screen.Resolution Center").
+    // together in the extracted text (e.g. "screen.Control Center").
     const spaced = html.replace(
       /(<\/(?:p|li|h1|h2|h3|h4|td|th|dt|dd|div|section|tr|article|pre|blockquote|span)>|<br\s*\/?>)/gi,
       ' $1',

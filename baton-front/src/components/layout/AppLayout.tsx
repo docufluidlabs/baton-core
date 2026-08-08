@@ -49,7 +49,7 @@ const BOTTOM_NAV_ITEMS = [
 function helpDocForPath(pathname: string): string {
   const base = '/docs';
   if (pathname.startsWith('/flows')) return `${base}/flow-builder`;
-  if (pathname.startsWith('/bulk-upload')) return `${base}/flow-builder`;
+  if (pathname.startsWith('/bulk-upload')) return `${base}/bulk-upload`;
   if (pathname.startsWith('/control-center')) return `${base}/control-center`;
   if (pathname.startsWith('/workflows')) return `${base}/workflows`;
   if (pathname.startsWith('/connections')) return `${base}/connections`;

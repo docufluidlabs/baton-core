@@ -2,7 +2,7 @@
  * Live instance-card replicas for the docs.
  *
  * Faithful, static re-creations of the real per-instance card rendered in the
- * Resolution Center (InstanceCard in src/components/flows/InstancesSidebar.tsx).
+ * Control Center (InstanceCard in src/components/flows/InstancesSidebar.tsx).
  * They reproduce the card's anatomy — automation name, status badge, meta row,
  * progress bar, error/auto-retry notes, tags, and the action bar — in the three
  * states a reader meets most: Failed, Overdue, and In Progress. Colours mirror
@@ -12,7 +12,7 @@
  * Styling lives in docs.css under `.bd-card*` / `.bd-statkey`.
  */
 import {
-  Zap, RefreshCw, Ban, AlertTriangle, ExternalLink, MessageSquareWarning, CalendarPlus, Tag, Plus,
+  Zap, RefreshCw, Ban, AlertTriangle, ChevronDown, CalendarPlus, Tag, Plus,
 } from 'lucide-react';
 import { PlatformIcon } from '@/components/ui/PlatformIcon';
 
@@ -37,7 +37,7 @@ export function StatusLegend() {
   );
 }
 
-/** Failed instance — red rail, error note, retry/cancel/report actions. */
+/** Failed instance — red rail, error note, Try Again / Cancel actions. */
 function FailedCard() {
   return (
     <div className="bd-card s-failed">
@@ -70,8 +70,7 @@ function FailedCard() {
       <div className="bd-card__actions">
         <span className="bd-act primary"><RefreshCw />Try Again</span>
         <span className="bd-act danger"><Ban />Cancel</span>
-        <span className="bd-act neutral push"><ExternalLink />Open in Docusign</span>
-        <span className="bd-act amber"><MessageSquareWarning />Support</span>
+        <span className="bd-act neutral push">Docusign<ChevronDown /></span>
       </div>
     </div>
   );
@@ -88,7 +87,7 @@ function OverdueCard() {
         </div>
         <p className="bd-card__sub">Globex Inc - MSA</p>
         <div className="bd-card__meta">
-          <span className="over">9/7 days passed</span>
+          <span className="over">11/7 days passed</span>
           <span className="sep">|</span>
           <PlatformIcon platform="salesforce" size={11} />
           <span className="cap">salesforce</span>
@@ -106,7 +105,7 @@ function OverdueCard() {
         <input className="bd-card__daysinput" value="7" readOnly aria-label="Days to add" />
         <span className="bd-act add"><CalendarPlus />Add days</span>
         <span className="bd-act danger"><Ban />Cancel</span>
-        <span className="bd-act neutral push"><ExternalLink />Open in Docusign</span>
+        <span className="bd-act neutral push">Docusign<ChevronDown /></span>
       </div>
     </div>
   );
@@ -145,7 +144,7 @@ function InProgressCard() {
       <div className="bd-card__actions">
         <span className="bd-act primary"><RefreshCw />Retry now</span>
         <span className="bd-act danger"><Ban />Cancel</span>
-        <span className="bd-act neutral push"><ExternalLink />Open in Docusign</span>
+        <span className="bd-act neutral push">Docusign<ChevronDown /></span>
       </div>
     </div>
   );

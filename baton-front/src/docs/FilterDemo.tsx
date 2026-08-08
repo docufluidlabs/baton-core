@@ -1,7 +1,7 @@
 /**
  * Live, interactive filter demos for the docs.
  *
- * These are faithful re-creations of the real Resolution Center filter controls
+ * These are faithful re-creations of the real Control Center filter controls
  * (src/pages/ControlCenterPage.tsx): the status tabs, the In Progress origin
  * sub-filter, and the cascading Platform → Automation chip rows. They render the
  * actual chip markup with the same colours and states, and are clickable so the
