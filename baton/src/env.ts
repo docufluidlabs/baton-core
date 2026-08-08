@@ -84,6 +84,13 @@ const env = {
   // Scheduler — set SCHEDULER_ENABLED=false on extra pods to prevent duplicate cron execution (#10)
   SCHEDULER_ENABLED: process.env.SCHEDULER_ENABLED !== 'false',
 
+  // Headless owner seed — when email+password are set, the server creates the
+  // org + owner on boot (idempotent; same code path as /api/auth/setup).
+  BATON_OWNER_EMAIL: process.env.BATON_OWNER_EMAIL || '',
+  BATON_OWNER_PASSWORD: process.env.BATON_OWNER_PASSWORD || '',
+  BATON_OWNER_NAME: process.env.BATON_OWNER_NAME || 'Owner',
+  BATON_ORG_NAME: process.env.BATON_ORG_NAME || 'Baton',
+
   // API Docs — basic-auth credentials for /api/docs and /api/docs.json.
   // Both must be set to enable docs; otherwise the routes are not mounted.
   BATON_DOCS_USER: process.env.BATON_DOCS_USER || '',

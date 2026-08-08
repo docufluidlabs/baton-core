@@ -95,7 +95,6 @@ No `.env` is required for local development - the Vite proxy handles API routing
 
 ```env
 # VITE_API_URL=http://localhost:3001   # only if not using the Vite proxy
-VITE_CLARITY_PROJECT_ID=xxxxxx         # Microsoft Clarity (optional)
 ```
 
 ---

@@ -52,6 +52,7 @@ The connector interface is Baton's main extension surface:
 
 - TypeScript strict; match the style of neighboring code.
 - Every behavioral change needs a test.
+- Changing a DynamoDB table or index? Edit `baton/src/db/table-definitions.ts`, then run `npm run infra:generate` to keep the CloudFormation template in sync (never edit `infrastructure/dynamodb.yml` by hand).
 - Webhook verification must fail closed - never merge a connector that accepts unverified payloads (platforms that genuinely cannot sign use the documented URL-secrecy model).
 - Do not copy code from other projects with incompatible licenses.
 - By contributing, you agree that your contributions are licensed under this repository's [Sustainable Use License](LICENSE.md).

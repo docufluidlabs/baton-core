@@ -17,6 +17,7 @@
     "sqs:create-queues": "tsx scripts/create-sqs-queues.ts",
     "setup": "npm run db:create-tables && npm run sqs:create-queues",
     "seed": "tsx scripts/seed.ts",
+    "infra:generate": "tsx scripts/generate-dynamodb-cfn.ts",
     "repomix:full": "npx repomix . --output repomix-output-full.txt --ignore \"node_modules,.git,.next,dist,build,coverage\"",
     "repomix:ai": "npx repomix ./src --output repomix-output-ai.txt --ignore \"node_modules,.git,.next,dist,build,coverage\""
   },

@@ -52,6 +52,7 @@ import { requestLogger } from './middleware/request-logger';
 import { startAllWorkers, stopAllWorkers } from './workers';
 import { ensureAllQueuesExist } from './queue/sqs-client';
 import { ensureAllTablesExist } from './db/ensure-tables';
+import { seedOwnerFromEnv } from './services/seed-owner';
 
 // Scheduled Jobs
 import { startScheduledJobs } from './lib/scheduler';
@@ -290,9 +291,11 @@ const server = app.listen(PORT, () => {
 
   // Ensure DynamoDB tables and SQS queues exist before starting workers
   // (idempotent — safe on every boot; on LocalStack missing ones are created,
-  // on real AWS they must pre-exist via CloudFormation)
+  // on real AWS they must pre-exist via CloudFormation), then seed the owner
+  // account from env if configured.
   ensureAllTablesExist()
     .then(() => ensureAllQueuesExist())
+    .then(() => seedOwnerFromEnv())
     .then(() => startAllWorkers())
     .catch((err) => {
       logger.error({ err }, 'Failed to initialize tables/queues or start workers');

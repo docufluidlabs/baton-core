@@ -1,0 +1,58 @@
+# Baton — production compose (real AWS, pull-only)
+#
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Differences from the quickstart docker-compose.yml:
+#   - no LocalStack: DynamoDB/SQS endpoints are forced empty so the AWS SDK
+#     talks to real AWS (create the tables/queues first — see
+#     docs/deploy-production.md and baton/infrastructure/)
+#   - pull-only pinned images, no build fallback: set BATON_VERSION in a
+#     root-level .env (e.g. BATON_VERSION=1.0.0)
+#   - the app listens on plain HTTP behind YOUR reverse proxy / load balancer,
+#     which terminates TLS (required: session cookies are Secure-only when
+#     FRONTEND_URL is https)
+#
+# Required in baton/.env for production (validated at boot, see docs/deploy-production.md):
+#   NODE_ENV=production, APP_URL/API_URL/FRONTEND_URL (public https URL),
+#   TOKEN_ENCRYPTION_KEY, AUTH_JWT_SECRET, AWS region + credentials (or use an
+#   instance role and leave the key vars empty), DOCUSIGN_* for your account.
+
+services:
+  baton-api:
+    image: ghcr.io/docufluidlabs/baton-api:${BATON_VERSION:?set BATON_VERSION in the root .env}
+    container_name: baton-api
+    restart: unless-stopped
+    env_file: ./baton/.env
+    environment:
+      PORT: "3001"
+      NODE_ENV: "production"
+      # Force real AWS even if the .env still carries LocalStack values.
+      DYNAMODB_ENDPOINT: ""
+      SQS_ENDPOINT: ""
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    networks:
+      - baton-net
+
+  baton-front:
+    image: ghcr.io/docufluidlabs/baton-front:${BATON_VERSION:?set BATON_VERSION in the root .env}
+    container_name: baton-front
+    restart: unless-stopped
+    ports:
+      # Point your TLS-terminating reverse proxy / load balancer at this port.
+      # Bind to localhost if the proxy runs on the same host:
+      #   - "127.0.0.1:8080:80"
+      - "80:80"
+    depends_on:
+      baton-api:
+        condition: service_healthy
+    networks:
+      - baton-net
+
+networks:
+  baton-net:
+    driver: bridge

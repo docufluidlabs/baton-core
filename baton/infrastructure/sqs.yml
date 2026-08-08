@@ -123,6 +123,60 @@ Resources:
         - Key: Application
           Value: baton
 
+  # ============= Identity Sync Queue =============
+  IdentitySyncQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${QueuePrefix}identity-sync'
+      VisibilityTimeout: 120
+      MessageRetentionPeriod: 1209600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt IdentitySyncDLQ.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  IdentitySyncDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${QueuePrefix}identity-sync-dlq'
+      MessageRetentionPeriod: 1209600
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  # ============= Cleanup Queue =============
+  CleanupQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${QueuePrefix}cleanup'
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 1209600
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt CleanupDLQ.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  CleanupDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${QueuePrefix}cleanup-dlq'
+      MessageRetentionPeriod: 1209600
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
 Outputs:
   WebhookProcessingQueueUrl:
     Value: !Ref WebhookProcessingQueue
@@ -163,3 +217,23 @@ Outputs:
     Value: !GetAtt NotificationSenderQueue.Arn
     Export:
       Name: !Sub '${AWS::StackName}-NotificationSenderQueueArn'
+
+  IdentitySyncQueueUrl:
+    Value: !Ref IdentitySyncQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-IdentitySyncQueueUrl'
+
+  IdentitySyncQueueArn:
+    Value: !GetAtt IdentitySyncQueue.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-IdentitySyncQueueArn'
+
+  CleanupQueueUrl:
+    Value: !Ref CleanupQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-CleanupQueueUrl'
+
+  CleanupQueueArn:
+    Value: !GetAtt CleanupQueue.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-CleanupQueueArn'

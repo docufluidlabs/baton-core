@@ -1,6 +1,14 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Baton — DynamoDB Tables'
 
+# ─────────────────────────────────────────────────────────────────────────
+# GENERATED FILE — do not edit by hand.
+# Source of truth: baton/src/db/table-definitions.ts
+# Regenerate with:  cd baton && npm run infra:generate
+# Intended for fresh stacks; DynamoDB allows only one GSI change per stack
+# update, so reconciling a drifted existing stack may need multiple deploys.
+# ─────────────────────────────────────────────────────────────────────────
+
 Parameters:
   Environment:
     Type: String
@@ -35,16 +43,9 @@ Resources:
     UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub '${TablePrefix}organizations'
-      BillingMode: !If [IsProduction, PROVISIONED, PAY_PER_REQUEST]
-      ProvisionedThroughput: !If
-        - IsProduction
-        - ReadCapacityUnits: 5
-          WriteCapacityUnits: 5
-        - !Ref 'AWS::NoValue'
+      BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: id
-          AttributeType: S
-        - AttributeName: clerkOrgId
           AttributeType: S
         - AttributeName: slug
           AttributeType: S
@@ -52,28 +53,12 @@ Resources:
         - AttributeName: id
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: GSI-clerkOrgId
-          KeySchema:
-            - AttributeName: clerkOrgId
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-          ProvisionedThroughput: !If
-            - IsProduction
-            - ReadCapacityUnits: 5
-              WriteCapacityUnits: 5
-            - !Ref 'AWS::NoValue'
-        - IndexName: GSI-slug
+        - IndexName: slug-index
           KeySchema:
             - AttributeName: slug
               KeyType: HASH
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput: !If
-            - IsProduction
-            - ReadCapacityUnits: 5
-              WriteCapacityUnits: 5
-            - !Ref 'AWS::NoValue'
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: !If [EnablePITR, true, false]
       SSESpecification:
@@ -92,16 +77,9 @@ Resources:
     UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub '${TablePrefix}users'
-      BillingMode: !If [IsProduction, PROVISIONED, PAY_PER_REQUEST]
-      ProvisionedThroughput: !If
-        - IsProduction
-        - ReadCapacityUnits: 5
-          WriteCapacityUnits: 5
-        - !Ref 'AWS::NoValue'
+      BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: id
-          AttributeType: S
-        - AttributeName: clerkUserId
           AttributeType: S
         - AttributeName: orgId
           AttributeType: S
@@ -111,29 +89,13 @@ Resources:
         - AttributeName: id
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: GSI-clerkUserId
-          KeySchema:
-            - AttributeName: clerkUserId
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-          ProvisionedThroughput: !If
-            - IsProduction
-            - ReadCapacityUnits: 5
-              WriteCapacityUnits: 5
-            - !Ref 'AWS::NoValue'
-        - IndexName: GSI-orgId
+        - IndexName: orgId-index
           KeySchema:
             - AttributeName: orgId
               KeyType: HASH
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput: !If
-            - IsProduction
-            - ReadCapacityUnits: 5
-              WriteCapacityUnits: 5
-            - !Ref 'AWS::NoValue'
-        - IndexName: GSI-orgId-email
+        - IndexName: orgId-email-index
           KeySchema:
             - AttributeName: orgId
               KeyType: HASH
@@ -141,11 +103,6 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput: !If
-            - IsProduction
-            - ReadCapacityUnits: 5
-              WriteCapacityUnits: 5
-            - !Ref 'AWS::NoValue'
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: !If [EnablePITR, true, false]
       SSESpecification:
@@ -157,19 +114,14 @@ Resources:
         - Key: Application
           Value: baton
 
-  # ============= Platform Connections =============
+  # ============= PlatformConnections =============
   PlatformConnectionsTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub '${TablePrefix}platform-connections'
-      BillingMode: !If [IsProduction, PROVISIONED, PAY_PER_REQUEST]
-      ProvisionedThroughput: !If
-        - IsProduction
-        - ReadCapacityUnits: 5
-          WriteCapacityUnits: 5
-        - !Ref 'AWS::NoValue'
+      BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
@@ -183,18 +135,13 @@ Resources:
         - AttributeName: id
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: GSI-orgId
+        - IndexName: orgId-index
           KeySchema:
             - AttributeName: orgId
               KeyType: HASH
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput: !If
-            - IsProduction
-            - ReadCapacityUnits: 5
-              WriteCapacityUnits: 5
-            - !Ref 'AWS::NoValue'
-        - IndexName: GSI-orgId-platform
+        - IndexName: orgId-platform-index
           KeySchema:
             - AttributeName: orgId
               KeyType: HASH
@@ -202,22 +149,12 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput: !If
-            - IsProduction
-            - ReadCapacityUnits: 5
-              WriteCapacityUnits: 5
-            - !Ref 'AWS::NoValue'
-        - IndexName: GSI-accountId
+        - IndexName: accountId-index
           KeySchema:
             - AttributeName: accountId
               KeyType: HASH
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput: !If
-            - IsProduction
-            - ReadCapacityUnits: 5
-              WriteCapacityUnits: 5
-            - !Ref 'AWS::NoValue'
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: !If [EnablePITR, true, false]
       SSESpecification:
@@ -246,7 +183,7 @@ Resources:
         - AttributeName: id
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: GSI-orgId
+        - IndexName: orgId-index
           KeySchema:
             - AttributeName: orgId
               KeyType: HASH
@@ -263,7 +200,7 @@ Resources:
         - Key: Application
           Value: baton
 
-  # ============= Workflow Instances =============
+  # ============= WorkflowInstances =============
   WorkflowInstancesTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
@@ -286,7 +223,7 @@ Resources:
         - AttributeName: id
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: GSI-orgId-startedAt
+        - IndexName: orgId-startedAt-index
           KeySchema:
             - AttributeName: orgId
               KeyType: HASH
@@ -294,7 +231,7 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-        - IndexName: GSI-workflowId-startedAt
+        - IndexName: workflowId-startedAt-index
           KeySchema:
             - AttributeName: workflowId
               KeyType: HASH
@@ -302,7 +239,7 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-        - IndexName: GSI-launchedBy-startedAt
+        - IndexName: launchedBy-startedAt-index
           KeySchema:
             - AttributeName: launchedBy
               KeyType: HASH
@@ -321,7 +258,7 @@ Resources:
         - Key: Application
           Value: baton
 
-  # ============= Automation Rules =============
+  # ============= AutomationRules =============
   AutomationRulesTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
@@ -334,13 +271,21 @@ Resources:
           AttributeType: S
         - AttributeName: orgId
           AttributeType: S
+        - AttributeName: webhookKey
+          AttributeType: S
       KeySchema:
         - AttributeName: id
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: GSI-orgId
+        - IndexName: orgId-index
           KeySchema:
             - AttributeName: orgId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: webhookKey-index
+          KeySchema:
+            - AttributeName: webhookKey
               KeyType: HASH
           Projection:
             ProjectionType: ALL
@@ -355,7 +300,7 @@ Resources:
         - Key: Application
           Value: baton
 
-  # ============= Trigger Pipeline =============
+  # ============= TriggerPipeline =============
   TriggerPipelineTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
@@ -378,7 +323,7 @@ Resources:
         - AttributeName: id
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: GSI-orgId-triggeredAt
+        - IndexName: orgId-triggeredAt-index
           KeySchema:
             - AttributeName: orgId
               KeyType: HASH
@@ -386,7 +331,7 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-        - IndexName: GSI-attributedTo-triggeredAt
+        - IndexName: attributedTo-triggeredAt-index
           KeySchema:
             - AttributeName: attributedTo
               KeyType: HASH
@@ -394,7 +339,7 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-        - IndexName: GSI-ruleId-triggeredAt
+        - IndexName: ruleId-triggeredAt-index
           KeySchema:
             - AttributeName: ruleId
               KeyType: HASH
@@ -413,7 +358,7 @@ Resources:
         - Key: Application
           Value: baton
 
-  # ============= Audit Log =============
+  # ============= AuditLog =============
   AuditLogTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
@@ -432,7 +377,7 @@ Resources:
         - AttributeName: id
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: GSI-orgId-createdAt
+        - IndexName: orgId-createdAt-index
           KeySchema:
             - AttributeName: orgId
               KeyType: HASH
@@ -451,10 +396,11 @@ Resources:
         - Key: Application
           Value: baton
 
-  # ============= Webhook Events =============
+  # ============= WebhookEvents =============
   WebhookEventsTable:
     Type: AWS::DynamoDB::Table
-    DeletionPolicy: Delete
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub '${TablePrefix}webhook-events'
       BillingMode: PAY_PER_REQUEST
@@ -469,7 +415,7 @@ Resources:
         - AttributeName: id
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: GSI-platform-receivedAt
+        - IndexName: platform-receivedAt-index
           KeySchema:
             - AttributeName: platform
               KeyType: HASH
@@ -477,79 +423,22 @@ Resources:
               KeyType: RANGE
           Projection:
             ProjectionType: ALL
-      TimeToLiveSpecification:
-        Enabled: true
-        AttributeName: ttl
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [EnablePITR, true, false]
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
       Tags:
         - Key: Environment
           Value: !Ref Environment
         - Key: Application
           Value: baton
 
-  # ============= Notifications =============
-  NotificationsTable:
-    Type: AWS::DynamoDB::Table
-    DeletionPolicy: Delete
-    Properties:
-      TableName: !Sub '${TablePrefix}notifications'
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: S
-        - AttributeName: recipientId
-          AttributeType: S
-        - AttributeName: createdAt
-          AttributeType: S
-      KeySchema:
-        - AttributeName: id
-          KeyType: HASH
-      GlobalSecondaryIndexes:
-        - IndexName: GSI-recipientId-createdAt
-          KeySchema:
-            - AttributeName: recipientId
-              KeyType: HASH
-            - AttributeName: createdAt
-              KeyType: RANGE
-          Projection:
-            ProjectionType: ALL
-      Tags:
-        - Key: Environment
-          Value: !Ref Environment
-        - Key: Application
-          Value: baton
-
-  # ============= Notification Preferences =============
-  NotificationPreferencesTable:
-    Type: AWS::DynamoDB::Table
-    DeletionPolicy: Delete
-    Properties:
-      TableName: !Sub '${TablePrefix}notification-preferences'
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: id
-          AttributeType: S
-        - AttributeName: userId
-          AttributeType: S
-      KeySchema:
-        - AttributeName: id
-          KeyType: HASH
-      GlobalSecondaryIndexes:
-        - IndexName: GSI-userId
-          KeySchema:
-            - AttributeName: userId
-              KeyType: HASH
-          Projection:
-            ProjectionType: ALL
-      Tags:
-        - Key: Environment
-          Value: !Ref Environment
-        - Key: Application
-          Value: baton
-
-  # ============= User Platform Identities =============
+  # ============= UserPlatformIdentities =============
   UserPlatformIdentitiesTable:
     Type: AWS::DynamoDB::Table
-    DeletionPolicy: Delete
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub '${TablePrefix}user-platform-identities'
       BillingMode: PAY_PER_REQUEST
@@ -564,25 +453,110 @@ Resources:
         - AttributeName: id
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: GSI-orgId-platform-email
+        - IndexName: orgId-platform-email-index
           KeySchema:
             - AttributeName: orgId_platform_email
               KeyType: HASH
           Projection:
             ProjectionType: ALL
-        - IndexName: GSI-userId
+        - IndexName: userId-index
           KeySchema:
             - AttributeName: userId
               KeyType: HASH
           Projection:
             ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [EnablePITR, true, false]
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
       Tags:
         - Key: Environment
           Value: !Ref Environment
         - Key: Application
           Value: baton
 
-  # ============= Org Apps =============
+  # ============= NotificationPreferences =============
+  NotificationPreferencesTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub '${TablePrefix}notification-preferences'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: orgId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: userId-index
+          KeySchema:
+            - AttributeName: userId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+        - IndexName: orgId-index
+          KeySchema:
+            - AttributeName: orgId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [EnablePITR, true, false]
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  # ============= Notifications =============
+  NotificationsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub '${TablePrefix}notifications'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: recipientId
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: recipientId-createdAt-index
+          KeySchema:
+            - AttributeName: recipientId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [EnablePITR, true, false]
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  # ============= OrgApps =============
   OrgAppsTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
@@ -601,13 +575,13 @@ Resources:
         - AttributeName: id
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: GSI-orgId
+        - IndexName: orgId-index
           KeySchema:
             - AttributeName: orgId
               KeyType: HASH
           Projection:
             ProjectionType: ALL
-        - IndexName: GSI-webhookKey
+        - IndexName: webhookKey-index
           KeySchema:
             - AttributeName: webhookKey
               KeyType: HASH
@@ -624,10 +598,11 @@ Resources:
         - Key: Application
           Value: baton
 
-  # ============= OAuth States (TTL-enabled) =============
-  OAuthStatesTable:
+  # ============= OauthStates =============
+  OauthStatesTable:
     Type: AWS::DynamoDB::Table
-    DeletionPolicy: Delete
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub '${TablePrefix}oauth-states'
       BillingMode: PAY_PER_REQUEST
@@ -640,20 +615,22 @@ Resources:
       TimeToLiveSpecification:
         Enabled: true
         AttributeName: ttl
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [EnablePITR, true, false]
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
       Tags:
         - Key: Environment
           Value: !Ref Environment
         - Key: Application
           Value: baton
 
-  # ============= Bootstrap Tokens (TTL-enabled, SF v0.3 auth flow) =============
-  # One-time-use tokens issued by Baton when an admin creates an SF automation.
-  # SF managed package exchanges a token for an HMAC secret on first webhook
-  # via POST /api/salesforce/webhook-registrations.
-  # PK: tokenId. TTL: expiresAt (default 24h from creation).
+  # ============= BootstrapTokens =============
   BootstrapTokensTable:
     Type: AWS::DynamoDB::Table
-    DeletionPolicy: Delete
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub '${TablePrefix}bootstrap-tokens'
       BillingMode: PAY_PER_REQUEST
@@ -666,6 +643,8 @@ Resources:
       TimeToLiveSpecification:
         Enabled: true
         AttributeName: expiresAt
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [EnablePITR, true, false]
       SSESpecification:
         SSEEnabled: true
         SSEType: KMS
@@ -675,7 +654,70 @@ Resources:
         - Key: Application
           Value: baton
 
-  # ============= Webhook Endpoints =============
+  # ============= SlackConfigs =============
+  SlackConfigsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub '${TablePrefix}slack-configs'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: orgId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: orgId
+          KeyType: HASH
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [EnablePITR, true, false]
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  # ============= QueuedWebhooks =============
+  QueuedWebhooksTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub '${TablePrefix}queued-webhooks'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: ruleId
+          AttributeType: S
+        - AttributeName: queuedAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: ruleId-queuedAt-index
+          KeySchema:
+            - AttributeName: ruleId
+              KeyType: HASH
+            - AttributeName: queuedAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [EnablePITR, true, false]
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  # ============= WebhookEndpoints =============
   WebhookEndpointsTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
@@ -692,12 +734,123 @@ Resources:
         - AttributeName: id
           KeyType: HASH
       GlobalSecondaryIndexes:
-        - IndexName: GSI-orgId
+        - IndexName: orgId-index
           KeySchema:
             - AttributeName: orgId
               KeyType: HASH
           Projection:
             ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [EnablePITR, true, false]
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  # ============= BatchProcessors =============
+  BatchProcessorsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub '${TablePrefix}batch-processors'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: orgId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: orgId-index
+          KeySchema:
+            - AttributeName: orgId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [EnablePITR, true, false]
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  # ============= BatchRuns =============
+  BatchRunsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub '${TablePrefix}batch-runs'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: batchProcessorId
+          AttributeType: S
+        - AttributeName: orgId
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: batchProcessorId-createdAt-index
+          KeySchema:
+            - AttributeName: batchProcessorId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+        - IndexName: orgId-createdAt-index
+          KeySchema:
+            - AttributeName: orgId
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: !If [EnablePITR, true, false]
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Application
+          Value: baton
+
+  # ============= BatchRows =============
+  BatchRowsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub '${TablePrefix}batch-rows'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: runId
+          AttributeType: S
+        - AttributeName: rowNumber
+          AttributeType: N
+      KeySchema:
+        - AttributeName: runId
+          KeyType: HASH
+        - AttributeName: rowNumber
+          KeyType: RANGE
       PointInTimeRecoverySpecification:
         PointInTimeRecoveryEnabled: !If [EnablePITR, true, false]
       SSESpecification:
@@ -715,17 +868,102 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-OrganizationsTableArn'
 
+  UsersTableArn:
+    Value: !GetAtt UsersTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-UsersTableArn'
+
   PlatformConnectionsTableArn:
     Value: !GetAtt PlatformConnectionsTable.Arn
     Export:
       Name: !Sub '${AWS::StackName}-PlatformConnectionsTableArn'
+
+  WorkflowsTableArn:
+    Value: !GetAtt WorkflowsTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-WorkflowsTableArn'
+
+  WorkflowInstancesTableArn:
+    Value: !GetAtt WorkflowInstancesTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-WorkflowInstancesTableArn'
+
+  AutomationRulesTableArn:
+    Value: !GetAtt AutomationRulesTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-AutomationRulesTableArn'
+
+  TriggerPipelineTableArn:
+    Value: !GetAtt TriggerPipelineTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-TriggerPipelineTableArn'
+
+  AuditLogTableArn:
+    Value: !GetAtt AuditLogTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-AuditLogTableArn'
+
+  WebhookEventsTableArn:
+    Value: !GetAtt WebhookEventsTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-WebhookEventsTableArn'
+
+  UserPlatformIdentitiesTableArn:
+    Value: !GetAtt UserPlatformIdentitiesTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-UserPlatformIdentitiesTableArn'
+
+  NotificationPreferencesTableArn:
+    Value: !GetAtt NotificationPreferencesTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-NotificationPreferencesTableArn'
+
+  NotificationsTableArn:
+    Value: !GetAtt NotificationsTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-NotificationsTableArn'
 
   OrgAppsTableArn:
     Value: !GetAtt OrgAppsTable.Arn
     Export:
       Name: !Sub '${AWS::StackName}-OrgAppsTableArn'
 
+  OauthStatesTableArn:
+    Value: !GetAtt OauthStatesTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-OauthStatesTableArn'
+
+  BootstrapTokensTableArn:
+    Value: !GetAtt BootstrapTokensTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-BootstrapTokensTableArn'
+
+  SlackConfigsTableArn:
+    Value: !GetAtt SlackConfigsTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-SlackConfigsTableArn'
+
+  QueuedWebhooksTableArn:
+    Value: !GetAtt QueuedWebhooksTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-QueuedWebhooksTableArn'
+
   WebhookEndpointsTableArn:
     Value: !GetAtt WebhookEndpointsTable.Arn
     Export:
       Name: !Sub '${AWS::StackName}-WebhookEndpointsTableArn'
+
+  BatchProcessorsTableArn:
+    Value: !GetAtt BatchProcessorsTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-BatchProcessorsTableArn'
+
+  BatchRunsTableArn:
+    Value: !GetAtt BatchRunsTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-BatchRunsTableArn'
+
+  BatchRowsTableArn:
+    Value: !GetAtt BatchRowsTable.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-BatchRowsTableArn'

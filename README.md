@@ -61,7 +61,7 @@ Upgrades never touch your data - it lives in your DynamoDB (or the `localstack-d
 
 **Destination:** Docusign Workflow Builder (OAuth).
 
-**Sources:** Salesforce, HubSpot, Zoho CRM, Zendesk, BambooHR, Microsoft Power Automate, Greenhouse, monday.com - plus **custom POST webhooks** for any system that can send JSON. Every source is verified with HMAC signatures or Basic Auth; secrets are stored encrypted (AES-256-GCM).
+**Sources:** Salesforce, HubSpot, Zoho CRM, Zendesk, BambooHR, Microsoft Power Automate, Smartsheet, Airtable, Greenhouse, monday.com - plus **custom POST webhooks** for any system that can send JSON. Every source is verified with HMAC signatures or Basic Auth; secrets are stored encrypted (AES-256-GCM).
 
 Adding a platform is one connector class + one catalog entry - see [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -85,7 +85,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev-server setup, test commands, 
 
 ## Deploying on AWS
 
-The compose file uses LocalStack for local infrastructure. For a real AWS deployment, CloudFormation templates for the DynamoDB tables, SQS queues, and IAM roles live in [baton/infrastructure/](baton/infrastructure/); point `DYNAMODB_ENDPOINT`/`SQS_ENDPOINT` at AWS (leave empty) and supply IAM credentials.
+The quickstart compose file uses LocalStack for evaluation. For production, follow **[docs/deploy-production.md](docs/deploy-production.md)**: CloudFormation stacks for the tables/queues/IAM (in [baton/infrastructure/](baton/infrastructure/)), the pull-only [docker-compose.prod.yml](docker-compose.prod.yml), TLS, backups, and upgrades ([UPGRADING.md](UPGRADING.md)). Security teams: start at **[docs/security-review.md](docs/security-review.md)** - the full outbound-connection inventory, crypto details, and verification commands.
 
 ## License & hosted edition
 
