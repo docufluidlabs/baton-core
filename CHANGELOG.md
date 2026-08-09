@@ -7,8 +7,12 @@ All notable changes to Baton are documented here. The format follows [Keep a Cha
 ### Added
 - Slack self-host setup guide ([docs/slack-notifications.md](docs/slack-notifications.md)): register your own Slack app from a copy-paste manifest, wire the env vars, connect the workspace, optional @Baton mentions
 
+### Security
+- **Closed a signature-verification downgrade on per-rule webhooks.** Once a Salesforce org registered a per-org secret, a request that simply omitted the `X-Baton-Sf-Org-Id` header fell back to the app-level shared secret — so anyone holding that shared value could bypass per-org registration and forge signed events. Header-less requests are now rejected on any app that has registrations. Apps still on the shared secret (and every non-Salesforce platform) are unaffected.
+
 ### Fixed
 - The "open in Docusign" links on workflows were hidden unless `DOCUSIGN_ACCOUNT_ID` was set, even though the deep-link URL never used the account ID. The links now render for every synced workflow.
+- Salesforce setup instructions in the app catalog told users to create an Outbound Message, which cannot carry the required signature header. They now describe the Flow + Apex callout path, matching the docs.
 
 ### Removed
 - `DOCUSIGN_RSA_PRIVATE_KEY` - a leftover from the unused JWT grant. Nothing read it, and asking self-hosters to paste an RSA private key into `.env` for no purpose was a needless security smell. Baton authenticates with Authorization Code Grant; no action is needed if you had set it.

@@ -160,6 +160,20 @@ router.post('/:webhookKey', async (req: Request, res: Response, _next: NextFunct
         res.status(401).json({ error: 'Salesforce org not registered' });
         return;
       }
+    } else if (Object.keys(app.sfRegistrations || {}).length > 0) {
+      // Downgrade guard. Once any Salesforce org has registered a per-org
+      // secret for this app, accepting a header-less request would verify it
+      // against the weaker app-level `secretKeyEnc` — letting anyone who knows
+      // that shared secret bypass per-org registration by dropping one header.
+      // The managed package has sent `X-Baton-Sf-Org-Id` on every dispatch
+      // since v0.3 (BatonDispatcher), so its absence here is either a
+      // pre-v0.3 install that must re-register, or forgery.
+      logWarn('Rule webhook: header-less request rejected — app has per-org SF registrations', {
+        appSlug: app.appSlug, orgId, sfDispatchId,
+        availableRegistrations: Object.keys(app.sfRegistrations || {}),
+      });
+      res.status(401).json({ error: 'Missing X-Baton-Sf-Org-Id header' });
+      return;
     } else {
       secretEncToVerify = app.secretKeyEnc;
       secretSource = 'legacy';

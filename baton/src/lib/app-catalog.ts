@@ -74,10 +74,10 @@ export const APP_TEMPLATES: Partial<Record<AppSlug, AppTemplate>> = {
       encoding: 'base64',
     },
     setupInstructions: [
-      { step: 1, title: 'Open Salesforce Setup', description: 'Go to Setup → Platform Events or Outbound Messages.' },
-      { step: 2, title: 'Create Outbound Message or Platform Event', description: 'Configure the event type you want to trigger on.' },
-      { step: 3, title: 'Paste Baton Webhook URL', description: 'In the Endpoint URL field, paste the URL shown above.' },
-      { step: 4, title: 'Copy the Secret Key', description: 'Copy the secret key from your Connected App and paste it below.' },
+      { step: 1, title: 'Save a webhook secret here', description: 'Generate a strong random string, paste it below, and click Save. Salesforce signs every request with this exact value.' },
+      { step: 2, title: 'Allow this host in Salesforce', description: 'Setup → Security → Remote Site Settings → New. Add the base URL shown above so Apex is allowed to call it.' },
+      { step: 3, title: 'Build the outbound call', description: 'Create a Record-Triggered Flow that invokes an Apex callout to POST the record to the URL above, signing the raw body with HMAC-SHA256 (base64) in the X-Salesforce-Signature header. Outbound Messages cannot be used - they send SOAP XML and cannot set that header.' },
+      { step: 4, title: 'Test it', description: 'Edit a matching record and save. The event appears in the automation logs within a few seconds.' },
     ],
     supportedEvents: [
       { eventType: 'lead.created', label: 'Lead Created', description: 'A new lead was created' },
