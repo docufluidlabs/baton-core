@@ -17,3 +17,4 @@ repomix-output-ai.json
 e2e/.auth/
 playwright-report/
 test-results/
+.gif-frames/

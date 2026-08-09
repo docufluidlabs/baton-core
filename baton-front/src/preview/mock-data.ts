@@ -162,6 +162,77 @@ const batchProcessors = {
   ],
 };
 
+
+// Per-workflow instance rollup. Mirrors the automation totals so the canvas
+// reads consistently: an automation that reports 41 completed is pointed at a
+// workflow that also shows 41.
+const instanceCounts = {
+  counts: {
+    'wf-1': { completed: 41, failed: 1, cancelled: 0, running: 0 },
+    'wf-2': { completed: 64, failed: 3, cancelled: 0, running: 0 },
+    'wf-3': { completed: 21, failed: 2, cancelled: 0, running: 0 },
+  },
+};
+
+
+// ─── Bulk Upload wizard (demo capture) ────────────────────────
+// Enough of the upload → map → run path to drive the marketing capture.
+// The run advances on wall-clock time so rows visibly complete while
+// recording, instead of needing a real dispatcher.
+
+const DEMO_COLUMNS = ['leadId', 'territory', 'source', 'company', 'ownerEmail'];
+
+const DEMO_ROWS = [
+  { leadId: '00Q5f000004Ta1x', territory: 'EMEA - North',  source: 'Renewal', company: 'Northwind Trading',  ownerEmail: 'r.olsen@northwind.example' },
+  { leadId: '00Q5f000004Tb2y', territory: 'AMER - West',   source: 'Renewal', company: 'Cascade Logistics',  ownerEmail: 'm.reyes@cascade.example' },
+  { leadId: '00Q5f000004Tc3z', territory: 'EMEA - South',  source: 'Renewal', company: 'Adriatic Foods',     ownerEmail: 'l.bruno@adriatic.example' },
+  { leadId: '00Q5f000004Td4a', territory: 'APAC - East',   source: 'Renewal', company: 'Kiyomi Robotics',    ownerEmail: 'h.tanaka@kiyomi.example' },
+  { leadId: '00Q5f000004Te5b', territory: 'AMER - East',   source: 'Renewal', company: 'Bayline Insurance',  ownerEmail: 'p.novak@bayline.example' },
+];
+
+const DEMO_TOTAL_ROWS = 248;
+const DEMO_RUN_ID = 'br-demo';
+let demoRunStartedAt: number | null = null;
+
+/** Rows completed so far — one every 220ms once the run starts, capped. */
+function demoCompleted(): number {
+  if (!demoRunStartedAt) return 0;
+  return Math.min(DEMO_TOTAL_ROWS, Math.floor((Date.now() - demoRunStartedAt) / 220));
+}
+
+function demoRunSummary() {
+  const completed = demoCompleted();
+  const running = demoRunStartedAt && completed < DEMO_TOTAL_ROWS ? 3 : 0;
+  return {
+    id: DEMO_RUN_ID, runNumber: 4, fileName: 'renewals-q3.xlsx',
+    status: !demoRunStartedAt ? 'pending' : completed >= DEMO_TOTAL_ROWS ? 'completed' : 'running',
+    totalRows: DEMO_TOTAL_ROWS, selectedRows: DEMO_TOTAL_ROWS,
+    counts: {
+      queued: Math.max(0, DEMO_TOTAL_ROWS - completed - running),
+      running, completed, failed: 0, cancelled: 0, skipped: 0,
+    },
+    startedAt: demoRunStartedAt ? new Date(demoRunStartedAt).toISOString() : undefined,
+    createdByName: 'Alex Rivera',
+  };
+}
+
+/** A window of rows around the completion frontier, so the list visibly moves. */
+function demoRows() {
+  const completed = demoCompleted();
+  const out = [];
+  const start = Math.max(1, completed - 6);
+  for (let n = start; n < start + 14 && n <= DEMO_TOTAL_ROWS; n++) {
+    const d = DEMO_ROWS[(n - 1) % DEMO_ROWS.length];
+    const status = n <= completed ? 'completed' : n <= completed + 3 && demoRunStartedAt ? 'running' : 'queued';
+    out.push({
+      rowNumber: n, seq: n, name: d.company, status, problems: [], data: d,
+      payload: { leadId: d.leadId, territory: d.territory, source: d.source },
+      ...(status !== 'queued' ? { workflowInstanceId: `wfi-${n}`, maestroInstanceId: `m-${n}` } : {}),
+    });
+  }
+  return { rows: out };
+}
+
 // ─── Events ─────────────────────────────────────────────
 
 const events = {
@@ -356,7 +427,8 @@ const MOCK_ROUTES: Record<string, unknown> = {
   '/api/settings/billing': billing,
   '/api/settings/billing/plans': billingPlans,
   '/api/auth/me': authMe,
-  '/api/batch-processors': batchProcessors,
+  '/api/instances/counts': instanceCounts,
+  '/api/batch-processors': batchProcessors, // live run is patched in by the fetch shim
   '/api/apps': apps,
   '/api/apps/catalog': appsCatalog,
   '/api/platforms': installedPlatforms,
@@ -392,6 +464,61 @@ export function installMockFetch() {
       }
 
       // Handle dynamic routes
+
+      // Processor list — swap in the live demo run once one has started.
+      if (path === '/api/batch-processors' && demoRunStartedAt) {
+        const [first, ...rest] = batchProcessors.processors;
+        return new Response(JSON.stringify({
+          processors: [{ ...first, lastRun: demoRunSummary() }, ...rest],
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+
+
+      // ── Bulk Upload wizard (demo capture) ──────────────────
+      if (path.match(/^\/api\/batch-processors\/[\w-]+\/uploads$/)) {
+        await delay(700); // let the uploading spinner register on camera
+        return new Response(JSON.stringify({
+          runId: DEMO_RUN_ID,
+          columns: DEMO_COLUMNS,
+          totalRows: DEMO_TOTAL_ROWS,
+          blankRowsSkipped: 2,
+          sheetNames: ['Renewals Q3'],
+          sheetName: 'Renewals Q3',
+          preview: DEMO_ROWS.slice(0, 3),
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+
+      if (path.match(/^\/api\/batch-processors\/[\w-]+\/runs\/[\w-]+\/preflight$/)) {
+        await delay(400);
+        return new Response(JSON.stringify({
+          readyRows: DEMO_TOTAL_ROWS, problemRows: [], unmappedRequired: [],
+          estimatedMinutes: 150, planUsage: { used: null, included: null },
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+
+      if (path.match(/^\/api\/batch-processors\/[\w-]+\/runs\/[\w-]+\/start$/)) {
+        demoRunStartedAt = Date.now();
+        await delay(250);
+        return new Response(JSON.stringify({ run: demoRunSummary() }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (path.match(/^\/api\/batch-processors\/[\w-]+\/runs\/[\w-]+\/rows$/)) {
+        return new Response(JSON.stringify(demoRows()), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (path.match(/^\/api\/batch-processors\/[\w-]+\/runs$/)) {
+        const runs = demoRunStartedAt
+          ? [demoRunSummary(), ...batchProcessors.processors[0].lastRun ? [batchProcessors.processors[0].lastRun] : []]
+          : [batchProcessors.processors[0].lastRun];
+        return new Response(JSON.stringify({ runs }), {
+          status: 200, headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
       if (path.match(/^\/api\/workflows\/[\w-]+\/instances/)) {
         await delay(200);
         return new Response(JSON.stringify({ instances: dashboard.recentInstances.slice(0, 2) }), {
