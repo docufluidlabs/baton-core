@@ -49,13 +49,23 @@ export async function verifyPassword(password: string, passwordHash?: string): P
 
 // ─── JWT sessions ────────────────────────────────────────────
 
+// Generated once per process when AUTH_JWT_SECRET is unset, so an unconfigured
+// local server still boots. Sessions do not survive a restart, which is the
+// correct behaviour for an install that has not been configured. A hardcoded
+// literal used to live here — in a public repo that is a published signing key,
+// and anyone could forge a session cookie for any user.
+let ephemeralSecret: string | undefined;
+
 function getJwtSecret(): string {
   if (env.AUTH_JWT_SECRET) return env.AUTH_JWT_SECRET;
-  // Production refuses to start without AUTH_JWT_SECRET (env.ts zod schema);
-  // this fallback only ever applies in development so the server is usable
-  // out of the box.
-  logWarn('AUTH_JWT_SECRET is not set — using an INSECURE development-only secret');
-  return 'baton-dev-insecure-jwt-secret-do-not-use-in-prod';
+  if (!ephemeralSecret) {
+    ephemeralSecret = crypto.randomBytes(32).toString('hex');
+    logWarn(
+      'AUTH_JWT_SECRET is not set — signing sessions with a random per-process secret. ' +
+      'Sessions will be invalidated on restart. Generate one with: openssl rand -hex 32',
+    );
+  }
+  return ephemeralSecret;
 }
 
 export function signSession(userId: string): string {

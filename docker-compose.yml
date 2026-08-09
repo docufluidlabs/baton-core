@@ -58,6 +58,9 @@ services:
     restart: unless-stopped
     env_file: ./baton/.env
     environment:
+      # Set here, not in baton/.env, so a stale .env can never downgrade a
+      # reachable install into development mode (which unlocks the auth bypass).
+      NODE_ENV: "production"
       PORT: "3001"
       APP_URL: "${APP_URL:-http://localhost}"
       API_URL: "${API_URL:-http://localhost}"

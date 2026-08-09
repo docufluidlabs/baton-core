@@ -13,6 +13,13 @@ docker compose up -d dynamodb elasticmq
 # 2. Backend
 cd baton
 cp .env.example .env          # defaults point at the local emulators
+
+# For local development only, switch the two lines that turn on dev mode:
+#   NODE_ENV=development
+#   BATON_DEV_AUTH_BYPASS=true
+# Together these enable the X-Dev-UserId / X-Dev-OrgId / X-Dev-Role headers the
+# Vite dev server sends, so you can work without logging in. Both are required,
+# and neither belongs on any host other people can reach.
 npm install
 npm run setup                 # creates tables + queues (idempotent)
 npm run dev                   # API on :3001

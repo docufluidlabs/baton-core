@@ -2,13 +2,12 @@
  * Bootstrap Token Service — Baton
  *
  * One-time-use registration tokens for the Salesforce managed package v0.3+
- * bootstrap auth flow. See:
- *   (internal design note)
+ * bootstrap auth flow.
  *
  * Flow:
  *   1. Baton issues a token when an admin creates an SF automation. The token
  *      is embedded in the webhook URL given to the customer:
- *        https://app.iambaton.com/api/webhooks/rule/<webhookKey>?bootstrap=<tokenId>
+ *        https://<your-baton-host>/api/webhooks/rule/<webhookKey>?bootstrap=<tokenId>
  *   2. SF Apex's first webhook detects the bootstrap param, generates an HMAC
  *      secret in Apex, and POSTs to /api/salesforce/webhook-registrations.
  *   3. We atomically flip `redeemed=false → true` and store the SF org context.

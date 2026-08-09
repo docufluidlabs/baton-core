@@ -11,6 +11,7 @@ const JWT_SECRET = 'test-secret-test-secret-test-secret!';
 const { mockEnv, mockSend } = vi.hoisted(() => ({
   mockEnv: {
     NODE_ENV: 'development',
+    DEV_AUTH_BYPASS: true,
     AUTH_JWT_SECRET: 'test-secret-test-secret-test-secret!',
     BATON_ORG_ID: 'default-org',
     FRONTEND_URL: 'http://localhost:3002',
@@ -73,6 +74,7 @@ const activeUser = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockEnv.NODE_ENV = 'development';
+  mockEnv.DEV_AUTH_BYPASS = true;
   mockSend.mockResolvedValue({ Item: activeUser });
 });
 
@@ -122,6 +124,7 @@ describe('requireAuth — dev bypass', () => {
 
   it('does not use dev bypass in production mode', async () => {
     mockEnv.NODE_ENV = 'production';
+    mockEnv.DEV_AUTH_BYPASS = false;
     const req = mockReq({
       headers: { 'x-dev-userid': 'u1', 'x-dev-orgid': 'o1' },
     });
@@ -139,6 +142,7 @@ describe('requireAuth — dev bypass', () => {
 describe('requireAuth — baton_session cookie', () => {
   beforeEach(() => {
     mockEnv.NODE_ENV = 'production';
+    mockEnv.DEV_AUTH_BYPASS = false;
   });
 
   it('authenticates a valid session cookie and populates req.auth from the user row', async () => {

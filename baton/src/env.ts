@@ -4,7 +4,10 @@ dotenv.config();
 
 const env = {
   // App
-  NODE_ENV: process.env.NODE_ENV || 'development',
+  // Fails closed: an unset NODE_ENV means production, so hardening is never
+  // skipped by accident (a missing env var, a container that inherits nothing).
+  // Development mode must be asked for explicitly.
+  NODE_ENV: process.env.NODE_ENV || 'production',
   PORT: parseInt(process.env.PORT || '3001', 10),
   LOG_LEVEL: process.env.LOG_LEVEL || '',
   APP_URL: process.env.APP_URL || 'http://localhost:3001',
@@ -82,6 +85,13 @@ const env = {
 
   // Scheduler — set SCHEDULER_ENABLED=false on extra pods to prevent duplicate cron execution (#10)
   SCHEDULER_ENABLED: process.env.SCHEDULER_ENABLED !== 'false',
+
+  // Local-development auth bypass: accepts the caller's identity from X-Dev-*
+  // request headers with no credential. Requires BOTH a development NODE_ENV
+  // and an explicit opt-in — see middleware/auth.ts. Never enable on a host
+  // anything else can reach.
+  DEV_AUTH_BYPASS:
+    process.env.NODE_ENV === 'development' && process.env.BATON_DEV_AUTH_BYPASS === 'true',
 
   // Headless owner seed — when email+password are set, the server creates the
   // org + owner on boot (idempotent; same code path as /api/auth/setup).

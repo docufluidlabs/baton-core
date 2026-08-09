@@ -19,6 +19,9 @@ RUN npm run build
 # ── Production stage ─────────────────────────────────────────
 FROM node:20-alpine AS production
 
+# Baked in so the image is hardened even if the deployment passes no NODE_ENV.
+ENV NODE_ENV=production
+
 WORKDIR /app
 
 # Copy dependency manifests

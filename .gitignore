@@ -12,6 +12,27 @@ dist/
 # Deployment values (Helm/K8s) — never commit
 values/
 
+# Keys and certificates — never commit. Docusign and Salesforce JWT-grant
+# setups hand you a private key file; this keeps a stray `git add .` from
+# publishing it.
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+id_rsa*
+certs/
+
+# Local agent and editor state (may contain session transcripts)
+CLAUDE.md
+.claude/
+.vscode/
+.idea/
+.envrc
+*.log
+*.tsbuildinfo
+repomix-output*
+
 # OS cruft
 .DS_Store
 Thumbs.db

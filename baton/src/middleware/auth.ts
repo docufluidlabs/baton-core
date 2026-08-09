@@ -107,13 +107,22 @@ export function getAuthProvider(): AuthProvider {
  * Session validation middleware
  */
 export function requireAuth(req: Request, _res: Response, next: NextFunction): void {
-  // Development bypass
-  if (env.NODE_ENV === 'development') {
+  // Development bypass — accepts identity from plain request headers, so it is
+  // a full authentication bypass by design. It requires BOTH a development
+  // NODE_ENV and an explicit opt-in, because NODE_ENV alone has proven too easy
+  // to inherit accidentally (an .env copied from the example, a container with
+  // no NODE_ENV set). Never enable this on a reachable host.
+  if (env.DEV_AUTH_BYPASS) {
     const devUserId = req.headers['x-dev-userid'] as string;
     const devOrgId = req.headers['x-dev-orgid'] as string;
 
-    // #23: default to 'viewer' so devs don't accidentally test at admin privilege level
-    const devRole = (req.headers['x-dev-role'] as string) || 'viewer';
+    // #23: default to 'viewer' so devs don't accidentally test at admin privilege
+    // level, and reject anything outside the known roles rather than trusting the
+    // header verbatim.
+    const rawRole = (req.headers['x-dev-role'] as string) || 'viewer';
+    const devRole = (['viewer', 'member', 'admin', 'owner'] as const).includes(rawRole as never)
+      ? rawRole
+      : 'viewer';
     if (devUserId && devOrgId) {
       req.auth = {
         userId: devUserId,
