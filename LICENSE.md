@@ -56,4 +56,4 @@ The **software** is the Baton software the licensor makes available under these 
 
 ---
 
-*This license is a [fair-code](https://faircode.io) license: the source is open and free to use, self-host, and extend for your own business - but may not be resold or offered as a competing hosted service.*
+*This license is a [fair-code](https://faircode.io) license: the source is public and free to use, self-host, and extend for your own business - but may not be resold or offered as a competing hosted service. Fair-code is not an OSI-approved open-source licence.*

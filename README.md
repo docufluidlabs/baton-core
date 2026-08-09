@@ -120,6 +120,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev-server setup, test commands, 
 
 ## License & hosted edition
 
-This repository is licensed under the [Sustainable Use License](LICENSE.md) (fair-code): use it freely inside your business; don't resell it as a hosted service. FluidLabs offers a managed cloud edition with multi-org management, SSO, and the Salesforce AppExchange package - the core you see here is the same engine.
+This repository is licensed under the [Sustainable Use License](LICENSE.md) (fair-code): use it freely inside your business; don't resell it as a hosted service. The Salesforce package works against any Baton instance, self-hosted or cloud. FluidLabs also offers a managed cloud edition with multi-org management, SSO, and support - the core you see here is the same engine.
 
 Security reports: see [SECURITY.md](SECURITY.md). Questions & ideas: [GitHub Discussions](https://github.com/docufluidlabs/baton-core/discussions).
