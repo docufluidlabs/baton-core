@@ -40,7 +40,6 @@ const env = {
   // DocuSign
   DOCUSIGN_INTEGRATION_KEY: process.env.DOCUSIGN_INTEGRATION_KEY || '',
   DOCUSIGN_SECRET_KEY: process.env.DOCUSIGN_SECRET_KEY || '',
-  DOCUSIGN_RSA_PRIVATE_KEY: process.env.DOCUSIGN_RSA_PRIVATE_KEY || '',
   DOCUSIGN_ACCOUNT_ID: process.env.DOCUSIGN_ACCOUNT_ID || '',
   DOCUSIGN_BASE_URL: process.env.DOCUSIGN_BASE_URL || '',
   DOCUSIGN_OAUTH_BASE: process.env.DOCUSIGN_OAUTH_BASE || 'https://account-d.docusign.com',

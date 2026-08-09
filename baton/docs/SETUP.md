@@ -34,60 +34,43 @@ npm install
 cp .env.example .env
 ```
 
-Minimal set for a local run:
+`.env.example` is organized so you can work top-down: sections 1 and 2 are the whole setup, section 3 onwards already works as shipped or is optional, and every optional block states when you need it.
+
+**Section 1 - the only two values required to start:**
 
 ```env
-# App
-NODE_ENV=development
-PORT=3001
-APP_URL=http://localhost:3001        # public URL - use your tunnel domain for inbound webhooks
-API_URL=http://localhost:3001
-FRONTEND_URL=http://localhost:3002
-RATE_LIMIT_PER_MINUTE=300
-
-# AWS (the local emulators accept any credentials)
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=local
-AWS_SECRET_ACCESS_KEY=local
-
-# DynamoDB
-DYNAMODB_REGION=us-east-1
-DYNAMODB_ENDPOINT=http://localhost:8000   # DynamoDB Local - leave empty for real AWS
-DYNAMODB_TABLE_PREFIX=baton-
-
-# SQS
-SQS_REGION=us-east-1
-SQS_ENDPOINT=http://localhost:9324        # ElasticMQ - leave empty for real AWS
-SQS_QUEUE_PREFIX=baton-
-
-# Encryption (generate: openssl rand -hex 32)
+# generate each with: openssl rand -hex 32
 TOKEN_ENCRYPTION_KEY=your-random-hex-string-here
-
-# Auth (self-contained sessions; generate: openssl rand -hex 32)
 AUTH_JWT_SECRET=your-random-hex-string-here
-BATON_ORG_ID=default-org
-
-# DocuSign (required for workflow sync/launch)
-DOCUSIGN_INTEGRATION_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-DOCUSIGN_SECRET_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-DOCUSIGN_ACCOUNT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-DOCUSIGN_OAUTH_BASE=https://account-d.docusign.com
-DOCUSIGN_MAESTRO_API_BASE=https://api-d.docusign.com   # Workflow Builder (Maestro) API
 ```
 
-Add the remaining OAuth credentials (BambooHR, Zoho CRM) as you connect those platforms - the backend starts without them, those connectors just won't work. Other variables of note:
+**Section 2 - required to sync and launch workflows.** Baton starts without these; the Connections page then shows a guided setup instead of a doomed Connect button.
 
-| Variable | Purpose |
-|----------|---------|
-| `AUTH_JWT_SECRET` | Signs the `baton_session` JWT cookie - required in production |
-| `BATON_ORG_ID` | Single-org install: every user belongs to this org (default `default-org`) |
-| `BATON_OWNER_EMAIL` / `BATON_OWNER_PASSWORD` / `BATON_OWNER_NAME` / `BATON_ORG_NAME` | Only for headless `npm run seed` (see step 5) |
-| `RATE_LIMIT_PER_MINUTE` | Max authenticated API requests per minute per client IP (default 300) |
-| `ZOHO_ACCOUNTS_BASE` | Zoho regional accounts server (`.com`, `.eu`, `.in`, …) |
-| `HUBSPOT_WEBHOOK_SECRET` | HubSpot Private App client secret for webhook signature verification |
-| `RESEND_API_KEY` | Email notifications (optional) |
-| `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` / `SLACK_SIGNING_SECRET` | Slack notifications (optional) - register your own app, see [docs/slack-notifications.md](../../docs/slack-notifications.md) |
+```env
+DOCUSIGN_INTEGRATION_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+DOCUSIGN_SECRET_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+# sandbox defaults; for production use account.docusign.com / api.docusign.com
+DOCUSIGN_OAUTH_BASE=https://account-d.docusign.com
+DOCUSIGN_MAESTRO_API_BASE=https://api-d.docusign.com
+```
+
+> Docusign's app page also offers **RSA Keypairs**. Ignore them - they belong to the JWT grant, which Baton does not use. There is no RSA variable to set.
+
+Sections 3 and 4 (app URLs, DynamoDB, SQS) ship correct for `docker compose`; change them when you move to a real domain or real AWS. Everything in section 5 is optional:
+
+| Variable | When you need it |
+|----------|------------------|
+| `DOCUSIGN_CONNECT_HMAC_KEY` | To receive workflow status callbacks from Docusign Connect - unsigned events are rejected |
+| `DOCUSIGN_ACCOUNT_ID` | Almost never: the account ID is captured automatically during OAuth |
+| `DOCUSIGN_BASE_URL` | Only for `scripts/setup-docusign-connect.ts`; the API server never reads it |
+| `BATON_OWNER_EMAIL` / `BATON_OWNER_PASSWORD` / `BATON_OWNER_NAME` / `BATON_ORG_NAME` | To create the org + owner headlessly instead of using the setup screen (also used by `npm run seed`) |
+| `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` / `SLACK_SIGNING_SECRET` / `SLACK_OAUTH_REDIRECT_URI` | Slack notifications - register your own app, see [docs/slack-notifications.md](../../docs/slack-notifications.md) |
+| `RESEND_API_KEY` | Email notifications; without it the email step is skipped silently |
 | `BATON_DOCS_USER` / `BATON_DOCS_PASS` | Both set → enables Swagger UI at `/api/docs` (basic auth) |
+| `BAMBOOHR_*` / `ZOHO_*` / `SMARTSHEET_*` | Only for those three platforms - every other source sets its secret per connection in the UI |
+| `HUBSPOT_WEBHOOK_SECRET` | Optional global fallback; the per-connection secret set in the UI normally verifies HubSpot webhooks |
+| `SCHEDULER_ENABLED` | Set `false` on extra API containers when scaling out, so cron jobs run on exactly one |
+| `RATE_LIMIT_PER_MINUTE` | To change the default 300 authenticated requests/minute per client IP |
 
 ### Frontend (`baton-front/.env`)
 

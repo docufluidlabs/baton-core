@@ -7,6 +7,12 @@ All notable changes to Baton are documented here. The format follows [Keep a Cha
 ### Added
 - Slack self-host setup guide ([docs/slack-notifications.md](docs/slack-notifications.md)): register your own Slack app from a copy-paste manifest, wire the env vars, connect the workspace, optional @Baton mentions
 
+### Fixed
+- The "open in Docusign" links on workflows were hidden unless `DOCUSIGN_ACCOUNT_ID` was set, even though the deep-link URL never used the account ID. The links now render for every synced workflow.
+
+### Removed
+- `DOCUSIGN_RSA_PRIVATE_KEY` - a leftover from the unused JWT grant. Nothing read it, and asking self-hosters to paste an RSA private key into `.env` for no purpose was a needless security smell. Baton authenticates with Authorization Code Grant; no action is needed if you had set it.
+
 ### Changed
 - Local evaluation stack now uses **DynamoDB Local + ElasticMQ** instead of LocalStack: `localstack/localstack:latest` requires a license auth token since March 2026 and exits without one, which broke the quickstart for new installs. The replacements are free with no accounts, and table data now genuinely persists across restarts (the `dynamodb-data` volume). Existing evaluation setups: `docker compose down`, pull the new compose file, `docker compose up -d` - evaluation data in the old LocalStack volume is not migrated.
 - The API retries table/queue initialization at boot (5 × 3s) instead of failing immediately when infrastructure answers late.

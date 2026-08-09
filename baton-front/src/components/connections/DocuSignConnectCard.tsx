@@ -220,13 +220,27 @@ function SetupGuide({
 
         <li className="flex gap-3">
           <StepNumber n={3} />
-          <p className="text-sm text-gray-700">
-            Paste the <strong>Integration Key</strong> and <strong>Secret Key</strong> into{' '}
-            <code className="text-xs font-mono bg-gray-100 px-1 py-0.5 rounded">baton/.env</code> as{' '}
-            <code className="text-xs font-mono bg-gray-100 px-1 py-0.5 rounded">DOCUSIGN_INTEGRATION_KEY</code> /{' '}
-            <code className="text-xs font-mono bg-gray-100 px-1 py-0.5 rounded">DOCUSIGN_SECRET_KEY</code>, then
-            restart the API.
-          </p>
+          <div className="text-sm text-gray-700 space-y-2">
+            <p>
+              Paste the <strong>Integration Key</strong> and <strong>Secret Key</strong> into your config file
+              as{' '}
+              <code className="text-xs font-mono bg-gray-100 px-1 py-0.5 rounded">DOCUSIGN_INTEGRATION_KEY</code>{' '}
+              and{' '}
+              <code className="text-xs font-mono bg-gray-100 px-1 py-0.5 rounded">DOCUSIGN_SECRET_KEY</code>.
+              The file is{' '}
+              <code className="text-xs font-mono bg-gray-100 px-1 py-0.5 rounded">baton/.env</code> in the
+              folder you installed Baton into - the same folder as{' '}
+              <code className="text-xs font-mono bg-gray-100 px-1 py-0.5 rounded">docker-compose.yml</code>.
+              Nothing else on this page needs a value.
+            </p>
+            <p className="text-xs text-gray-600">
+              Then recreate the API container so it picks up the new values - a plain restart reuses the old
+              ones:
+            </p>
+            <code className="block text-xs font-mono bg-gray-100 text-gray-800 rounded px-2 py-1.5">
+              docker compose up -d --force-recreate baton-api
+            </code>
+          </div>
         </li>
       </ol>
 

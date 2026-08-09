@@ -78,7 +78,7 @@ function getMaestroAppsBase(): string {
   return env.DOCUSIGN_MAESTRO_API_BASE.replace('api-d', 'apps-d').replace('api.', 'apps.');
 }
 
-function getMaestroWorkflowUrl(_accountId: string, maestroWorkflowId: string): string {
+function getMaestroWorkflowUrl(maestroWorkflowId: string): string {
   return `${getMaestroAppsBase()}/send/workflows/${maestroWorkflowId}/edit?preview=false`;
 }
 
@@ -104,11 +104,10 @@ router.get('/', requireViewer, async (req: Request, res: Response, next: NextFun
     }));
 
     const workflows = (result.Items as Workflow[]) || [];
-    const accountId = env.DOCUSIGN_ACCOUNT_ID;
     const enriched = workflows.map((wf) => ({
       ...wf,
-      maestroUrl: wf.maestroWorkflowId && accountId
-        ? getMaestroWorkflowUrl(accountId, wf.maestroWorkflowId)
+      maestroUrl: wf.maestroWorkflowId
+        ? getMaestroWorkflowUrl(wf.maestroWorkflowId)
         : undefined,
       maestroInstancesUrl: wf.maestroWorkflowId
         ? getMaestroInstancesUrl(wf.maestroWorkflowId)
