@@ -11,7 +11,7 @@ Listen to the platforms you already use, verify every event, and launch the matc
   <a href="https://github.com/docufluidlabs/baton-core/actions/workflows/ci.yml"><img src="https://github.com/docufluidlabs/baton-core/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/docufluidlabs/baton-core/actions/workflows/codeql.yml"><img src="https://github.com/docufluidlabs/baton-core/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-Sustainable%20Use%20·%20fair--code-2f6f4f" alt="License: Sustainable Use (fair-code)"></a>
-  <a href="https://github.com/docufluidlabs/baton-core/releases"><img src="https://img.shields.io/badge/release-v1.0.0--rc.2-355f9e" alt="Latest release"></a>
+  <a href="https://github.com/docufluidlabs/baton-core/releases"><img src="https://img.shields.io/badge/release-v1.0.0-355f9e" alt="Latest release"></a>
 </p>
 
 <p align="center">
@@ -33,16 +33,16 @@ Baton is maintained by [FluidLabs](https://fluidlabs.com) under the fair-code [S
 
 - **Visual Flow Builder** - a live canvas of platform → automation → workflow with per-automation relay counts, logs, and inline editing
 - **Bulk Upload** - launch a workflow for every row of a CSV, XLSX, or TSV file: map columns to workflow inputs, throttle the release rate, run files concurrently, and track every row to its instance
-- **Resolution Center** - every failed workflow run in one queue: retry, cancel, postpone; automations auto-pause when their failure rate spikes
+- **Control Center** - every failed workflow run in one queue: retry, cancel, postpone; automations auto-pause when their failure rate spikes
 - **Verified ingress** - every source is checked with HMAC signatures (constant-time) or Basic Auth and fails closed; secrets are stored encrypted (AES-256-GCM)
 - **Async pipeline** - webhooks are stored idempotently, queued to SQS, and processed by workers with retries and dead-letter queues
 - **Self-contained auth** - first-run owner setup, email/password sessions, copyable invite links (no SMTP), owner/admin/member/viewer roles - no external auth or billing service
 - **Notifications** - in-app and [Slack](docs/slack-notifications.md) (optional email via Resend), with per-user preferences
 - **Docs built in** - a full documentation site ships inside the app at `/docs`
 
-| Workflow Checker - sync & test Docusign workflows | Resolution Center - fix everything, leave with zeros |
+| Workflow Checker - sync & test Docusign workflows | Control Center - fix everything, leave with zeros |
 |---|---|
-| ![Workflow Checker](.github/media/workflow-checker.png) | ![Resolution Center](.github/media/resolution-center.png) |
+| ![Workflow Checker](.github/media/workflow-checker.png) | ![Control Center](.github/media/control-center.png) |
 
 ## How it works
 
@@ -58,7 +58,7 @@ flowchart LR
 | Package | Description | Port |
 |---------|-------------|------|
 | [baton/](baton/) | Express + TypeScript API, SQS workers, rule engine | 3001 |
-| [baton-front/](baton-front/) | React 18 + Vite SPA (flow builder, resolution center, docs) | 3002 (dev) / 80 (Docker) |
+| [baton-front/](baton-front/) | React 18 + Vite SPA (flow builder, control center, docs) | 3002 (dev) / 80 (Docker) |
 
 ## Supported platforms
 
