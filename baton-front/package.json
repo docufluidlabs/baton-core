@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "build:staging": "tsc -b && vite build --mode staging",
     "build:preview": "vite build --config vite.config.preview.ts",
+    "favicons": "node scripts/generate-favicons.mjs",
     "shots": "npm run build:preview && node scripts/capture-docs-screenshots.mjs",
     "gifs": "npm run build:preview && node scripts/capture-product-gifs.mjs",
     "test:e2e": "playwright test",
