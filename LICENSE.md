@@ -1,6 +1,6 @@
 # Sustainable Use License
 
-Version 1.0 - FluidLabs Inc.
+Version 1.0 - Fluidlabs OÜ
 
 ## Acceptance
 
@@ -42,7 +42,7 @@ If you use the software in violation of these terms, such use is not licensed, a
 
 ## Definitions
 
-The **licensor** is FluidLabs Inc., the entity offering these terms.
+The **licensor** is Fluidlabs OÜ (registry code 16534086, Estonia), the entity offering these terms.
 
 The **software** is the Baton software the licensor makes available under these terms, including any portion of it.
 

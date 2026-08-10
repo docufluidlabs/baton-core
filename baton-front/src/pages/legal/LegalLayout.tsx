@@ -40,7 +40,7 @@ export function LegalLayout({ title, updatedAt, children }: LegalLayoutProps) {
 
       <footer className="border-t border-gray-200 bg-white">
         <div className="mx-auto flex max-w-4xl flex-col gap-2 px-6 py-6 text-xs text-gray-500 sm:flex-row sm:justify-between">
-          <span>© {new Date().getFullYear()} FluidLabs Inc.</span>
+          <span>© {new Date().getFullYear()} Fluidlabs OÜ</span>
           <div className="flex gap-4">
             <a href="mailto:app-support@fluidlabs.com" className="hover:text-gray-700">app-support@fluidlabs.com</a>
             <a href="https://fluidlabs.com/contact" className="hover:text-gray-700">Contact</a>
