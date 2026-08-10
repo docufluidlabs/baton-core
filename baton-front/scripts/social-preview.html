@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&display=swap">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1280px; height: 640px; overflow: hidden;
+    background: #05162B; font-family: 'Geist', system-ui, sans-serif;
+    display: flex; align-items: center; justify-content: center; position: relative;
+  }
+  /* faint grid, echoing the site's hero */
+  .grid {
+    position: absolute; inset: 0; opacity: .35;
+    background-image:
+      linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+  .glow {
+    position: absolute; width: 900px; height: 500px; left: 190px; top: 70px;
+    background: radial-gradient(ellipse at center, rgba(252,205,99,.10) 0%, transparent 60%);
+  }
+  .card { position: relative; text-align: center; }
+  .logo { height: 150px; margin-bottom: 44px; }
+  .tag {
+    color: rgba(255,255,255,.85); font-size: 40px; font-weight: 400; letter-spacing: -.01em;
+  }
+  .tag b { color: #fff; font-weight: 600; }
+  .chips { margin-top: 46px; display: flex; gap: 14px; justify-content: center; }
+  .chip {
+    font-size: 21px; font-weight: 600; padding: 10px 22px; border-radius: 999px;
+    color: rgba(255,255,255,.9); border: 1.5px solid rgba(255,255,255,.22);
+  }
+  .chip.accent { color: #05162B; background: #FCCD63; border-color: #FCCD63; }
+</style>
+</head>
+<body>
+  <div class="grid"></div>
+  <div class="glow"></div>
+  <div class="card">
+    <img class="logo" src="baton-logo-main-white.svg" alt="Baton">
+    <div class="tag">Self-hostable webhook → <b>Docusign Workflow Builder</b> automation</div>
+    <div class="chips">
+      <span class="chip accent">Free to self-host</span>
+      <span class="chip">fair-code</span>
+      <span class="chip">docker compose up</span>
+    </div>
+  </div>
+</body>
+</html>
