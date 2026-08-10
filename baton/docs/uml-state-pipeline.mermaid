@@ -5,26 +5,31 @@ stateDiagram-v2
     [*] --> received : Webhook arrives
 
     received --> processing : WebhookWorker picks up
-    processing --> matched : Rule(s) found &amp; conditions pass
-    processing --> no_match : No matching rules
+    processing --> pending : Rule matched &amp; conditions pass<br/>(rule_match entry created)
+    processing --> queued : Rule matched but paused<br/>(stored in queued-webhooks)
+    processing --> no_match : No matching rules<br/>(inbound entry only)
     processing --> failed : Extraction or matching error
 
-    matched --> launching : LauncherWorker picks up
-    launching --> completed : Workflow Builder instance created
-    launching --> retry : Workflow Builder API error (transient)
-    launching --> failed : Max retries exceeded
+    queued --> pending : Rule resumed —<br/>queued webhook released
 
-    retry --> launching : Retry after delay<br/>(linear / exponential)
+    pending --> launching : LauncherWorker picks up
+    launching --> skipped : Usage/relay gate denies<br/>(no retry)
+    launching --> completed : Workflow Builder instance triggered
+    launching --> retrying : Workflow Builder API error<br/>(transient, attempts 1-6)
+    retrying --> launching : Retry after backoff<br/>(2s / 4s / 8s / 5m / 15m / 30m)
+    retrying --> failed : Max 6 retries exceeded
 
     no_match --> [*] : Pipeline ends<br/>(logged, no action)
-    completed --> [*] : Pipeline ends<br/>(notification sent)
-    failed --> [*] : Pipeline ends<br/>(error notification sent)
+    skipped --> [*] : Pipeline ends<br/>(usage-limit message shown)
+    completed --> [*] : Instance tracked as "running"<br/>(30s sync → completed/failed<br/>+ notification)
+    failed --> [*] : Pipeline ends<br/>(failure notification sent)
 
     state received {
         [*] --> signature_verify
-        signature_verify --> store_raw : Valid signature
-        signature_verify --> rejected : Invalid signature
-        store_raw --> enqueue_sqs
+        signature_verify --> store_raw : Valid signature<br/>(HMAC / basic auth / API key)
+        signature_verify --> rejected : Invalid signature (401)
+        store_raw --> respond_200
+        respond_200 --> enqueue_sqs
         rejected --> [*]
     }
 
@@ -36,8 +41,8 @@ stateDiagram-v2
     }
 
     state launching {
-        [*] --> decrypt_tokens
-        decrypt_tokens --> call_maestro
-        call_maestro --> track_instance
-        track_instance --> send_notification
+        [*] --> resolve_connection
+        resolve_connection --> decrypt_tokens
+        decrypt_tokens --> call_workflow_builder
+        call_workflow_builder --> track_instance
     }

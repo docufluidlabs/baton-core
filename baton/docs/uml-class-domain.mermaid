@@ -6,20 +6,23 @@ classDiagram
 
     class Organization {
         +String id
-        +String clerkOrgId
         +String name
+        +String slug
         +String plan
-        +Object settings
+        +Number executionsUsed
         +String createdAt
     }
 
     class User {
         +String id
         +String orgId
-        +String clerkUserId
         +String email
-        +String name
-        +String role [admin|member|viewer]
+        +String fullName
+        +String role [owner|admin|member|viewer|superuser]
+        +String passwordHash [bcrypt cost 12]
+        +String inviteToken
+        +String inviteExpiresAt
+        +String lastActiveAt
         +String createdAt
     }
 
@@ -28,26 +31,57 @@ classDiagram
         +String orgId
         +String platform
         +String displayName
-        +String status [healthy|warning|error|pending]
-        +String encryptedAccessToken
-        +String encryptedRefreshToken
-        +Number tokenExpiresIn
-        +Number tokenCreatedAt
         +String accountId
+        +String status [pending|healthy|warning|error|disconnected]
+        +String accessTokenEnc
+        +String refreshTokenEnc
+        +String tokenExpiresAt
+        +String[] scopes
         +Object metadata
-        +String lastError
+        +String webhookSecret
+        +String lastSyncAt
+        +String createdAt
+    }
+
+    class OrgApp {
+        +String id
+        +String orgId
+        +String appSlug
+        +String webhookKey [64-char hex capability token]
+        +String secretKeyEnc
+        +Object sfRegistrations
+        +String displayName
+        +String status [active|inactive]
+        +String lastWebhookAt
+        +Number webhookCount
+        +String addedAt
+    }
+
+    class WebhookEndpoint {
+        +String id
+        +String orgId
+        +String name
+        +String platform
+        +String workflowId
+        +String payloadFieldPath
+        +String apiKey
+        +Number rateLimitPerMinute
+        +Boolean enabled
+        +Number requestCount
         +String createdAt
     }
 
     class Workflow {
         +String id
         +String orgId
-        +String maestroWorkflowId
         +String name
         +String description
-        +String maestroStatus
-        +String connectionId
+        +String maestroWorkflowId
+        +String maestroStatus [draft|active|paused]
+        +String triggerType
         +Object triggerInputSchema
+        +Number stepCount
+        +String connectionId
         +Number launchCount
         +String lastLaunchedAt
         +String createdAt
@@ -59,10 +93,18 @@ classDiagram
         +String workflowId
         +String maestroInstanceId
         +String instanceName
-        +String status [running|completed|failed|cancelled]
+        +String status [pending|running|completed|failed|cancelled]
+        +String triggerRuleId
+        +String sourcePlatform
         +Object inputData
+        +String envelopeId
         +String startedAt
         +String completedAt
+        +Number durationMs
+        +Number retryCount
+        +String launchedBy
+        +String batchRunId
+        +String[] tags
     }
 
     class AutomationRule {
@@ -70,51 +112,77 @@ classDiagram
         +String orgId
         +String name
         +String connectionId
+        +String appId
+        +String appSlug
         +String sourcePlatform
         +String eventType
         +String eventLabel
         +Object conditions
         +String conditionsDisplay
+        +String actionType
         +String targetWorkflowId
         +Object actionConfig
+        +String webhookKey
         +String status [active|paused|error|disabled]
+        +Number retryMaxAttempts
+        +String retryStrategy [linear|exponential]
+        +Number retryIntervalSec
         +Number timesTriggered
         +Number failureCount
         +Number successRate
-        +Number retryMaxAttempts
-        +String retryStrategy
-        +Number retryIntervalSec
         +String lastTriggeredAt
         +String createdAt
         +String createdBy
     }
 
-    class PipelineEvent {
+    class TriggerPipelineEntry {
         +String id
         +String orgId
-        +String eventType
-        +String status [received|processing|matched|completed|failed]
-        +String eventSummary
+        +String ruleId
         +String sourcePlatform
+        +String eventType [inbound|rule_match|workflow|envelope]
+        +String eventSummary
+        +Object rawPayload
+        +String actionDescription
+        +String workflowInstanceId
+        +String status [pending|running|retrying|completed|failed|skipped]
+        +String errorMessage
+        +String userMessage
+        +String errorCategory
+        +Boolean userActionable
+        +String attributedTo
         +String triggeredAt
         +String completedAt
         +Number durationMs
-        +String errorMessage
-        +String ruleId
-        +String actionDescription
-        +String userMessage
-        +Boolean userActionable
+        +Number attemptNumber
+        +String webhookEventId
     }
 
     class WebhookEvent {
         +String id
         +String platform
+        +String connectionId
         +String eventType
-        +Object headers
         +Object payload
-        +String receivedAt
+        +Object headers
+        +Boolean signatureValid
+        +Boolean processed
         +String processedAt
-        +String status
+        +String error
+        +String receivedAt
+    }
+
+    class QueuedWebhook {
+        +String id
+        +String ruleId
+        +String orgId
+        +String platform
+        +String eventType
+        +Object rawPayload
+        +Object mappedInputs
+        +String status [queued|released|cancelled]
+        +String queuedAt
+        +String releasedAt
     }
 
     class OAuthState {
@@ -123,48 +191,102 @@ classDiagram
         +String userId
         +String platform
         +String codeVerifier
-        +Number ttl
-        +String createdAt
+        +Number ttl [10 min]
+        +Number createdAt
     }
 
     class Notification {
         +String id
-        +String recipientId
         +String orgId
-        +String type
+        +String recipientId
+        +String eventType
         +String title
         +String message
         +String severity [info|warning|error|success]
-        +Boolean read
-        +String actionUrl
+        +String[] channelsSent
+        +String readAt
+        +String dismissedAt
         +String createdAt
     }
 
-    class AuditLog {
+    class AuditLogEntry {
         +String id
         +String orgId
         +String userId
         +String action
-        +String resourceType
-        +String resourceId
-        +Object details
+        +String entityType
+        +String entityId
+        +Object metadata
+        +String ipAddress
+        +String userAgent
         +String createdAt
+    }
+
+    class BatchProcessor {
+        +String id
+        +String orgId
+        +String name
+        +String targetWorkflowId
+        +Number throttleReleaseCount
+        +Number throttleIntervalMinutes
+        +Number stopAfterConsecutiveFailures
+        +Number maxUnfinishedInstances
+        +Number expectedDurationDays
+        +String createdAt
+    }
+
+    class BatchRun {
+        +String id
+        +String orgId
+        +String batchProcessorId
+        +Number runNumber
+        +String fileName
+        +String fileType [csv|xlsx|tsv]
+        +String[] columns
+        +Number totalRows
+        +String status [draft|running|paused|completed|stopped|cancelled]
+        +Object mapping
+        +Object settings
+        +Number consecutiveFailures
+        +String nextReleaseAt
+        +String createdAt
+    }
+
+    class BatchRow {
+        +String runId
+        +Number rowNumber
+        +String orgId
+        +Object data
+        +Boolean included
+        +String[] problems
+        +String status [staged|queued|launching|launched|completed|failed|cancelled|skipped]
+        +String workflowInstanceId
+        +String errorMessage
     }
 
     Organization "1" --> "*" User : has members
     Organization "1" --> "*" PlatformConnection : owns
+    Organization "1" --> "*" OrgApp : installs
     Organization "1" --> "*" Workflow : manages
     Organization "1" --> "*" AutomationRule : configures
+    Organization "1" --> "*" BatchProcessor : owns
 
     PlatformConnection "1" --> "*" AutomationRule : triggers via
+    OrgApp "1" --> "*" AutomationRule : sources events for
     Workflow "1" --> "*" WorkflowInstance : launches
     Workflow "1" --> "*" AutomationRule : targeted by
-    AutomationRule "1" --> "*" PipelineEvent : generates
+    WebhookEndpoint ..> Workflow : launches
+    AutomationRule "1" --> "*" TriggerPipelineEntry : generates
+    AutomationRule "1" --> "*" QueuedWebhook : queues while paused
+
+    BatchProcessor "1" --> "*" BatchRun : runs
+    BatchRun "1" --> "*" BatchRow : contains
+    BatchRow ..> WorkflowInstance : launches
 
     PlatformConnection ..> OAuthState : uses during auth
-    PipelineEvent ..> WebhookEvent : originates from
-    PipelineEvent ..> Notification : triggers
-    User "1" --> "*" AuditLog : performs actions
+    TriggerPipelineEntry ..> WebhookEvent : originates from
+    TriggerPipelineEntry ..> Notification : triggers
+    User "1" --> "*" AuditLogEntry : performs actions
 
     class PlatformConnector {
         &lt;&lt;interface&gt;&gt;
@@ -174,61 +296,80 @@ classDiagram
         +handleCallback(params) OAuthTokens
         +refreshToken(token) OAuthTokens
         +isTokenExpired(createdAt, expiresIn) Boolean
-        +verifyWebhookSignature(body, headers, secret) WebhookVerificationResult
+        +verifyWebhookSignature(rawBody, headers, secret) WebhookVerificationResult
         +extractEventInfo(payload) ExtractedEventInfo
         +testConnection(accessToken) ConnectionHealthCheck
         +getSupportedEventTypes() EventType[]
     }
 
-    class ProcoreConnector {
-        +platform = "procore"
+    class SalesforceConnector {
+        +platform = "salesforce" [webhook-only]
     }
-    class XeroConnector {
-        +platform = "xero"
-        -generatePKCE()
-    }
-    class BambooHRConnector {
-        +platform = "bamboohr"
+    class HubSpotConnector {
+        +platform = "hubspot" [webhook-only]
     }
     class ZohoCRMConnector {
         +platform = "zohocrm"
     }
+    class ZendeskConnector {
+        +platform = "zendesk" [webhook-only]
+    }
+    class BambooHRConnector {
+        +platform = "bamboohr"
+    }
     class SmartsheetConnector {
         +platform = "smartsheet"
     }
+    class PowerAutomateConnector {
+        +platform = "powerautomate" [webhook-only]
+    }
+    class AirtableConnector {
+        +platform = "airtable" [webhook-only]
+    }
     class DocuSignConnector {
         +platform = "docusign"
-        -jwtGrant()
+        -authorizationCodeFlow()
     }
 
-    PlatformConnector <|.. ProcoreConnector : implements
-    PlatformConnector <|.. XeroConnector : implements
-    PlatformConnector <|.. BambooHRConnector : implements
+    PlatformConnector <|.. SalesforceConnector : implements
+    PlatformConnector <|.. HubSpotConnector : implements
     PlatformConnector <|.. ZohoCRMConnector : implements
+    PlatformConnector <|.. ZendeskConnector : implements
+    PlatformConnector <|.. BambooHRConnector : implements
     PlatformConnector <|.. SmartsheetConnector : implements
+    PlatformConnector <|.. PowerAutomateConnector : implements
+    PlatformConnector <|.. AirtableConnector : implements
     PlatformConnector <|.. DocuSignConnector : implements
 
     class EncryptionService {
         +encrypt(plaintext) EncryptedData
         +decrypt(encrypted) String
-        +hmacSign(data) String
-        +hmacVerify(data, signature) Boolean
+        +encryptToken(token) String
+        +decryptToken(stored) String
+    }
+
+    class LocalAuthService {
+        +hashPassword(password) String
+        +verifyPassword(password, hash) Boolean
+        +signSession(userId) String
+        +verifySession(token) SessionPayload
+        +performSetup(input) OrgAndOwner
     }
 
     class RuleEngineService {
         +createRule(data) AutomationRule
-        +getRulesByOrg(orgId) AutomationRule[]
-        +findMatchingRules(orgId, platform, eventType) AutomationRule[]
-        +evaluateConditions(rule, eventData) Boolean
+        +findMatchingRules(orgId, platform, eventType) MatchResult[]
+        +processEvent(params) ProcessEventResult
         +updateRuleStatus(id, status) void
         +deleteRule(id) void
     }
 
     class ConnectionService {
-        +storeTokens(connId, tokens) void
-        +getDecryptedTokens(connId) OAuthTokens
+        +createConnection(params) PlatformConnection
+        +getAccessToken(connId) String
+        +updateTokens(connId, tokens) void
         +updateConnectionStatus(connId, status, error) void
-        +refreshIfExpired(connection) OAuthTokens
+        +deleteConnection(connId) void
     }
 
     ConnectionService --> EncryptionService : uses

@@ -8,66 +8,66 @@ sequenceDiagram
     participant Encrypt as 🔒 EncryptionService
     participant Connector as 🔌 PlatformConnector
     participant DynamoDB as 🗄️ DynamoDB
-    participant Platform as 🏗️ External Platform
+    participant Platform as 📝 External Platform<br/>(Docusign / Zoho CRM /<br/>BambooHR / Smartsheet)
 
-    Note over User,Platform: Step 1 — Initiate OAuth
+    Note over User,Platform: Step 1 — Initiate OAuth (admin session required)
 
-    User->>Frontend: Click "Connect Procore"
-    Frontend->>API: POST /api/connections/procore/authorize
+    User->>Frontend: Click "Connect Docusign"
+    Frontend->>API: POST /api/connections/docusign/authorize<br/>(baton_session cookie, requireAdmin)
     API->>Connector: authorize(orgId, userId)
-    Connector->>Connector: Generate CSRF state<br/>(+ PKCE verifier for Xero)
+    Connector->>Connector: Generate CSRF state<br/>(+ codeVerifier if connector uses PKCE)
     Connector-->>API: {redirectUrl, state, codeVerifier?}
-    API->>DynamoDB: Store oauth-state<br/>{state, orgId, userId, platform,<br/>codeVerifier, ttl: 10min}
+    API->>DynamoDB: Store oauth-state<br/>{state, orgId, userId, platform,<br/>codeVerifier?, ttl: 10min}
     API-->>Frontend: {redirectUrl}
     Frontend->>Platform: Redirect to OAuth consent screen
 
     Note over User,Platform: Step 2 — User Grants Access
 
     User->>Platform: Approve access
-    Platform->>Frontend: Redirect to callback<br/>/auth/callback?code=xxx&state=yyy
+    Platform->>API: Redirect browser to<br/>GET /api/connections/docusign/callback?code=xxx&state=yyy
 
     Note over User,Platform: Step 3 — Token Exchange
 
-    Frontend->>API: POST /api/auth/callback<br/>{code, state, platform}
     API->>DynamoDB: Lookup oauth-state by state
-    DynamoDB-->>API: {orgId, userId, platform, codeVerifier}
+    DynamoDB-->>API: {orgId, userId, platform, codeVerifier?}
     API->>DynamoDB: Delete oauth-state (one-time use)
 
-    API->>Connector: handleCallback({code, state, codeVerifier})
-    Connector->>Platform: POST /oauth/token<br/>{code, client_id, client_secret, ...}
+    API->>Connector: handleCallback({code, state, codeVerifier?})
+    Connector->>Platform: POST /oauth/token<br/>{code, client credentials, redirect_uri}
     Platform-->>Connector: {access_token, refresh_token,<br/>expires_in, scope}
     Connector-->>API: OAuthTokens
 
     Note over User,Platform: Step 4 — Secure Storage
 
-    API->>Connector: testConnection(accessToken)
-    Connector->>Platform: GET /api/me (lightweight check)
-    Platform-->>Connector: {id, name, ...}
-    Connector-->>API: {healthy: true, details: {accountId, name}}
+    API->>API: Extract accountId + displayName<br/>from token response
+    API->>API: Delete existing org+platform<br/>connection if reconnecting
 
-    API->>Encrypt: encrypt(accessToken)
-    Encrypt-->>API: {ciphertext, iv, tag}
-    API->>Encrypt: encrypt(refreshToken)
-    Encrypt-->>API: {ciphertext, iv, tag}
+    API->>Encrypt: encryptToken(accessToken)
+    Encrypt-->>API: AES-256-GCM {ciphertext, iv, tag}
+    API->>Encrypt: encryptToken(refreshToken)
+    Encrypt-->>API: AES-256-GCM {ciphertext, iv, tag}
 
-    API->>DynamoDB: PutItem → platform-connections<br/>{id, orgId, platform, status: "healthy",<br/>encryptedAccessToken, encryptedRefreshToken,<br/>tokenExpiresIn, tokenCreatedAt, accountId}
+    API->>DynamoDB: PutItem → platform-connections<br/>{id, orgId, platform, status: "healthy",<br/>accessTokenEnc, refreshTokenEnc,<br/>tokenExpiresAt, scopes, accountId}
+    API->>DynamoDB: PutItem → audit-log<br/>{action: "connection.created"}
 
-    API-->>Frontend: {connection: {id, platform, status}}
-    Frontend-->>User: ✅ "Procore connected!"
+    API-->>Frontend: Redirect to /connections?status=success
+    Frontend-->>User: ✅ "Docusign connected!"
 
-    Note over User,Platform: Later — Token Refresh (every 5 min cron check)
+    Note over User,Platform: Later — Proactive Token Refresh (5 min cron)
 
     rect rgb(255, 249, 235)
-        API->>DynamoDB: Scan connections<br/>where tokenExpired
+        API->>DynamoDB: Scan connections where<br/>tokenExpiresAt within 15 min
         DynamoDB-->>API: [expiring connections]
         loop Each expiring connection
-            API->>Encrypt: decrypt(encryptedRefreshToken)
+            API->>API: Enqueue TokenRefreshJob<br/>→ SQS token-refresh queue
+            Note over API,Platform: TokenRefreshWorker picks up the job
+            API->>Encrypt: decryptToken(refreshTokenEnc)
             Encrypt-->>API: refreshToken
             API->>Connector: refreshToken(refreshToken)
             Connector->>Platform: POST /oauth/token<br/>{grant_type: refresh_token}
             Platform-->>Connector: New tokens
             Connector-->>API: OAuthTokens
-            API->>Encrypt: encrypt(newAccessToken)
-            API->>DynamoDB: Update connection tokens
+            API->>Encrypt: encryptToken(newAccessToken)
+            API->>DynamoDB: Update connection tokens<br/>(re-encrypted)
         end
     end

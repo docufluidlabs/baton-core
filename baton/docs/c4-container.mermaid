@@ -2,63 +2,50 @@
 title: "Baton — C4 Level 2: Container Diagram"
 ---
 graph TB
-    user["👤 User<br/><i>Admin / Team Member</i>"]
+    user["👤 User<br/><i>Owner / Admin / Member / Viewer</i>"]
 
     subgraph baton_system["Baton System"]
-        frontend["🌐 baton-front<br/><b>React SPA</b><br/><i>Vite + React 18 + TypeScript<br/>React Router, @xyflow/react<br/>SWR, Tailwind CSS, Clerk</i><br/>Port 3002"]
+        frontend["🌐 baton-front<br/><b>React SPA</b><br/><i>Vite + React 18 + TypeScript<br/>React Router, @xyflow/react<br/>SWR, Zustand, Tailwind CSS</i><br/>Dev port 3002 / nginx :80 in Docker"]
 
         subgraph backend_group["baton API Server"]
-            api["⚡ Express API<br/><b>REST API</b><br/><i>12 route modules<br/>+ 7 webhook routes<br/>Clerk auth + RBAC</i><br/>Port 3001"]
+            api["⚡ Express API<br/><b>REST API</b><br/><i>22 route modules<br/>+ 9 webhook ingress routes<br/>Local session auth (JWT cookie) + RBAC</i><br/>Port 3001"]
 
             workers["⚙️ SQS Workers<br/><b>Background Processors</b><br/><i>4 workers polling SQS<br/>webhook, launcher,<br/>token-refresh, notifications</i>"]
 
-            scheduler["⏰ Scheduler<br/><b>node-cron</b><br/><i>Token refresh (5m)<br/>Instance sync (1h)<br/>Cleanup (daily)</i>"]
+            scheduler["⏰ Scheduler<br/><b>node-cron</b><br/><i>Token refresh (5m)<br/>Instance sync (30s)<br/>Bulk Upload dispatch (30s)<br/>Cleanup (daily)</i>"]
         end
 
-        subgraph data_layer["AWS Data Layer"]
-            dynamo["🗄️ DynamoDB<br/><b>13 Tables</b><br/><i>connections, workflows,<br/>rules, events, audit,<br/>oauth-states (TTL)</i>"]
+        subgraph data_layer["AWS Data Layer (local emulators for eval)"]
+            dynamo["🗄️ DynamoDB<br/><b>21 Tables</b><br/><i>connections, workflows, rules,<br/>trigger-pipeline, webhook-events,<br/>batch-processors/-runs/-rows,<br/>oauth-states (TTL), bootstrap-tokens (TTL)</i>"]
 
-            sqs["📨 SQS<br/><b>4 Queues</b><br/><i>webhook-processing<br/>workflow-launcher<br/>token-refresh<br/>notification-sender</i>"]
+            sqs["📨 SQS<br/><b>6 Queues</b><br/><i>webhook-processing<br/>workflow-launcher<br/>token-refresh<br/>notification-sender<br/>identity-sync, cleanup</i>"]
         end
     end
 
     subgraph platforms["External Platforms"]
         ds["📝 Docusign Workflow Builder"]
-        pc["🏗️ Procore"]
-        xr["📊 Xero"]
-        bh["👥 BambooHR"]
-        zh["💼 Zoho CRM"]
-        ss["📋 Smartsheet"]
+        srcs["🔔 Webhook Event Sources<br/><i>Salesforce, HubSpot, Zoho CRM,<br/>Zendesk, BambooHR, Power Automate,<br/>Smartsheet, Airtable, Greenhouse,<br/>monday.com + custom POST endpoints</i>"]
     end
 
-    clerk["🔐 Clerk"]
+    notify["✉️ Resend + 💬 Slack<br/><i>Notification delivery</i>"]
 
     user -->|"HTTPS"| frontend
-    frontend -->|"REST /api/*<br/>via Vite proxy"| api
-    user -->|"Session"| clerk
-    clerk -->|"JWT verify"| api
+    frontend -->|"REST /api/*<br/>session cookie (httpOnly)<br/>nginx proxy / Vite proxy"| api
 
     api -->|"Read/Write"| dynamo
     api -->|"Enqueue"| sqs
     workers -->|"Poll &amp; process"| sqs
     workers -->|"Read/Write"| dynamo
     scheduler -->|"Enqueue refresh jobs"| sqs
-    scheduler -->|"Read connections"| dynamo
+    scheduler -->|"Sync instances,<br/>dispatch batch rows"| dynamo
 
-    api <-->|"OAuth flows"| ds
-    api <-->|"OAuth flows"| pc
-    api <-->|"OAuth PKCE"| xr
-    api <-->|"OAuth flows"| bh
-    api <-->|"OAuth flows"| zh
-    api <-->|"OAuth flows"| ss
+    api <-->|"OAuth (Auth Code)"| ds
+    api <-->|"OAuth flows<br/>(Zoho CRM, BambooHR, Smartsheet)"| srcs
 
     workers -->|"Launch workflow<br/>Workflow Builder API"| ds
+    workers -->|"Email + Slack"| notify
     ds -->|"Connect webhook"| api
-    pc -->|"Webhook"| api
-    xr -->|"Webhook"| api
-    bh -->|"Webhook"| api
-    zh -->|"Webhook"| api
-    ss -->|"Webhook"| api
+    srcs -->|"Signed webhooks<br/>(HMAC / basic auth / API key)"| api
 
     style frontend fill:#06b6d4,stroke:#0891b2,color:#fff
     style api fill:#2563eb,stroke:#1e40af,color:#fff
@@ -66,5 +53,6 @@ graph TB
     style scheduler fill:#8b5cf6,stroke:#7c3aed,color:#fff
     style dynamo fill:#ff9900,stroke:#cc7a00,color:#fff
     style sqs fill:#ff9900,stroke:#cc7a00,color:#fff
-    style clerk fill:#6c47ff,stroke:#5535d4,color:#fff
     style ds fill:#1a1a2e,stroke:#6366f1,color:#fff
+    style srcs fill:#475569,stroke:#334155,color:#fff
+    style notify fill:#0f766e,stroke:#115e59,color:#fff

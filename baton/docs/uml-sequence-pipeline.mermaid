@@ -2,9 +2,9 @@
 title: "Baton — UML Sequence: Webhook → Workflow Pipeline"
 ---
 sequenceDiagram
-    participant Platform as 🏗️ External Platform<br/>(Procore/Xero/...)
-    participant Webhook as ⚡ Webhook Route<br/>/api/webhooks/{platform}
-    participant Connector as 🔌 PlatformConnector<br/>verifySignature()
+    participant Platform as ☁️ Event Source<br/>(Salesforce/HubSpot/...)
+    participant Webhook as ⚡ Webhook Route<br/>/api/webhooks/{platform}<br/>/rule/:key · /app/:key
+    participant Connector as 🔌 Verifier<br/>connector or app-catalog<br/>(HMAC / basic auth)
     participant DynamoDB as 🗄️ DynamoDB
     participant SQS_WH as 📨 SQS<br/>webhook-processing
     participant Worker as ⚙️ WebhookWorker
@@ -12,54 +12,59 @@ sequenceDiagram
     participant SQS_WF as 📨 SQS<br/>workflow-launcher
     participant Launcher as 🚀 LauncherWorker
     participant Maestro as 📝 Docusign Workflow Builder
-    participant SQS_N as 📨 SQS<br/>notification-sender
-    participant Notifier as 📧 NotifSender
+    participant Notifier as 🔔 NotificationService<br/>(in-app, Resend email, Slack)
 
-    Note over Platform,Notifier: Event-Driven Pipeline (13 steps)
+    Note over Platform,Notifier: Event-Driven Pipeline
 
-    Platform->>+Webhook: POST /api/webhooks/procore<br/>{event_type, resource_id, ...}
-    Webhook->>+Connector: verifyWebhookSignature(body, headers, secret)
+    Platform->>+Webhook: POST /api/webhooks/salesforce<br/>{event_type, record_id, ...} (raw body)
+    Webhook->>+Connector: verifyWebhookSignature(rawBody, headers, secret)
     Connector-->>-Webhook: {valid: true}
 
-    Webhook->>DynamoDB: Store raw event<br/>→ webhook-events table
-    Webhook->>SQS_WH: Enqueue {platform, eventId, payload}
-    Webhook-->>-Platform: 200 OK
+    Webhook->>DynamoDB: Store raw event → webhook-events<br/>(duplicate detection / idempotency)
+    Webhook-->>-Platform: 200 OK (immediately)
+    Webhook->>DynamoDB: Inbound entry → trigger-pipeline<br/>status: "completed"
+    Webhook->>SQS_WH: Enqueue {eventId, platform,<br/>orgId, connectionId}
 
     Note over SQS_WH,Worker: Async Processing
 
-    SQS_WH->>+Worker: Poll message
+    SQS_WH->>+Worker: Poll message (long-poll 20s)
+    Worker->>DynamoDB: Load event, skip if already processed
     Worker->>+Connector: extractEventInfo(payload)
-    Connector-->>-Worker: {eventType: "vendor.created",<br/>summary, recordId, metadata}
+    Connector-->>-Worker: {eventType: "lead.created",<br/>summary, recordId, metadata}
 
-    Worker->>DynamoDB: Create pipeline entry<br/>→ trigger-pipeline table<br/>status: "processing"
-
-    Worker->>+RuleEngine: findMatchingRules(orgId, platform, eventType)
-    RuleEngine->>DynamoDB: Query automation-rules<br/>GSI: orgId + status=active
+    Worker->>+RuleEngine: processEvent(orgId, platform, eventInfo)
+    RuleEngine->>DynamoDB: Query automation-rules<br/>GSI: orgId, filter platform + active/paused
     DynamoDB-->>RuleEngine: Matching rules[]
     RuleEngine->>RuleEngine: evaluateConditions(rule, eventData)
-    RuleEngine-->>-Worker: matchedRules[]
 
-    loop For each matched rule
-        Worker->>Worker: mapFields(rule.actionConfig, eventData)
-        Worker->>SQS_WF: Enqueue {ruleId, workflowId,<br/>triggerInputs, pipelineId}
-        Worker->>DynamoDB: Update pipeline<br/>status: "matched"
+    alt Rule is paused
+        RuleEngine->>DynamoDB: Store → queued-webhooks<br/>(released when rule resumes)
+    else Rule is active
+        RuleEngine->>RuleEngine: mapFieldsToTriggerInputs(rule.actionConfig, eventData)
+        RuleEngine->>DynamoDB: rule_match entry → trigger-pipeline<br/>status: "pending"
+        RuleEngine->>SQS_WF: Enqueue {ruleId, workflowId,<br/>inputData, pipelineEntryId}
+        RuleEngine->>DynamoDB: Increment rule.timesTriggered
     end
+    RuleEngine-->>-Worker: {matchedRules, launchedWorkflows}
+    Worker->>DynamoDB: Mark webhook-event processed
     Worker-->>-SQS_WH: Delete message (ack)
 
     SQS_WF->>+Launcher: Poll message
-    Launcher->>DynamoDB: Get workflow details<br/>+ connection tokens
-    Launcher->>Launcher: Decrypt access token<br/>(AES-256-GCM)
+    Launcher->>DynamoDB: Get workflow + org's Docusign connection
+    Launcher->>Launcher: Usage/relay gate check<br/>(denied → pipeline status: "skipped")
+    Launcher->>Launcher: Decrypt access token<br/>(AES-256-GCM, refresh if expired)
 
-    Launcher->>+Maestro: POST /maestro/v1/workflows/{id}/instances<br/>{instanceName, triggerInputs}
-    Maestro-->>-Launcher: {instanceId, status: "running"}
+    Launcher->>+Maestro: POST /v1/accounts/{acct}/workflows/{id}/actions/trigger<br/>{instanceName, triggerInputs}
+    Maestro-->>-Launcher: {instanceId, instanceUrl}
 
-    Launcher->>DynamoDB: Store instance<br/>→ workflow-instances table
-    Launcher->>DynamoDB: Update pipeline<br/>status: "completed"
-    Launcher->>DynamoDB: Increment rule.timesTriggered
-    Launcher->>SQS_N: Enqueue notification<br/>{type: "workflow_launched", ...}
+    Launcher->>DynamoDB: Store instance → workflow-instances<br/>status: "running"
+    Launcher->>DynamoDB: Update pipeline entry<br/>status: "completed"
     Launcher-->>-SQS_WF: Delete message (ack)
 
-    SQS_N->>+Notifier: Poll message
-    Notifier->>DynamoDB: Store in-app notification
-    Notifier->>Notifier: Send email (Resend)<br/>and/or Slack message
-    Notifier-->>-SQS_N: Delete message (ack)
+    Note over Launcher,Notifier: On launch failure — auto-retry with backoff<br/>2s/4s/8s/5m/15m/30m (max 6, pipeline status "retrying").<br/>Exhausted → status "failed" + failure notification
+
+    Note over DynamoDB,Notifier: Instance completion — scheduler syncs running<br/>instances from Workflow Builder every 30s
+
+    Maestro-->>DynamoDB: (via 30s sync) instance status<br/>completed / failed
+    DynamoDB-->>Notifier: workflow_completed / workflow_failed
+    Notifier->>Notifier: Store in-app notification,<br/>send Resend email and/or Slack message

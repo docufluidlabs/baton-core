@@ -3,41 +3,60 @@ title: "Baton — C4 Level 1: System Context"
 ---
 graph TB
     subgraph users["👤 Users"]
-        admin["Admin / Org Owner<br/><i>Manages connections,<br/>creates automation rules</i>"]
-        member["Team Member<br/><i>Views dashboards,<br/>monitors events</i>"]
+        admin["Owner / Admin<br/><i>Manages connections,<br/>creates automations</i>"]
+        member["Member / Viewer<br/><i>Views dashboards,<br/>monitors events</i>"]
     end
 
     baton["🔷 BATON<br/><b>Workflow Orchestration Platform</b><br/><i>Connects business platforms<br/>to Docusign Workflow Builder workflows<br/>via event-driven automation</i>"]
 
-    subgraph external["External Business Platforms"]
-        docusign["📝 DocuSign<br/><b>Workflow Builder + eSignature</b><br/><i>Workflow engine &amp; signing</i>"]
-        procore["🏗️ Procore<br/><b>Construction Mgmt</b>"]
-        xero["📊 Xero<br/><b>Accounting</b>"]
-        bamboo["👥 BambooHR<br/><b>HR Platform</b>"]
+    docusign["📝 Docusign<br/><b>Workflow Builder + eSignature</b><br/><i>Workflow engine &amp; signing</i>"]
+
+    subgraph external["Event Sources (inbound webhooks)"]
+        sf["☁️ Salesforce<br/><b>CRM</b><br/><i>+ managed package</i>"]
+        hubspot["🔶 HubSpot<br/><b>CRM &amp; Marketing</b>"]
         zoho["💼 Zoho CRM<br/><b>Sales CRM</b>"]
+        zendesk["🎫 Zendesk<br/><b>Support</b>"]
+        bamboo["👥 BambooHR<br/><b>HR Platform</b>"]
         smartsheet["📋 Smartsheet<br/><b>Work Mgmt</b>"]
+        pautomate["🔁 Power Automate<br/><b>Microsoft Flows</b>"]
+        airtable["🗃️ Airtable<br/><b>Databases</b>"]
+        greenhouse["🌱 Greenhouse<br/><b>Recruiting</b>"]
+        monday["📅 monday.com<br/><b>Work OS</b>"]
+        custom["🔗 Custom Webhooks<br/><b>Any system</b><br/><i>authenticated POST</i>"]
     end
 
-    clerk["🔐 Clerk<br/><b>Auth Provider</b><br/><i>SSO &amp; orgs</i>"]
-    aws["☁️ AWS<br/><b>DynamoDB + SQS</b>"]
+    notify["✉️ Notification Delivery<br/><b>Resend (email) + Slack (bot)</b>"]
+    aws["☁️ AWS<br/><b>DynamoDB + SQS</b><br/><i>(local emulators for eval:<br/>DynamoDB Local + ElasticMQ)</i>"]
 
-    admin -->|"Configure &amp; manage"| baton
+    admin -->|"Configure &amp; manage<br/>(email/password login)"| baton
     member -->|"View &amp; monitor"| baton
-    baton <-->|"OAuth + Webhooks"| procore
-    baton <-->|"OAuth PKCE + Webhooks"| xero
-    baton <-->|"OAuth + Webhooks"| bamboo
-    baton <-->|"OAuth + Webhooks"| zoho
-    baton <-->|"OAuth + Webhooks"| smartsheet
-    baton <-->|"JWT Grant + Workflow Builder API + Connect"| docusign
-    baton <-->|"Session auth + Org webhooks"| clerk
+    sf -->|"HMAC-signed webhooks<br/>+ bootstrap registration"| baton
+    hubspot -->|"Signed webhooks"| baton
+    zoho <-->|"OAuth + Basic-auth webhooks"| baton
+    zendesk -->|"Signed webhooks"| baton
+    bamboo <-->|"OAuth + Signed webhooks"| baton
+    smartsheet <-->|"OAuth + Signed webhooks"| baton
+    pautomate -->|"Authenticated webhooks"| baton
+    airtable -->|"Signed webhooks"| baton
+    greenhouse -->|"Signed webhooks"| baton
+    monday -->|"Signed webhooks"| baton
+    custom -->|"API-key POST"| baton
+    baton <-->|"OAuth (Auth Code)<br/>+ Workflow Builder API<br/>+ Connect webhooks"| docusign
+    baton -->|"Email + Slack notifications"| notify
     baton <-->|"Storage + Queues"| aws
 
     style baton fill:#2563eb,stroke:#1e40af,color:#fff,stroke-width:3px
     style docusign fill:#1a1a2e,stroke:#6366f1,color:#fff
-    style procore fill:#f97316,stroke:#ea580c,color:#fff
-    style xero fill:#13b5ea,stroke:#0e8bbf,color:#fff
-    style bamboo fill:#73c41d,stroke:#5a9e17,color:#fff
+    style sf fill:#00a1e0,stroke:#0080b3,color:#fff
+    style hubspot fill:#ff7a59,stroke:#e05c3b,color:#fff
     style zoho fill:#e42527,stroke:#b91c1e,color:#fff
+    style zendesk fill:#03363d,stroke:#17494f,color:#fff
+    style bamboo fill:#73c41d,stroke:#5a9e17,color:#fff
     style smartsheet fill:#0073ea,stroke:#005bb5,color:#fff
-    style clerk fill:#6c47ff,stroke:#5535d4,color:#fff
+    style pautomate fill:#0066ff,stroke:#0052cc,color:#fff
+    style airtable fill:#18bfff,stroke:#0e99cc,color:#fff
+    style greenhouse fill:#24a47f,stroke:#1b8062,color:#fff
+    style monday fill:#ff3d57,stroke:#d92943,color:#fff
+    style custom fill:#475569,stroke:#334155,color:#fff
+    style notify fill:#0f766e,stroke:#115e59,color:#fff
     style aws fill:#ff9900,stroke:#cc7a00,color:#fff

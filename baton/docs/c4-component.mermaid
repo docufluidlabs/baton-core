@@ -5,54 +5,66 @@ graph TB
     frontend["🌐 baton-front"]
 
     subgraph api_layer["API Layer (Express Routes)"]
-        auth_r["🔑 /api/auth<br/><i>OAuth initiate &amp; callback</i>"]
-        conn_r["🔌 /api/connections<br/><i>CRUD, test, refresh, accounts</i>"]
-        wf_r["📋 /api/workflows<br/><i>Sync, launch, instances</i>"]
-        rule_r["⚡ /api/rules<br/><i>CRUD, pause/resume, history</i>"]
+        auth_r["🔑 /api/auth<br/><i>Setup, login, logout,<br/>invites, me</i>"]
+        conn_r["🔌 /api/connections<br/><i>OAuth authorize &amp; callback,<br/>test, refresh, accounts</i>"]
+        wf_r["📋 /api/workflows + /api/instances<br/><i>Sync, launch, retry, cancel</i>"]
+        rule_r["⚡ /api/automations<br/><i>CRUD, pause/resume,<br/>per-automation webhook keys</i>"]
         event_r["📊 /api/events<br/><i>Pipeline events &amp; stats</i>"]
         dash_r["📈 /api/dashboard<br/><i>Aggregated overview</i>"]
         notif_r["🔔 /api/notifications<br/><i>User notifications</i>"]
-        settings_r["⚙️ /api/settings<br/><i>Org &amp; user prefs</i>"]
+        settings_r["⚙️ /api/settings<br/><i>Org, users &amp; invites</i>"]
+        apps_r["🧩 /api/platforms + /api/webhook-endpoints<br/><i>Installed apps, custom endpoints</i>"]
+        batch_r["📤 /api/batch-processors<br/><i>Bulk Upload runs &amp; rows</i>"]
+        sf_r["☁️ /api/salesforce/*<br/><i>Bootstrap tokens, secret rotation</i>"]
+        misc_r["🧭 /api/slack, /api/flow-layout,<br/>/api/my, /api/errors, /api/public/*"]
     end
 
-    subgraph webhook_layer["Webhook Ingress (No Auth)"]
-        wh_ds["DocuSign Connect"]
-        wh_pc["Procore"]
-        wh_xr["Xero"]
-        wh_bh["BambooHR"]
+    subgraph webhook_layer["Webhook Ingress (signature-verified, no session auth)"]
+        wh_ds["Docusign Connect"]
+        wh_sf["Salesforce<br/><i>+ managed package registration</i>"]
+        wh_hs["HubSpot"]
         wh_zh["Zoho CRM"]
+        wh_bh["BambooHR"]
         wh_ss["Smartsheet"]
-        wh_clerk["Clerk"]
+        wh_app["Generic app<br/><i>/api/webhooks/app/:webhookKey</i>"]
+        wh_rule["Per-automation<br/><i>/api/webhooks/rule/:webhookKey</i>"]
+        wh_post["Custom endpoints<br/><i>/api/postwebhook/:orgId/:endpointId</i>"]
     end
 
     subgraph middleware_layer["Middleware"]
-        mw_auth["🛡️ requireAuth<br/><i>Clerk session verify<br/>+ dev bypass</i>"]
-        mw_rbac["👮 RBAC<br/><i>requireViewer<br/>requireMember<br/>requireAdmin</i>"]
-        mw_rate["🚦 Rate Limiter<br/><i>express-rate-limit</i>"]
+        mw_auth["🛡️ requireAuth<br/><i>Local JWT session cookie verify<br/>+ opt-in dev bypass</i>"]
+        mw_rbac["👮 RBAC<br/><i>requireViewer<br/>requireMember<br/>requireAdmin<br/>requireSuperUser</i>"]
+        mw_rate["🚦 Rate Limiters<br/><i>express-rate-limit<br/>+ per-org limiter</i>"]
         mw_err["❌ Error Handler<br/><i>Zod, NotFound,<br/>Auth, generic</i>"]
     end
 
     subgraph service_layer["Services"]
+        localauth_svc["🔑 LocalAuthService<br/><i>bcrypt (cost 12), HS256 JWT<br/>sessions, invite tokens</i>"]
         conn_svc["🔌 ConnectionService<br/><i>Token storage (AES-256-GCM)<br/>Status management</i>"]
-        wf_svc["📋 WorkflowService<br/><i>Workflow Builder sync &amp; launch</i>"]
+        maestro_svc["📋 MaestroService<br/><i>Workflow Builder sync &amp; launch</i>"]
         rule_eng["⚡ RuleEngine<br/><i>Rule CRUD, matching,<br/>condition evaluation</i>"]
-        encrypt["🔒 EncryptionService<br/><i>AES-256-GCM encrypt/decrypt<br/>HMAC verification</i>"]
+        encrypt["🔒 EncryptionService<br/><i>AES-256-GCM<br/>encrypt/decrypt</i>"]
         notif_svc["🔔 NotificationService<br/><i>Resend email, Slack,<br/>in-app notifications</i>"]
+        batch_svc["📤 BatchService<br/><i>Bulk Upload parse, validate,<br/>throttled dispatch</i>"]
     end
 
     subgraph connector_layer["Platform Connectors"]
-        c_iface["«interface»<br/>PlatformConnector<br/><i>authorize, callback,<br/>refreshToken, verifyWebhook,<br/>extractEvent, testConnection,<br/>getSupportedEventTypes</i>"]
-        c_pc["ProcoreConnector"]
-        c_xr["XeroConnector"]
-        c_bh["BambooHRConnector"]
+        c_iface["«interface»<br/>PlatformConnector<br/><i>authorize, handleCallback,<br/>refreshToken, verifyWebhookSignature,<br/>extractEventInfo, testConnection,<br/>getSupportedEventTypes</i>"]
+        c_sf["SalesforceConnector"]
+        c_hs["HubSpotConnector"]
         c_zh["ZohoCRMConnector"]
+        c_zd["ZendeskConnector"]
+        c_bh["BambooHRConnector"]
         c_ss["SmartsheetConnector"]
+        c_pa["PowerAutomateConnector"]
+        c_at["AirtableConnector"]
         c_ds["DocuSignConnector"]
+        c_catalog["📇 App Catalog<br/><i>HMAC config for catalog-only apps<br/>(Greenhouse, monday.com, ...)</i>"]
     end
 
     subgraph worker_layer["SQS Workers"]
-        w_wh["🔄 WebhookWorker<br/><i>Parse → match rules<br/>→ enqueue launches</i>"]
-        w_launch["🚀 LauncherWorker<br/><i>Call Workflow Builder API<br/>→ track instance</i>"]
+        w_wh["🔄 WebhookWorker<br/><i>Extract → match rules<br/>→ enqueue launches</i>"]
+        w_launch["🚀 LauncherWorker<br/><i>Call Workflow Builder API<br/>→ track instance → auto-retry</i>"]
         w_token["🔑 TokenRefreshWorker<br/><i>Decrypt → refresh<br/>→ re-encrypt</i>"]
         w_notif["📧 NotifSenderWorker<br/><i>Email, Slack,<br/>in-app delivery</i>"]
     end
@@ -61,25 +73,26 @@ graph TB
     sqs["📨 SQS"]
 
     frontend --> mw_rate --> mw_auth --> mw_rbac
-    mw_rbac --> auth_r & conn_r & wf_r & rule_r & event_r & dash_r & notif_r & settings_r
+    mw_rbac --> auth_r & conn_r & wf_r & rule_r & event_r & dash_r & notif_r & settings_r & apps_r & batch_r & sf_r & misc_r
 
-    auth_r --> conn_svc
+    auth_r --> localauth_svc
     conn_r --> conn_svc
-    wf_r --> wf_svc
+    wf_r --> maestro_svc
     rule_r --> rule_eng
+    batch_r --> batch_svc
 
     conn_svc --> encrypt
     conn_svc --> connector_layer
-    wf_svc --> c_ds
+    maestro_svc --> c_ds
 
-    c_iface -.->|implements| c_pc & c_xr & c_bh & c_zh & c_ss & c_ds
+    c_iface -.->|implements| c_sf & c_hs & c_zh & c_zd & c_bh & c_ss & c_pa & c_at & c_ds
 
-    webhook_layer -->|"Signature verify<br/>via connector"| connector_layer
-    webhook_layer -->|"Enqueue raw event"| sqs
+    webhook_layer -->|"Signature verify via<br/>connector or app catalog"| connector_layer
+    webhook_layer -->|"Store raw event<br/>+ enqueue"| sqs
 
     w_wh --> rule_eng
     w_wh --> connector_layer
-    w_launch --> wf_svc
+    w_launch --> maestro_svc
     w_token --> conn_svc
     w_notif --> notif_svc
 
@@ -89,6 +102,7 @@ graph TB
 
     style frontend fill:#06b6d4,stroke:#0891b2,color:#fff
     style c_iface fill:#fef3c7,stroke:#f59e0b,color:#92400e
+    style c_catalog fill:#fef3c7,stroke:#f59e0b,color:#92400e
     style dynamo fill:#ff9900,stroke:#cc7a00,color:#fff
     style sqs fill:#ff9900,stroke:#cc7a00,color:#fff
     style encrypt fill:#dc2626,stroke:#b91c1c,color:#fff

@@ -6,27 +6,30 @@ graph TB
         spa["React SPA<br/><b>baton-front</b><br/><i>Vite build → static assets</i>"]
     end
 
-    subgraph cdn["🌍 CDN / Hosting (Vercel)"]
-        static["Static Files<br/><i>index.html, JS, CSS</i>"]
-    end
+    proxy["🔐 Reverse Proxy / LB (operator-provided)<br/><i>TLS termination — session cookies<br/>are Secure-only when FRONTEND_URL is https</i>"]
 
-    subgraph tunnel["🔗 ngrok Tunnel (dev)"]
-        ngrok["ngrok<br/><i>your-domain.ngrok-free.app</i><br/>→ localhost:3001"]
-    end
+    subgraph docker["🐳 Docker Compose Host"]
+        subgraph front_c["baton-front container"]
+            nginx["nginx :80<br/><i>Serves SPA static files<br/>Proxies /api → baton-api:3001</i>"]
+        end
 
-    subgraph server["🖧 Application Server"]
-        subgraph node_process["Node.js Process"]
+        subgraph api_c["baton-api container (Node.js)"]
             express["Express Server<br/>Port 3001<br/><i>API routes + webhook handlers</i>"]
             worker1["WebhookWorker<br/><i>SQS long-poll</i>"]
             worker2["LauncherWorker<br/><i>SQS long-poll</i>"]
             worker3["TokenRefreshWorker<br/><i>SQS long-poll</i>"]
             worker4["NotifSenderWorker<br/><i>SQS long-poll</i>"]
-            cron["node-cron Scheduler<br/><i>3 scheduled jobs</i>"]
+            cron["node-cron Scheduler<br/><i>4 scheduled jobs: token refresh (5m),<br/>instance sync (30s), Bulk Upload<br/>dispatch (30s), cleanup (daily)</i>"]
+        end
+
+        subgraph emulators["Local AWS emulators (quickstart docker-compose.yml only)"]
+            ddblocal["DynamoDB Local :8000<br/><i>persistent volume</i>"]
+            elasticmq["ElasticMQ :9324<br/><i>SQS-compatible</i>"]
         end
     end
 
-    subgraph aws["☁️ AWS Region (us-east-1)"]
-        subgraph dynamodb_tables["DynamoDB"]
+    subgraph aws["☁️ AWS (production — docker-compose.prod.yml + CloudFormation)"]
+        subgraph dynamodb_tables["DynamoDB (21 tables, prefix baton-)"]
             t1["organizations"]
             t2["users"]
             t3["platform-connections"]
@@ -40,48 +43,61 @@ graph TB
             t11["notification-preferences"]
             t12["notifications"]
             t13["oauth-states (TTL)"]
+            t14["org-apps"]
+            t15["webhook-endpoints"]
+            t16["slack-configs"]
+            t17["queued-webhooks"]
+            t18["bootstrap-tokens (TTL)"]
+            t19["batch-processors"]
+            t20["batch-runs"]
+            t21["batch-rows"]
         end
 
-        subgraph sqs_queues["SQS"]
-            q1["baton-webhook-processing"]
-            q2["baton-workflow-launcher"]
-            q3["baton-token-refresh"]
-            q4["baton-notification-sender"]
+        subgraph sqs_queues["SQS (6 queues, prefix baton-)"]
+            q1["webhook-processing"]
+            q2["workflow-launcher"]
+            q3["token-refresh"]
+            q4["notification-sender"]
+            q5["identity-sync"]
+            q6["cleanup"]
         end
     end
 
     subgraph external_saas["☁️ External SaaS"]
-        clerk_svc["Clerk<br/><i>Auth &amp; sessions</i>"]
-        ds_api["DocuSign API<br/><i>Workflow Builder + eSign</i>"]
+        ds_api["Docusign API<br/><i>Workflow Builder + eSign</i>"]
         resend["Resend<br/><i>Transactional email</i>"]
         slack_api["Slack API<br/><i>Bot notifications</i>"]
-        platforms_ext["Business Platforms<br/><i>Procore, Xero, BambooHR,<br/>Zoho CRM, Smartsheet</i>"]
+        platforms_ext["Webhook Sources<br/><i>Salesforce, HubSpot, Zoho CRM,<br/>Zendesk, BambooHR, Power Automate,<br/>Smartsheet, Airtable, Greenhouse,<br/>monday.com, custom systems</i>"]
     end
 
-    spa -->|"HTTPS"| static
-    spa -->|"/api/* proxy"| express
-    platforms_ext -->|"Webhook POST"| ngrok
-    ngrok --> express
+    spa -->|"HTTPS"| proxy
+    platforms_ext -->|"Webhook POST (HTTPS)"| proxy
+    proxy -->|"HTTP :80"| nginx
+    nginx -->|"/api proxy"| express
 
-    express <--> dynamodb_tables
-    express --> sqs_queues
+    express <-->|"prod"| dynamodb_tables
+    express -->|"prod"| sqs_queues
+    express <-->|"eval"| ddblocal
+    express <-->|"eval"| elasticmq
     worker1 <--> q1
     worker2 <--> q2
     worker3 <--> q3
     worker4 <--> q4
     cron --> q3
 
-    express <--> clerk_svc
-    express <--> platforms_ext
+    express <--> ds_api
     worker2 --> ds_api
     worker4 --> resend
     worker4 --> slack_api
 
     style spa fill:#06b6d4,stroke:#0891b2,color:#fff
+    style nginx fill:#059669,stroke:#047857,color:#fff
     style express fill:#2563eb,stroke:#1e40af,color:#fff
     style worker1 fill:#7c3aed,stroke:#6d28d9,color:#fff
     style worker2 fill:#7c3aed,stroke:#6d28d9,color:#fff
     style worker3 fill:#7c3aed,stroke:#6d28d9,color:#fff
     style worker4 fill:#7c3aed,stroke:#6d28d9,color:#fff
     style cron fill:#8b5cf6,stroke:#7c3aed,color:#fff
-    style ngrok fill:#1e293b,stroke:#475569,color:#fff
+    style proxy fill:#1e293b,stroke:#475569,color:#fff
+    style ddblocal fill:#b45309,stroke:#92400e,color:#fff
+    style elasticmq fill:#b45309,stroke:#92400e,color:#fff
