@@ -4,10 +4,21 @@ All notable changes to Baton are documented here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-08-10
+
+### Security
+- Cleared every runtime dependency advisory - `npm audit --omit=dev` now reports **0 vulnerabilities** in both packages:
+  - Bumped axios, fast-xml-parser, form-data, http-proxy-middleware, path-to-regexp, and picomatch past their advisories
+  - `xlsx` (Bulk Upload file parsing - attacker-suppliable input) moved from the stale npm registry build (0.18.5, prototype-pollution + ReDoS advisories, no npm fix published) to the patched official SheetJS distribution (0.20.3 from cdn.sheetjs.com)
+  - `uuid` → 11.x and `node-cron` → 4.x (drops a vulnerable nested uuid)
+  - `react-router-dom` → 7.18.2, past the open-redirect advisories affecting all of v6
+- Remaining findings are development-tooling only (the vitest 2→4 major chain), invisible to production installs and tracked via Dependabot
+
 ### Changed
 - Brand and legal polish: the licensor is now named correctly as Fluidlabs OÜ (registry code 16534086, Estonia) in LICENSE.md and the in-app legal footer; consistent `Fluidlabs` casing everywhere else
 - The docs-site header and the README now use the on-dark logo variant on dark surfaces, and the app ships a proper favicon set (`npm run favicons` regenerates the rasters from the vector tile)
 - Documentation media refreshed: animated Flow Builder and Bulk Upload captures in the in-app docs
+- The README release badge now reads the latest GitHub Release dynamically instead of hardcoding a version
 
 ## [1.0.0] - 2026-08-09
 

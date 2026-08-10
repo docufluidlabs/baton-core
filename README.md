@@ -14,7 +14,7 @@ Listen to the platforms you already use, verify every event, and launch the matc
   <a href="https://github.com/docufluidlabs/baton-core/actions/workflows/ci.yml"><img src="https://github.com/docufluidlabs/baton-core/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://github.com/docufluidlabs/baton-core/actions/workflows/codeql.yml"><img src="https://github.com/docufluidlabs/baton-core/actions/workflows/codeql.yml/badge.svg" alt="CodeQL"></a>
   <a href="LICENSE.md"><img src="https://img.shields.io/badge/license-Sustainable%20Use%20·%20fair--code-2f6f4f" alt="License: Sustainable Use (fair-code)"></a>
-  <a href="https://github.com/docufluidlabs/baton-core/releases"><img src="https://img.shields.io/badge/release-v1.0.0-355f9e" alt="Latest release"></a>
+  <a href="https://github.com/docufluidlabs/baton-core/releases"><img src="https://img.shields.io/github/v/release/docufluidlabs/baton-core?color=355f9e" alt="Latest release"></a>
 </p>
 
 <p align="center">

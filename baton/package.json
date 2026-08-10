@@ -1,6 +1,6 @@
 {
   "name": "baton",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Baton - Workflow orchestration platform backend (Docusign Workflow Builder + Business Platforms)",
   "main": "dist/server.js",
@@ -38,13 +38,13 @@
     "http-proxy-middleware": "^3.0.5",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
-    "node-cron": "^3.0.3",
+    "node-cron": "^4.6.0",
     "pino": "^9.5.0",
     "pino-pretty": "^11.3.0",
     "resend": "^4.0.0",
     "swagger-ui-express": "^5.0.1",
-    "uuid": "^10.0.0",
-    "xlsx": "^0.18.5",
+    "uuid": "^11.1.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^3.23.0"
   },
   "devDependencies": {
