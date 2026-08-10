@@ -12,7 +12,7 @@ This guide takes Baton from the local-emulator quickstart to a production deploy
 - A Docker host (EC2, ECS, or on-prem) with Docker Compose
 - A public domain with TLS - terminated by your reverse proxy or load balancer
 - A Docusign account with **Workflow Builder** enabled (production or demo)
-- Pick your AWS region once and use it everywhere - e.g. `ca-central-1` keeps all data in Canada
+- Pick your AWS region once and use it everywhere - e.g. `eu-central-1` keeps all data in the EU, `ca-central-1` in Canada
 
 ## 1. Create the AWS infrastructure (CloudFormation)
 
@@ -77,8 +77,6 @@ First-run owner account, two options:
 - **UI:** open `https://baton.yourcompany.com` - the first visit walks through the `/setup` screen (it locks itself once completed).
 - **Headless:** set `BATON_OWNER_EMAIL`, `BATON_OWNER_PASSWORD` (plus optional `BATON_ORG_NAME`, `BATON_OWNER_NAME`) in `baton/.env` **before** the first `up -d` - the server seeds the organization and owner on boot, idempotently. Remove the password from the file afterwards if your policy requires it; the account persists.
 
-> While the repository is private, `docker compose pull` needs a login first: `docker login ghcr.io -u <github-user>` with a token that has `read:packages`.
-
 ## 4. TLS / reverse proxy
 
 Terminate TLS at your proxy or load balancer and forward to the frontend container (port 80). The frontend's nginx serves the SPA and proxies `/api` to the API container internally. Minimal host-nginx example:
@@ -128,4 +126,4 @@ Because `FRONTEND_URL` is `https://…`, session cookies are automatically `Secu
 
 ## Data residency
 
-Everything stateful lives in the AWS region you chose (`ca-central-1` example above keeps all customer data in Canada): DynamoDB, SQS, logs if you ship to CloudWatch in-region. Outbound traffic goes only to the platforms you explicitly connect (Docusign, Salesforce, …). There is no telemetry, no analytics, and no phone-home in the self-hosted build - see [security-review.md](security-review.md) for the full outbound-connection inventory.
+Everything stateful lives in the AWS region you chose (for example `eu-central-1` keeps all customer data in the EU, `ca-central-1` in Canada): DynamoDB, SQS, logs if you ship to CloudWatch in-region. Outbound traffic goes only to the platforms you explicitly connect (Docusign, Salesforce, …). There is no telemetry, no analytics, and no phone-home in the self-hosted build - see [security-review.md](security-review.md) for the full outbound-connection inventory.

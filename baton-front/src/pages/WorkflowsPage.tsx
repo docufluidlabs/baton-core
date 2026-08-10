@@ -102,8 +102,8 @@ function WorkflowsTab() {
   const apiNotReady = useMemo(() => filteredWorkflows.filter((wf) => !hasApiParams(wf)).sort(byDate), [filteredWorkflows]);
 
   async function handleSync() {
-    const hasDocuSign = connData?.connections?.some((c) => c.platform === 'docusign');
-    if (!hasDocuSign) {
+    const hasDocusign = connData?.connections?.some((c) => c.platform === 'docusign');
+    if (!hasDocusign) {
       await connectPlatform('docusign');
       return;
     }

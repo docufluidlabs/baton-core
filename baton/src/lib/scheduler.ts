@@ -206,19 +206,19 @@ async function syncRunningInstanceStatuses(): Promise<void> {
         continue;
       }
 
-      // Resolve a valid DocuSign connection — fall back to org-level lookup if stored ID is stale
+      // Resolve a valid Docusign connection — fall back to org-level lookup if stored ID is stale
       let connectionId = workflow.connectionId;
       if (connectionId) {
         const conn = await connectionService.getConnection(connectionId);
         if (!conn) {
-          logDebug('Workflow connectionId not found — falling back to org DocuSign connection', { workflowId, connectionId });
+          logDebug('Workflow connectionId not found — falling back to org Docusign connection', { workflowId, connectionId });
           connectionId = undefined;
         }
       }
       if (!connectionId) {
         const conn = await connectionService.getConnectionByOrgAndPlatform(workflow.orgId, 'docusign');
         if (!conn) {
-          logDebug('No DocuSign connection for org — skipping workflow sync', { workflowId, orgId: workflow.orgId });
+          logDebug('No Docusign connection for org — skipping workflow sync', { workflowId, orgId: workflow.orgId });
           continue;
         }
         connectionId = conn.id;

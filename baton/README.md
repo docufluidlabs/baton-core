@@ -20,7 +20,7 @@ Express + TypeScript API for Baton: receives webhooks from business platforms, v
                                                ▼                                ▼
                                       ┌──────────────────┐           ┌──────────────────┐
                                       │  DynamoDB        │           │  Docusign        │
-                                      │  18 tables       │           │  Workflow Builder│
+                                      │  21 tables       │           │  Workflow Builder│
                                       └──────────────────┘           └──────────────────┘
 ```
 
@@ -51,7 +51,7 @@ Express + TypeScript API for Baton: receives webhooks from business platforms, v
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run setup` | Create DynamoDB tables + SQS queues (`db:create-tables` + `sqs:create-queues`) |
 | `npm run seed` | Headless owner setup - creates the org + owner from `BATON_OWNER_EMAIL` / `BATON_OWNER_PASSWORD` (optional `BATON_OWNER_NAME`, `BATON_ORG_NAME`); idempotent |
-| `npm run db:create-tables` | Create all 18 DynamoDB tables |
+| `npm run db:create-tables` | Create all 21 DynamoDB tables |
 | `npm run db:delete-tables` | Delete all DynamoDB tables |
 | `npm run sqs:create-queues` | Create all 6 SQS queues |
 
@@ -78,7 +78,7 @@ X-Dev-Role: admin
 
 ## Infrastructure
 
-### DynamoDB - 18 tables (prefix: `baton-`)
+### DynamoDB - 21 tables (prefix: `baton-`)
 
 Defined in [src/db/table-definitions.ts](src/db/table-definitions.ts).
 
@@ -102,6 +102,9 @@ Defined in [src/db/table-definitions.ts](src/db/table-definitions.ts).
 | 16 | `slack-configs` | Per-org Slack installation config |
 | 17 | `queued-webhooks` | Webhooks held while an automation is paused |
 | 18 | `webhook-endpoints` | Custom webhook endpoints |
+| 19 | `batch-processors` | Bulk Upload processor definitions (file → workflow mapping) |
+| 20 | `batch-runs` | One record per uploaded file run |
+| 21 | `batch-rows` | Per-row state of a Bulk Upload run |
 
 ### SQS - 6 queues (prefix: `baton-`)
 

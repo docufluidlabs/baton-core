@@ -89,7 +89,7 @@ export function AppLayout() {
   } = useLayoutStore();
   const ccBadge = useControlCenterBadge();
   const { data: connectionsData } = useConnections();
-  const hasDocuSign = connectionsData?.connections?.some((c) => c.platform === 'docusign') ?? false;
+  const hasDocusign = connectionsData?.connections?.some((c) => c.platform === 'docusign') ?? false;
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -177,7 +177,7 @@ export function AppLayout() {
         {/* Navigation */}
         <nav className="flex-1 py-3 px-2 space-y-0.5">
           {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
-            const disabled = !hasDocuSign;
+            const disabled = !hasDocusign;
             if (disabled) {
               return (
                 <div
@@ -210,7 +210,7 @@ export function AppLayout() {
             );
           })}
           {/* Control Center — with failure badge */}
-          {!hasDocuSign ? (
+          {!hasDocusign ? (
             <div
               title="Connect Docusign to enable"
               className="relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-gray-300 cursor-not-allowed select-none"

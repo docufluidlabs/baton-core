@@ -555,8 +555,8 @@ export function FlowSidebar({ open, onClose, editingAutomation, onSaved }: FlowS
   }
 
   // Build source options
-  // DocuSign is OAuth-only (no webhook source) — exclude from automation sources
-  // TODO: re-enable when DocuSign Connect/Navigator webhook support is added
+  // Docusign is OAuth-only (no webhook source) — exclude from automation sources
+  // TODO: re-enable when Docusign Connect/Navigator webhook support is added
   const OAUTH_ONLY_PLATFORMS = new Set(['docusign']);
 
   const sourceOptions: Array<{ key: string; label: string; badge?: string; type: 'connected' | 'not_connected' | 'installed' | 'available' }> = [];

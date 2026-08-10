@@ -131,7 +131,7 @@ curl -X POST https://your-domain.com/api/webhooks/hubspot \
   }]'
 ```
 
-> Note: Without `HUBSPOT_WEBHOOK_SECRET` set, signature verification is skipped (logged as a warning).
+> Note: `HUBSPOT_WEBHOOK_SECRET` is required. Without it the endpoint rejects every request (HTTP 500, "Webhook secret not configured") — verification is never skipped.
 
 ---
 

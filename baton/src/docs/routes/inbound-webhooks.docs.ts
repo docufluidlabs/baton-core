@@ -64,10 +64,10 @@ const providerWebhooks: ProviderSpec[] = [
   },
   {
     path: '/api/webhooks/docusign',
-    provider: 'DocuSign Connect',
-    description: 'DocuSign Connect envelope status updates. Verified via HMAC-SHA256.',
+    provider: 'Docusign Connect',
+    description: 'Docusign Connect envelope status updates. Verified via HMAC-SHA256.',
     headers: z.object({
-      'x-docusign-signature-1': z.string().openapi({ description: 'DocuSign Connect signature.' }),
+      'x-docusign-signature-1': z.string().openapi({ description: 'Docusign Connect signature.' }),
     }),
   },
 ];

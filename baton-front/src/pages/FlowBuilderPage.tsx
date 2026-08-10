@@ -307,8 +307,8 @@ function FlowBuilderContent() {
   const { computedNodes, computedEdges, defaultAssignments } = useMemo(() => {
     if (isLoading) return { computedNodes: EMPTY_NODES, computedEdges: EMPTY_EDGES, defaultAssignments: EMPTY_ASSIGNMENTS };
 
-    // DocuSign is OAuth-only — no webhook source, hide from canvas
-    // TODO: re-enable when DocuSign Connect/Navigator webhook support is added
+    // Docusign is OAuth-only — no webhook source, hide from canvas
+    // TODO: re-enable when Docusign Connect/Navigator webhook support is added
     const OAUTH_ONLY_PLATFORMS = new Set(['docusign']);
 
     const referencedPlatforms = new Set(automations.map((r) => r.sourcePlatform));

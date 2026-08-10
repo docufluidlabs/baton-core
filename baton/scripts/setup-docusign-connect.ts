@@ -1,9 +1,9 @@
 /**
- * Setup DocuSign Connect configuration via API
+ * Setup Docusign Connect configuration via API
  *
  * Usage: npx tsx scripts/setup-docusign-connect.ts
  *
- * Requires a valid DocuSign connection in DynamoDB with a non-expired access token.
+ * Requires a valid Docusign connection in DynamoDB with a non-expired access token.
  */
 
 import 'dotenv/config';
@@ -26,7 +26,7 @@ async function getDocuSignAccessToken(): Promise<string> {
 
   const connection = result.Items?.[0];
   if (!connection) {
-    throw new Error(`No DocuSign connection found for accountId: ${DOCUSIGN_ACCOUNT_ID}`);
+    throw new Error(`No Docusign connection found for accountId: ${DOCUSIGN_ACCOUNT_ID}`);
   }
 
   return decryptToken(connection.accessTokenEnc as string);
@@ -98,7 +98,7 @@ async function createConnectConfiguration(accessToken: string) {
 }
 
 async function main() {
-  console.log('=== DocuSign Connect Setup ===\n');
+  console.log('=== Docusign Connect Setup ===\n');
   console.log(`Account ID: ${DOCUSIGN_ACCOUNT_ID}`);
   console.log(`Webhook URL: ${WEBHOOK_URL}`);
   console.log(`API Base: ${DOCUSIGN_BASE_URL}`);
@@ -136,7 +136,7 @@ async function main() {
   console.log(`  URL: ${created.urlToPublishTo}`);
 
   console.log('\n=== IMPORTANT ===');
-  console.log('Now set your HMAC key in the DocuSign Admin UI:');
+  console.log('Now set your HMAC key in the Docusign Admin UI:');
   console.log('  Settings → Connect → Connect Keys tab');
   console.log('  Copy the key and set it in .env as DOCUSIGN_CONNECT_HMAC_KEY');
   console.log('\nOr if the UI is broken, the webhook will still work without HMAC');

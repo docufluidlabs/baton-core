@@ -1,7 +1,7 @@
 /**
  * Salesforce — Rotate Webhook Secret
  *
- * admin-only endpoint for force-rotating the HMAC secret of an existing
+ * Admin-only endpoint (requireAdmin) for force-rotating the HMAC secret of an existing
  * Salesforce webhook integration. Clears this rule's composite entries
  * (`<sfOrgId>#<webhookKey>`) plus any legacy bare `<sfOrgId>` entries in
  * `OrgApp.sfRegistrations`, then issues a fresh bootstrap token. The next

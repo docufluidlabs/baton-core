@@ -5,7 +5,7 @@
  *
  * #12 — Idempotency: platforms frequently retry webhook delivery.
  * Each call to storeWebhookEvent extracts a platform-native event ID
- * (e.g. DocuSign envelopeId, HubSpot eventId) and
+ * (e.g. Docusign envelopeId, HubSpot eventId) and
  * uses a ConditionExpression to ensure only one record per platform event.
  * On a duplicate, the function returns the existing event without re-queuing.
  */
@@ -27,7 +27,7 @@ import { Platform, WebhookEvent } from '../lib/types';
 function extractPlatformEventId(platform: Platform, payload: Record<string, any>): string | undefined {
   switch (platform) {
     case 'docusign': {
-      // DocuSign Connect: envelopeId is stable across retries
+      // Docusign Connect: envelopeId is stable across retries
       return payload.envelopeId || payload.data?.envelopeId || payload.EnvelopeID;
     }
     case 'hubspot': {

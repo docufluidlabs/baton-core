@@ -1,10 +1,10 @@
 /**
- * DocuSign Connector — Baton
+ * Docusign Connector — Baton
  * 
- * DocuSign OAuth + Maestro workflow launching.
+ * Docusign OAuth + Maestro workflow launching.
  * Uses Authorization Code flow (not JWT Grant — that's for service accounts)
  * 
- * DocuSign is special in Baton: it's both a platform connection AND the Maestro host.
+ * Docusign is special in Baton: it's both a platform connection AND the Maestro host.
  */
 
 import * as crypto from 'crypto';
@@ -42,7 +42,7 @@ export class DocuSignConnector extends BasePlatformConnector {
     authUrl.searchParams.set('redirect_uri', `${env.API_URL}/api/connections/docusign/callback`);
     authUrl.searchParams.set('state', state);
 
-    logInfo('Generated DocuSign authorization URL', { orgId, userId });
+    logInfo('Generated Docusign authorization URL', { orgId, userId });
 
     return { redirectUrl: authUrl.toString(), state };
   }
@@ -68,8 +68,8 @@ export class DocuSignConnector extends BasePlatformConnector {
 
     if (!response.ok) {
       const errorText = await response.text();
-      logError('DocuSign token exchange failed', { status: response.status, error: errorText });
-      throw new Error(`DocuSign OAuth Error: ${response.status} - ${errorText}`);
+      logError('Docusign token exchange failed', { status: response.status, error: errorText });
+      throw new Error(`Docusign OAuth Error: ${response.status} - ${errorText}`);
     }
 
     const data: any = await response.json();
@@ -81,7 +81,7 @@ export class DocuSignConnector extends BasePlatformConnector {
     });
     const userInfo: any = userInfoResponse.ok ? await userInfoResponse.json() : null;
 
-    logInfo('DocuSign token exchange successful', { expiresIn: data.expires_in });
+    logInfo('Docusign token exchange successful', { expiresIn: data.expires_in });
 
     return {
       accessToken: data.access_token,
@@ -112,13 +112,13 @@ export class DocuSignConnector extends BasePlatformConnector {
 
     if (!response.ok) {
       const errorText = await response.text();
-      logError('DocuSign token refresh failed', { status: response.status, error: errorText });
-      throw new Error(`DocuSign Refresh Error: ${response.status} - ${errorText}`);
+      logError('Docusign token refresh failed', { status: response.status, error: errorText });
+      throw new Error(`Docusign Refresh Error: ${response.status} - ${errorText}`);
     }
 
     const data: any = await response.json();
 
-    logInfo('DocuSign token refreshed', { expiresIn: data.expires_in });
+    logInfo('Docusign token refreshed', { expiresIn: data.expires_in });
 
     return {
       accessToken: data.access_token,
@@ -130,14 +130,14 @@ export class DocuSignConnector extends BasePlatformConnector {
     };
   }
 
-  // ─── Webhook (DocuSign Connect HMAC-SHA256) ──────────────
+  // ─── Webhook (Docusign Connect HMAC-SHA256) ──────────────
 
   verifyWebhookSignature(
     rawBody: Buffer,
     headers: Record<string, string>,
     secret: string,
   ): WebhookVerificationResult {
-    // DocuSign Connect uses x-docusign-signature-1 (and optionally -2, -3)
+    // Docusign Connect uses x-docusign-signature-1 (and optionally -2, -3)
     const signatures = [
       headers['x-docusign-signature-1'],
       headers['x-docusign-signature-2'],
@@ -165,12 +165,12 @@ export class DocuSignConnector extends BasePlatformConnector {
   }
 
   extractEventInfo(payload: any): ExtractedEventInfo {
-    // DocuSign Connect payload structure
+    // Docusign Connect payload structure
     const event = payload.event || '';
     const envelopeId = payload.data?.envelopeId || payload.envelopeId || '';
     const envelopeSummary = payload.data?.envelopeSummary;
 
-    // DocuSign Connect events are already prefixed: "envelope-sent", "recipient-completed"
+    // Docusign Connect events are already prefixed: "envelope-sent", "recipient-completed"
     // Normalize to dot notation: "envelope.sent", "recipient.completed"
     const eventType = event.replace('-', '.');
 

@@ -63,7 +63,7 @@ export const SyncWorkflowsInput = registry.register(
   'SyncWorkflowsInput',
   z.object({
     connectionId: z.string().uuid().optional().openapi({
-      description: 'If omitted, the org\'s healthy DocuSign connection is used.',
+      description: 'If omitted, the org\'s healthy Docusign connection is used.',
     }),
   }),
 );

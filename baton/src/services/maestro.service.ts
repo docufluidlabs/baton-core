@@ -1,12 +1,12 @@
 /**
  * Maestro Service — Baton
  * 
- * DocuSign Maestro workflow API client.
+ * Docusign Maestro workflow API client.
  * 
  * Key differences from original:
  *   - Dynamic workflowId per call (not from env)
  *   - Token from platform_connections table (not DynamoDB token store)
- *   - Multi-account support (multiple DocuSign accounts per org)
+ *   - Multi-account support (multiple Docusign accounts per org)
  *   - Configurable API base URL from connection metadata
  */
 
@@ -34,7 +34,7 @@ export interface MaestroTriggerRequirements {
 }
 
 export interface LaunchWorkflowParams {
-  connectionId: string;       // DocuSign connection ID
+  connectionId: string;       // Docusign connection ID
   workflowId: string;         // Maestro workflow ID
   instanceName: string;
   triggerInputs: Record<string, any>;
@@ -67,7 +67,7 @@ export interface MaestroInstance {
 async function getValidAccessToken(connectionId: string): Promise<{ accessToken: string; accountId: string; apiBase: string }> {
   const connection = await connectionService.getConnection(connectionId);
   if (!connection) throw new Error(`Connection ${connectionId} not found`);
-  if (connection.platform !== 'docusign') throw new Error(`Connection ${connectionId} is not a DocuSign connection`);
+  if (connection.platform !== 'docusign') throw new Error(`Connection ${connectionId} is not a Docusign connection`);
 
   const connector = getConnector('docusign');
 
@@ -79,9 +79,9 @@ async function getValidAccessToken(connectionId: string): Promise<{ accessToken:
 
     if (now >= expiresAt - bufferMs) {
       if (!connection.refreshTokenEnc) {
-        throw new Error('DocuSign token expired and no refresh token available. Please reconnect DocuSign.');
+        throw new Error('Docusign token expired and no refresh token available. Please reconnect Docusign.');
       }
-      logInfo('Refreshing expired DocuSign token', { connectionId });
+      logInfo('Refreshing expired Docusign token', { connectionId });
       const refreshToken = await connectionService.getRefreshToken(connectionId);
       const newTokens = await connector.refreshToken(refreshToken);
       await connectionService.updateTokens(connectionId, newTokens);
@@ -102,7 +102,7 @@ async function getValidAccessToken(connectionId: string): Promise<{ accessToken:
 }
 
 // Timeout for all Maestro API calls (#18):
-// If DocuSign Maestro hangs, we must not block the event loop indefinitely.
+// If Docusign Maestro hangs, we must not block the event loop indefinitely.
 const MAESTRO_TIMEOUT_MS = 15_000;
 
 // ─── Public API ──────────────────────────────────────────────

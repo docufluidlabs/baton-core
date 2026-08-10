@@ -82,7 +82,7 @@ describe('unconfigured — guided setup', () => {
     });
   });
 
-  it('links to the DocuSign developer portal', () => {
+  it('links to the Docusign developer portal', () => {
     setupHook(makeStatus());
     render(<DocuSignConnectCard connecting={false} onConnect={vi.fn()} />);
 

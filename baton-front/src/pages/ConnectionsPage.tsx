@@ -108,7 +108,7 @@ export default function ConnectionsPage() {
   const connectedPlatforms = new Set(connections.map((c) => c.platform));
   const selectedConnection = connections.find((c) => c.id === selectedConnectionId) || null;
 
-  // DocuSign — always show, even when DB is empty
+  // Docusign — always show, even when DB is empty
   const docusignConnection = connections.find((c) => c.platform === 'docusign');
 
   // ─── Handle OAuth redirect result ─────────────────────────

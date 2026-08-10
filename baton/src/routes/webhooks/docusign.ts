@@ -1,8 +1,8 @@
 /**
- * DocuSign Connect Webhook Route — Baton
+ * Docusign Connect Webhook Route — Baton
  * POST /api/webhooks/docusign
  *
- * DocuSign Connect sends envelope/recipient events with accountId in payload.
+ * Docusign Connect sends envelope/recipient events with accountId in payload.
  * We resolve the connection via accountId-index.
  */
 import { Router } from 'express';
@@ -35,7 +35,7 @@ router.post('/', createWebhookHandler({
     // Query DynamoDB via accountId-index
     const connection = await connectionService.getConnectionByAccountId(accountId);
     if (!connection) {
-      logWarn('No connection found for DocuSign accountId', { accountId });
+      logWarn('No connection found for Docusign accountId', { accountId });
       return null;
     }
 
@@ -45,7 +45,7 @@ router.post('/', createWebhookHandler({
       cachedAt: Date.now(),
     });
 
-    logDebug('Resolved DocuSign webhook connection', {
+    logDebug('Resolved Docusign webhook connection', {
       accountId,
       orgId: connection.orgId,
       connectionId: connection.id,

@@ -87,10 +87,10 @@ describe('getValidAccessToken', () => {
     await expect(getValidAccessToken('conn-1')).rejects.toThrow('not found');
   });
 
-  it('throws when connection is not a DocuSign connection', async () => {
+  it('throws when connection is not a Docusign connection', async () => {
     mockGetConnection.mockResolvedValue({ platform: 'salesforce' });
 
-    await expect(getValidAccessToken('conn-1')).rejects.toThrow('not a DocuSign');
+    await expect(getValidAccessToken('conn-1')).rejects.toThrow('not a Docusign');
   });
 
   it('refreshes an expired token and returns new accessToken', async () => {

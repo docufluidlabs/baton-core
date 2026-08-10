@@ -23,11 +23,11 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { useConnections } from './hooks/useApi';
 import { useAuth } from './auth/AuthContext';
 
-function RequiresDocuSign({ children }: { children: React.ReactNode }) {
+function RequiresDocusign({ children }: { children: React.ReactNode }) {
   const { data, isLoading } = useConnections();
   if (isLoading) return null;
-  const hasDocuSign = data?.connections?.some((c) => c.platform === 'docusign') ?? false;
-  if (!hasDocuSign) return <Navigate to="/connections" replace />;
+  const hasDocusign = data?.connections?.some((c) => c.platform === 'docusign') ?? false;
+  if (!hasDocusign) return <Navigate to="/connections" replace />;
   return <>{children}</>;
 }
 
@@ -88,11 +88,11 @@ function AuthenticatedApp() {
         <Route path="/connections" element={<ConnectionsPage />} />
         <Route path="/apps" element={<Navigate to="/connections" replace />} /> {/* legacy redirect */}
         <Route path="/platforms" element={<Navigate to="/connections" replace />} />
-        <Route path="/workflows" element={<RequiresDocuSign><WorkflowsPage /></RequiresDocuSign>} />
-        <Route path="/flows" element={<RequiresDocuSign><FlowBuilderPage /></RequiresDocuSign>} />
-        <Route path="/bulk-upload" element={<RequiresDocuSign><BulkUploadPage /></RequiresDocuSign>} />
+        <Route path="/workflows" element={<RequiresDocusign><WorkflowsPage /></RequiresDocusign>} />
+        <Route path="/flows" element={<RequiresDocusign><FlowBuilderPage /></RequiresDocusign>} />
+        <Route path="/bulk-upload" element={<RequiresDocusign><BulkUploadPage /></RequiresDocusign>} />
         <Route path="/notifications" element={<NotificationsPage />} />
-        <Route path="/control-center" element={<RequiresDocuSign><ControlCenterPage /></RequiresDocuSign>} />
+        <Route path="/control-center" element={<RequiresDocusign><ControlCenterPage /></RequiresDocusign>} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/salesforce-setup" element={<SalesforceSetupPage />} />
         <Route path="/setup/:slug" element={<ConnectorSetupPage />} />

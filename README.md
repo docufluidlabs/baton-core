@@ -37,7 +37,7 @@ Baton is maintained by [Fluidlabs](https://fluidlabs.com) under the fair-code [S
 - **Visual Flow Builder** - a live canvas of platform → automation → workflow with per-automation relay counts, logs, and inline editing
 - **Bulk Upload** - launch a workflow for every row of a CSV, XLSX, or TSV file: map columns to workflow inputs, throttle the release rate, run files concurrently, and track every row to its instance
 - **Control Center** - every failed workflow run in one queue: retry, cancel, postpone; automations auto-pause when their failure rate spikes
-- **Verified ingress** - every source is checked with HMAC signatures (constant-time) or Basic Auth and fails closed; secrets are stored encrypted (AES-256-GCM)
+- **Verified ingress** - signed sources are checked with HMAC signatures (constant-time) or Basic Auth and fail closed; platforms that cannot sign use per-rule secret URLs; secrets are stored encrypted (AES-256-GCM)
 - **Async pipeline** - webhooks are stored idempotently, queued to SQS, and processed by workers with retries and dead-letter queues
 - **Self-contained auth** - first-run owner setup, email/password sessions, copyable invite links (no SMTP), owner/admin/member/viewer roles - no external auth or billing service
 - **Notifications** - in-app and [Slack](docs/slack-notifications.md) (optional email via Resend), with per-user preferences

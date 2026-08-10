@@ -97,7 +97,7 @@ export interface PlatformConnector {
   /**
    * Verify webhook signature/authenticity
    * Each platform has its own mechanism:
-   *   - DocuSign Connect: HMAC-SHA256
+   *   - Docusign Connect: HMAC-SHA256
    *   - Salesforce: HMAC-SHA256
    *   - BambooHR: HMAC-SHA256
    *   - Zendesk: HMAC-SHA256 (timestamp + body)

@@ -1,5 +1,5 @@
 /**
- * Tests for DocuSign guided OAuth setup:
+ * Tests for Docusign guided OAuth setup:
  *  - GET /api/connections/docusign/setup-status (configured / unconfigured shapes)
  *  - POST /api/connections/:platform/authorize 409 guard when unconfigured
  */
@@ -160,19 +160,19 @@ describe('GET /api/connections/docusign/setup-status', () => {
   });
 });
 
-// ─── POST /:platform/authorize — DocuSign 409 guard ─────────
+// ─── POST /:platform/authorize — Docusign 409 guard ─────────
 
-describe('POST /api/connections/:platform/authorize — DocuSign guard', () => {
+describe('POST /api/connections/:platform/authorize — Docusign guard', () => {
   const handler = getHandler('post', '/:platform/authorize');
 
-  it('returns 409 with error payload when DocuSign OAuth is not configured', async () => {
+  it('returns 409 with error payload when Docusign OAuth is not configured', async () => {
     const res = makeRes();
     const next = vi.fn();
     await handler(makeReq({ params: { platform: 'docusign' } }), res, next);
 
     expect(res.status).toHaveBeenCalledWith(409);
     const body = res.json.mock.calls[0][0];
-    expect(body.error).toBe('DocuSign OAuth is not configured');
+    expect(body.error).toBe('Docusign OAuth is not configured');
     expect(body.redirectUri).toBe('http://localhost:3001/api/connections/docusign/callback');
     expect(body.developerPortalUrl).toBe('https://developers.docusign.com');
     // No redirect flow was started

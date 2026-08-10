@@ -313,7 +313,7 @@ describe('handleCallback', () => {
 
     await expect(
       connector.handleCallback({ code: 'bad-code', state: 'state-val' }),
-    ).rejects.toThrow('DocuSign OAuth Error');
+    ).rejects.toThrow('Docusign OAuth Error');
   });
 });
 
@@ -351,7 +351,7 @@ describe('refreshToken', () => {
     });
 
     await expect(connector.refreshToken('expired-token')).rejects.toThrow(
-      'DocuSign Refresh Error',
+      'Docusign Refresh Error',
     );
   });
 });

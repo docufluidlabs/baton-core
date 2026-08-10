@@ -8,8 +8,8 @@ describe('ConnectionDetailModal — displayName rendering', () => {
     return displayName ?? '';
   }
 
-  it('renders DocuSign name as-is', () => {
-    expect(renderName('DocuSign eSignature')).toBe('DocuSign eSignature');
+  it('renders Docusign name as-is', () => {
+    expect(renderName('Docusign eSignature')).toBe('Docusign eSignature');
   });
 
   it('returns empty string when displayName is undefined', () => {
@@ -20,7 +20,7 @@ describe('ConnectionDetailModal — displayName rendering', () => {
     expect(renderName('')).toBe('');
   });
 
-  it('leaves non-DocuSign names unchanged', () => {
+  it('leaves non-Docusign names unchanged', () => {
     expect(renderName('Salesforce CRM')).toBe('Salesforce CRM');
   });
 });

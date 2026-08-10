@@ -66,7 +66,7 @@ router.get('/platforms', requireAuth, async (_req: Request, res: Response, next:
 });
 
 // ─── GET /api/connections/docusign/setup-status — Guided OAuth setup ─
-// Readable by any authenticated role. On a fresh self-host the DocuSign OAuth
+// Readable by any authenticated role. On a fresh self-host the Docusign OAuth
 // app credentials are empty and the Connect button would start a doomed
 // redirect (empty client_id). The frontend calls this to decide whether to
 // show the n8n-style one-time setup guide (exact redirect URI to copy) or
@@ -106,14 +106,14 @@ router.post('/:platform/authorize', requireAuth, requireAdmin, async (req: Reque
       throw new ValidationError(`Platform '${platform}' is not supported yet`);
     }
 
-    // Fresh self-host guard: without the OAuth app credentials the DocuSign
-    // redirect would carry an empty client_id and fail at DocuSign's door.
+    // Fresh self-host guard: without the OAuth app credentials the Docusign
+    // redirect would carry an empty client_id and fail at Docusign's door.
     if (platform === 'docusign') {
       const setup = getDocusignSetupStatus();
       if (!setup.configured) {
         res.status(409).json({
-          error: 'DocuSign OAuth is not configured',
-          message: 'Set DOCUSIGN_INTEGRATION_KEY and DOCUSIGN_SECRET_KEY in the API environment and restart. The Connections page shows the exact redirect URI to register in your DocuSign app.',
+          error: 'Docusign OAuth is not configured',
+          message: 'Set DOCUSIGN_INTEGRATION_KEY and DOCUSIGN_SECRET_KEY in the API environment and restart. The Connections page shows the exact redirect URI to register in your Docusign app.',
           redirectUri: setup.redirectUri,
           developerPortalUrl: setup.developerPortalUrl,
         });
@@ -207,7 +207,7 @@ router.get('/:platform/callback', async (req: Request, res: Response, next: Next
       tokens,
       accountId,
       metadata: {
-        apiBase: tokens.raw?.userInfo?.accounts?.[0]?.base_uri, // DocuSign
+        apiBase: tokens.raw?.userInfo?.accounts?.[0]?.base_uri, // Docusign
       },
       createdBy: storedState.userId,
     });
@@ -283,7 +283,7 @@ router.get('/:id/accounts', requireAuth, requireViewer, async (req: Request, res
     let accounts: Array<{ id: string; name: string; baseUri?: string }> = [];
 
     if (connection.platform === 'docusign') {
-      // DocuSign: fetch accounts from userInfo
+      // Docusign: fetch accounts from userInfo
       const connector = getConnector('docusign');
       const health = await connector.testConnection(accessToken);
       const userAccounts = health.details?.accounts || connection.metadata?.accounts || [];
@@ -459,7 +459,7 @@ router.patch('/:id/webhook-secret', requireAuth, requireAdmin, async (req: Reque
 
 const DOCUSIGN_DEVELOPER_PORTAL_URL = 'https://developers.docusign.com';
 
-/** DocuSign guided-setup status. `configured` is true only when both OAuth
+/** Docusign guided-setup status. `configured` is true only when both OAuth
  *  app credentials are present; `redirectUri` mirrors exactly what
  *  docusign.connector.ts sends as redirect_uri during authorize/callback. */
 function getDocusignSetupStatus() {
@@ -473,7 +473,7 @@ function getDocusignSetupStatus() {
 
 function stripSensitiveFields(connection: any) {
   const { accessTokenEnc, refreshTokenEnc, webhookSecret, ...safe } = connection;
-  if (safe.platform === 'docusign' && safe.displayName === 'DocuSign') {
+  if (safe.platform === 'docusign' && safe.displayName === 'Docusign') {
     safe.displayName = 'Docusign';
   }
   return {

@@ -102,9 +102,9 @@ describe('extractAccountId', () => {
 // ─── extractDisplayName ───────────────────────────────────────
 
 describe('extractDisplayName', () => {
-  // DocuSign connections are deliberately branded as 'Docusign' regardless of
+  // Docusign connections are deliberately branded as 'Docusign' regardless of
   // the OAuth userInfo — stripSensitiveFields also normalizes legacy
-  // 'DocuSign' display names to 'Docusign', confirming the intent.
+  // 'Docusign' display names to 'Docusign', confirming the intent.
   it('docusign ignores tokens.raw.userInfo.name and returns the "Docusign" brand name', () => {
     const tokens = { raw: { userInfo: { name: 'Jane Doe' } } };
     expect(extractDisplayName('docusign', tokens)).toBe('Docusign');

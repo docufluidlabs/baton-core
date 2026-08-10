@@ -281,7 +281,7 @@ Dedicated webhook routes:
 
 | Platform   | Webhook URL                                                  |
 |------------|--------------------------------------------------------------|
-| DocuSign   | `https://your-domain.ngrok-free.app/api/webhooks/docusign`   |
+| Docusign   | `https://your-domain.ngrok-free.app/api/webhooks/docusign`   |
 | Salesforce | `https://your-domain.ngrok-free.app/api/webhooks/salesforce` |
 | HubSpot    | `https://your-domain.ngrok-free.app/api/webhooks/hubspot`    |
 | Zoho CRM   | `https://your-domain.ngrok-free.app/api/webhooks/zohocrm`    |
@@ -325,14 +325,14 @@ Catalog apps installed from the UI (Zoho CRM, Power Automate, Zendesk, Greenhous
 ### Step 1: Connect a Platform
 
 1. Open http://localhost:3002/connections
-2. Click "Connect" on an OAuth platform (e.g., DocuSign), or install a webhook app from the **Apps** page (e.g., Zoho CRM)
+2. Click "Connect" on an OAuth platform (e.g., Docusign), or install a webhook app from the **Apps** page (e.g., Zoho CRM)
 3. Complete the flow
 4. Verify the connection shows "Healthy" status
 
 ### Step 2: Sync Workflows
 
 1. Go to http://localhost:3002/workflows
-2. Click "Sync from DocuSign"
+2. Click "Sync from Docusign"
 3. Verify your Workflow Builder workflows appear
 
 ### Step 3: Create an Automation Rule
@@ -371,10 +371,10 @@ curl -X POST http://localhost:3001/api/webhooks/rule/YOUR_WEBHOOK_KEY \
 - Check `DYNAMODB_ENDPOINT` in `.env` (DynamoDB Local default: `http://localhost:8000`)
 - For AWS - check `aws sts get-caller-identity`
 
-### "No healthy DocuSign connection"
+### "No healthy Docusign connection"
 
-- Connect DocuSign on the Connections page
-- Workflow sync requires a live DocuSign account with Workflow Builder workflows
+- Connect Docusign on the Connections page
+- Workflow sync requires a live Docusign account with Workflow Builder workflows
 
 ### 401 "No valid session found"
 
@@ -437,7 +437,7 @@ Request Flow:
 | Every 30 sec | Sync running workflow instance statuses (rate-limit aware) |
 | Daily 3 AM UTC | Clean up old webhook events (>30 days) |
 
-### DynamoDB Tables (18)
+### DynamoDB Tables (21)
 
 | Table | Primary Access Pattern |
 |-------|----------------------|
@@ -459,8 +459,11 @@ Request Flow:
 | slack-configs | by orgId |
 | queued-webhooks | by ruleId+queuedAt |
 | webhook-endpoints | by orgId |
+| batch-processors | by orgId |
+| batch-runs | by processorId+startedAt |
+| batch-rows | by runId+rowIndex |
 
-### SQS Queues (4 active consumers)
+### SQS Queues (6)
 
 | Queue | Consumer |
 |-------|----------|
@@ -468,5 +471,7 @@ Request Flow:
 | baton-workflow-launcher | workflow-launcher.worker.ts |
 | baton-token-refresh | token-refresh.worker.ts |
 | baton-notification-sender | notification-sender.worker.ts |
+| baton-identity-sync | provisioned, no active consumer yet |
+| baton-cleanup | provisioned, no active consumer yet |
 
 (`identity-sync` and `cleanup` queues are created by `npm run setup` for scheduled/async jobs.)

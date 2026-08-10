@@ -1,7 +1,8 @@
 /**
  * Preview Entry Point — Baton
  *
- * Renders the full app with mocked Clerk auth and API data.
+ * Renders the full app with mocked API data (fetch is intercepted, so the
+ * app's own auth provider sees a signed-in session).
  * Used by the singlefile build to produce a self-contained HTML.
  */
 import React from 'react';

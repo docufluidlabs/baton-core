@@ -40,7 +40,7 @@ const env = {
   // Single-org install: every user belongs to this organization.
   BATON_ORG_ID: process.env.BATON_ORG_ID || 'default-org',
 
-  // DocuSign
+  // Docusign
   DOCUSIGN_INTEGRATION_KEY: process.env.DOCUSIGN_INTEGRATION_KEY || '',
   DOCUSIGN_SECRET_KEY: process.env.DOCUSIGN_SECRET_KEY || '',
   DOCUSIGN_ACCOUNT_ID: process.env.DOCUSIGN_ACCOUNT_ID || '',

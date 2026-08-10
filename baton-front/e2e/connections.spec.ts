@@ -11,7 +11,7 @@ test.describe('Connections Page', () => {
     await expect(page.getByText(/manage your connected platforms/i)).toBeVisible();
   });
 
-  test('shows DocuSign OAuth connection with Healthy status', async ({ page }) => {
+  test('shows Docusign OAuth connection with Healthy status', async ({ page }) => {
     await expect(page.getByRole('heading', { name: /docusign/i }).first()).toBeVisible();
     await expect(page.getByText('Healthy')).toBeVisible();
   });
@@ -30,8 +30,7 @@ test.describe('Connections Page', () => {
     await expect(page.getByRole('button', { name: /add platform/i })).toBeVisible();
   });
 
-  test('lists installed platforms — Pipedrive, Zoho CRM, HubSpot, Salesforce', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Pipedrive' })).toBeVisible();
+  test('lists installed platforms — Zoho CRM, HubSpot, Salesforce', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Zoho CRM' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'HubSpot test' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Salesforce Production' })).toBeVisible();
@@ -39,7 +38,7 @@ test.describe('Connections Page', () => {
 
   test('each platform has Create New Automation button', async ({ page }) => {
     const createButtons = page.getByRole('button', { name: /create new automation/i });
-    await expect(createButtons).toHaveCount(4);
+    await expect(createButtons).toHaveCount(3);
   });
 
   test('platforms show category and automation count', async ({ page }) => {

@@ -67,7 +67,7 @@ export const CreateAutomationInput = registry.register(
     { message: 'Cannot specify both connectionId and appId' },
   ).openapi({
     example: {
-      name: 'Salesforce Opportunity → DocuSign',
+      name: 'Salesforce Opportunity → Docusign',
       appSlug: 'salesforce',
       sourcePlatform: 'salesforce',
       eventType: 'opportunity.closed_won',

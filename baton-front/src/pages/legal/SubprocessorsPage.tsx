@@ -62,7 +62,7 @@ export default function SubprocessorsPage() {
 
       <p>
         For the third-party platforms you yourself connect through Baton
-        (Salesforce, DocuSign, etc.), those platforms are <em>not</em>{' '}
+        (Salesforce, Docusign, etc.), those platforms are <em>not</em>{' '}
         sub-processors of Baton. They are independent controllers/processors
         with their own privacy policies, and your direct agreement with them
         governs the data they hold.

@@ -13,9 +13,8 @@ export default function ControlCenter() {
       </Lead>
 
       <Callout type="note" title="Previously called the Resolution Center">
-        The README and older release notes call this page the <strong>Resolution Center</strong>. It is the
-        same page: the sidebar entry, the page heading, and the URL all read <strong>Control Center</strong>,
-        and these docs now follow the app.
+        Material from before v1.0.0 may call this page the <strong>Resolution Center</strong>. It is the
+        same page: the sidebar entry, the page heading, and the URL all read <strong>Control Center</strong>.
       </Callout>
 
       <Screenshot

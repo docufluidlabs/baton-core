@@ -46,7 +46,7 @@ describe('connection.service', () => {
     const baseParams = {
       orgId: 'org-1',
       platform: 'docusign' as const,
-      displayName: 'My DocuSign',
+      displayName: 'My Docusign',
       tokens: {
         accessToken: 'my-token',
         refreshToken: 'my-refresh',
@@ -67,7 +67,7 @@ describe('connection.service', () => {
       expect(result.refreshTokenEnc).toBe('enc:my-refresh');
       expect(result.orgId).toBe('org-1');
       expect(result.platform).toBe('docusign');
-      expect(result.displayName).toBe('My DocuSign');
+      expect(result.displayName).toBe('My Docusign');
       expect(result.scopes).toEqual(['signature', 'impersonation']);
     });
 

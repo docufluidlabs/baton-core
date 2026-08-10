@@ -15,7 +15,7 @@ import * as connectionService from './connection.service';
 
 /**
  * Cancel a workflow instance: best-effort cancel in Workflow Builder (when the
- * instance has a Workflow Builder id and a usable DocuSign connection can be
+ * instance has a Workflow Builder id and a usable Docusign connection can be
  * resolved), then mark the local record cancelled. A Workflow Builder 4xx on
  * already-terminal instances is swallowed — the user's intent is still
  * recorded locally.
@@ -31,7 +31,7 @@ export async function cancelWorkflowInstance(instance: WorkflowInstance): Promis
 
     const wf = workflow.Item;
     if (wf?.maestroWorkflowId) {
-      // Resolve a valid DocuSign connection
+      // Resolve a valid Docusign connection
       let dsConnId = wf.connectionId;
       if (dsConnId) {
         const conn = await connectionService.getConnection(dsConnId);

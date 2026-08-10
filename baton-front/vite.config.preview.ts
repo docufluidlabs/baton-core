@@ -18,8 +18,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      // Replace Clerk with mock implementation
-      '@clerk/clerk-react': path.resolve(__dirname, './src/preview/clerk-mock.tsx'),
     },
   },
   build: {

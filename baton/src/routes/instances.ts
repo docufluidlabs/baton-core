@@ -403,7 +403,7 @@ router.post('/:id/cancel', requireMember, async (req: Request, res: Response, ne
 
       const wf = workflow.Item;
       if (wf?.maestroWorkflowId) {
-        // Resolve a valid DocuSign connection
+        // Resolve a valid Docusign connection
         let dsConnId = wf.connectionId;
         if (dsConnId) {
           const conn = await connectionService.getConnection(dsConnId);

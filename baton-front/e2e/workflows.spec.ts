@@ -11,7 +11,7 @@ test.describe('Workflows Page', () => {
     await expect(page.getByText(/sync workflows from docusign maestro/i)).toBeVisible();
   });
 
-  test('shows Sync from DocuSign button', async ({ page }) => {
+  test('shows Sync from Docusign button', async ({ page }) => {
     await expect(page.getByRole('button', { name: /sync from docusign/i })).toBeVisible();
   });
 

@@ -253,15 +253,15 @@ router.post('/sync', requireAdmin, async (req: Request, res: Response, next: Nex
     let connectionId: string;
 
     if (explicitConnectionId) {
-      // Verify connection belongs to org and is DocuSign
+      // Verify connection belongs to org and is Docusign
       const connection = await connectionService.getConnection(explicitConnectionId);
       if (!connection || connection.orgId !== orgId) throw new NotFoundError('Connection');
-      if (connection.platform !== 'docusign') throw new ValidationError('Can only sync workflows from a DocuSign connection');
+      if (connection.platform !== 'docusign') throw new ValidationError('Can only sync workflows from a Docusign connection');
       connectionId = explicitConnectionId;
     } else {
-      // Auto-detect DocuSign connection for this org
+      // Auto-detect Docusign connection for this org
       const connection = await connectionService.getConnectionByOrgAndPlatform(orgId, 'docusign');
-      if (!connection) throw new NotFoundError('No DocuSign connection found for this organization');
+      if (!connection) throw new NotFoundError('No Docusign connection found for this organization');
       connectionId = connection.id;
     }
 
@@ -383,7 +383,7 @@ router.post('/:id/sync', requireMember, async (req: Request, res: Response, next
     if (!workflow || workflow.orgId !== orgId) throw new NotFoundError('Workflow');
     if (!workflow.maestroWorkflowId) throw new ValidationError('Workflow has no Workflow Builder ID');
 
-    // Find DocuSign connection
+    // Find Docusign connection
     let dsConnId = workflow.connectionId;
     if (dsConnId) {
       const conn = await connectionService.getConnection(dsConnId);
@@ -393,7 +393,7 @@ router.post('/:id/sync', requireMember, async (req: Request, res: Response, next
       const orgConns = await connectionService.getConnectionsByOrg(orgId);
       dsConnId = orgConns.find((c) => c.platform === 'docusign' && c.status === 'healthy')?.id;
     }
-    if (!dsConnId) throw new ValidationError('No healthy DocuSign connection found');
+    if (!dsConnId) throw new ValidationError('No healthy Docusign connection found');
 
     // Fetch trigger requirements from Maestro
     const triggerReqs = await maestroService.getTriggerRequirements(dsConnId, workflow.maestroWorkflowId);
@@ -442,8 +442,8 @@ router.post('/:id/launch', requireMember, async (req: Request, res: Response, ne
     if (!workflow || workflow.orgId !== orgId) throw new NotFoundError('Workflow');
     if (!workflow.maestroWorkflowId) throw new ValidationError('Workflow has no Workflow Builder ID');
 
-    // Resolve DocuSign connection: use workflow's connectionId if it's a valid DocuSign connection,
-    // otherwise find a healthy DocuSign connection for this org
+    // Resolve Docusign connection: use workflow's connectionId if it's a valid Docusign connection,
+    // otherwise find a healthy Docusign connection for this org
     let dsConnectionId = workflow.connectionId;
     if (dsConnectionId) {
       const conn = await connectionService.getConnection(dsConnectionId);
@@ -454,7 +454,7 @@ router.post('/:id/launch', requireMember, async (req: Request, res: Response, ne
     if (!dsConnectionId) {
       const orgConnections = await connectionService.getConnectionsByOrg(orgId);
       const dsConn = orgConnections.find((c) => c.platform === 'docusign' && c.status === 'healthy');
-      if (!dsConn) throw new ValidationError('No healthy DocuSign connection found. Please reconnect DocuSign.');
+      if (!dsConn) throw new ValidationError('No healthy Docusign connection found. Please reconnect Docusign.');
       dsConnectionId = dsConn.id;
     }
 
@@ -540,7 +540,7 @@ router.get('/:id/instances', requireViewer, async (req: Request, res: Response, 
     let instances = (result.Items as WorkflowInstance[]) || [];
 
     if (workflow.maestroWorkflowId && req.query.live === 'true') {
-      // Resolve a valid DocuSign connection for Maestro API calls
+      // Resolve a valid Docusign connection for Maestro API calls
       let dsConnId = workflow.connectionId;
       if (dsConnId) {
         const conn = await connectionService.getConnection(dsConnId);

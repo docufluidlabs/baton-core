@@ -2,7 +2,7 @@
  * Docusign Connect Card — Baton
  *
  * Shown on the Connections page when no Docusign connection exists yet.
- * When the server's DocuSign OAuth app is configured this is the plain
+ * When the server's Docusign OAuth app is configured this is the plain
  * "Connect Docusign" button. On a fresh self-host (no integration key /
  * secret key) that button would start a doomed redirect with an empty
  * client_id, so instead we render an n8n-style guided setup: the exact
@@ -118,7 +118,7 @@ function SetupGuide({
         <li className="flex gap-3">
           <StepNumber n={1} />
           <div>
-            <p className="text-sm font-medium text-gray-900">Create a free DocuSign developer account</p>
+            <p className="text-sm font-medium text-gray-900">Create a free Docusign developer account</p>
             <a
               href={setup.developerPortalUrl}
               target="_blank"
@@ -184,7 +184,7 @@ function SetupGuide({
                   </li>
                   <li>
                     <strong className="text-gray-800">Secret Keys &rarr; Add Secret Key:</strong> copy it
-                    immediately - DocuSign shows it once, masked forever after. This is your{' '}
+                    immediately - Docusign shows it once, masked forever after. This is your{' '}
                     <code className="font-mono bg-gray-100 px-1 py-0.5 rounded">DOCUSIGN_SECRET_KEY</code>.
                   </li>
                   <li>
@@ -249,7 +249,7 @@ function SetupGuide({
           <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
           <span>
             You&apos;re browsing from <strong>{window.location.hostname}</strong>, but the server built this
-            redirect URI from a localhost <code className="font-mono">API_URL</code>. Registering it in DocuSign
+            redirect URI from a localhost <code className="font-mono">API_URL</code>. Registering it in Docusign
             will not work - set <code className="font-mono">APP_URL</code> and{' '}
             <code className="font-mono">API_URL</code> in{' '}
             <code className="font-mono">baton/.env</code> to this install&apos;s public URL and restart, so OAuth
@@ -261,7 +261,7 @@ function SetupGuide({
       {isSandbox && (
         <div className="flex items-center gap-2 text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
           <Info className="w-3.5 h-3.5 shrink-0" />
-          Defaults point at DocuSign&apos;s developer sandbox - right for trying Baton out.
+          Defaults point at Docusign&apos;s developer sandbox - right for trying Baton out.
         </div>
       )}
 

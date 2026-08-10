@@ -348,14 +348,14 @@ export function usePlatforms() {
 export interface DocusignSetupStatus {
   /** true when the server has both DOCUSIGN_INTEGRATION_KEY and DOCUSIGN_SECRET_KEY */
   configured: boolean;
-  /** Exact OAuth redirect URI to register in the DocuSign app (Apps & Keys) */
+  /** Exact OAuth redirect URI to register in the Docusign app (Apps & Keys) */
   redirectUri: string;
-  /** DocuSign OAuth base — contains 'account-d' when pointing at the developer sandbox */
+  /** Docusign OAuth base — contains 'account-d' when pointing at the developer sandbox */
   oauthBase: string;
   developerPortalUrl: string;
 }
 
-/** Whether the server's DocuSign OAuth app is configured. When it is not,
+/** Whether the server's Docusign OAuth app is configured. When it is not,
  *  the Connections page shows the guided one-time provider-app setup
  *  (n8n-style: exact redirect URI to copy) instead of a doomed Connect button. */
 export function useDocusignSetupStatus() {
@@ -594,12 +594,12 @@ export async function refreshConnectionToken(id: string) {
 }
 
 /**
- * Sync workflows from DocuSign Maestro.
+ * Sync workflows from Docusign Maestro.
  *
  * Fix: client-side connection lookup removed. Previously the frontend fetched
- * all connections, found DocuSign, and passed connectionId to the backend —
+ * all connections, found Docusign, and passed connectionId to the backend —
  * leaking backend business logic into the client and breaking if more than
- * one DocuSign connection exists. The backend now determines the active one.
+ * one Docusign connection exists. The backend now determines the active one.
  */
 export async function syncWorkflows() {
   const res = await api.post<{ workflows: Workflow[]; synced: number }>('/workflows/sync');

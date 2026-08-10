@@ -11,7 +11,7 @@
  *   the automatic retry sequence is abandoned.
  *
  * Flow:
- * 1. Lookup DocuSign connection for org
+ * 1. Lookup Docusign connection for org
  * 2. Lookup workflow to get Maestro workflow ID
  * 3. Launch via Maestro API
  * 4. Create workflow_instance record
@@ -106,19 +106,19 @@ export async function processWorkflowLaunchJob(job: WorkflowLaunchJob): Promise<
       throw new Error(`Workflow ${workflowId} has no Workflow Builder ID`);
     }
 
-    // 2. Find DocuSign connection for this org
+    // 2. Find Docusign connection for this org
     let connectionId = workflow.connectionId;
     if (connectionId) {
       const conn = await connectionService.getConnection(connectionId);
       if (!conn) {
-        log.warn({ connectionId }, 'Workflow connectionId not found — falling back to org DocuSign connection');
+        log.warn({ connectionId }, 'Workflow connectionId not found — falling back to org Docusign connection');
         connectionId = undefined;
       }
     }
     if (!connectionId) {
       const docusignConnection = await connectionService.getConnectionByOrgAndPlatform(orgId, 'docusign');
       if (!docusignConnection) {
-        throw new Error(`No DocuSign connection found for org ${orgId}`);
+        throw new Error(`No Docusign connection found for org ${orgId}`);
       }
       connectionId = docusignConnection.id;
     }
@@ -950,13 +950,13 @@ function categorizeUserMessage(errorMessage: string): string {
   const category = categorizeError(errorMessage);
   switch (category) {
     case 'auth':
-      return 'Your DocuSign connection may have expired. Please reconnect in Settings → Connections.';
+      return 'Your Docusign connection may have expired. Please reconnect in Settings → Connections.';
     case 'validation':
       return 'The workflow could not be launched because the input data was invalid. Check the rule field mapping.';
     case 'rate_limit':
-      return 'DocuSign API rate limit reached. The system will retry automatically.';
+      return 'Docusign API rate limit reached. The system will retry automatically.';
     case 'upstream':
-      return 'DocuSign service is temporarily unavailable. The system will retry automatically.';
+      return 'Docusign service is temporarily unavailable. The system will retry automatically.';
     default:
       return 'An unexpected error occurred while launching the workflow. Our team has been notified.';
   }
