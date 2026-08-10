@@ -1,5 +1,8 @@
 <p align="center">
-  <img src=".github/media/baton-logo.svg" alt="Baton" width="72" height="92">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/media/baton-logo-white.svg">
+    <img src=".github/media/baton-logo.svg" alt="Baton" width="72" height="92">
+  </picture>
 </p>
 
 <h1 align="center">Baton</h1>
