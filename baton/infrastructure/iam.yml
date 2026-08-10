@@ -121,20 +121,6 @@ Resources:
                 Resource:
                   - !Sub 'arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:baton-*'
 
-        - PolicyName: S3Access
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:DeleteObject
-                  - s3:ListBucket
-                Resource:
-                  - !Sub 'arn:aws:s3:::baton-documents'
-                  - !Sub 'arn:aws:s3:::baton-documents/*'
-
         - PolicyName: SecretsManagerReadOnly
           PolicyDocument:
             Version: '2012-10-17'
