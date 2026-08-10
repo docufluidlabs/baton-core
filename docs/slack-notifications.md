@@ -2,7 +2,7 @@
 
 Baton can deliver notifications (failed runs, auto-pauses, workflow events - anything you enable on the Notifications page) to Slack channels, and answer **@Baton** mentions in your workspace.
 
-**Self-hosted installs register their own Slack app.** The hosted edition ships with FluidLabs' Slack app; your instance talks to Slack as *your* app, in your workspace, with tokens stored encrypted in your database. One-time setup, roughly 10 minutes.
+**Self-hosted installs register their own Slack app.** The hosted edition ships with Fluidlabs' Slack app; your instance talks to Slack as *your* app, in your workspace, with tokens stored encrypted in your database. One-time setup, roughly 10 minutes.
 
 ## 1. Create the Slack app
 

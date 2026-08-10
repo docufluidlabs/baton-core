@@ -39,7 +39,7 @@ export default function SubprocessorsPage() {
     <LegalLayout title="Sub-processors" updatedAt={UPDATED_AT}>
       <div className="mb-8 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
         <strong>Hosted service only.</strong> This page describes the sub-processors used by
-        FluidLabs' hosted Baton service. If you run a self-hosted Baton installation, none of
+        Fluidlabs' hosted Baton service. If you run a self-hosted Baton installation, none of
         these providers are involved - your installation has its own infrastructure and
         sub-processor relationships, which you manage.
       </div>

@@ -50,7 +50,7 @@ Verify: `grep -rhoE "https://[a-z0-9.-]+\.[a-z]{2,}" baton/src --include="*.ts" 
 
 ## Supply chain and code quality
 
-- TypeScript strict mode; **889 backend tests** + frontend suites run on every push (`.github/workflows/ci.yml`), plus a Docker build of both images.
+- TypeScript strict mode; **903 backend tests** + frontend suites run on every push (`.github/workflows/ci.yml`), plus a Docker build of both images.
 - Secret scanning: gitleaks runs across history in CI ([.gitleaks.toml](../.gitleaks.toml)).
 - Static analysis: CodeQL on every push/PR and weekly ([codeql.yml](../.github/workflows/codeql.yml)); Dependabot watches both `package-lock.json` files and the GitHub Actions pins weekly.
 - Releases are tagged semver; images are built from the tag by CI and published to GHCR (`ghcr.io/docufluidlabs/baton-api`, `baton-front`). You can always build from the same tag yourself and compare behavior - the images add nothing that isn't in the repo.
@@ -68,7 +68,7 @@ npx gitleaks git . 2>/dev/null || docker run --rm -v "$PWD:/repo" zricethezav/gi
 ## Residency and compliance notes
 
 - All state is region-pinned to the AWS region you deploy (e.g. `ca-central-1` for Canadian data residency); Baton itself never moves data across a boundary you didn't configure.
-- The self-hosted build has no subprocessors - the [subprocessors page](../baton-front/src/pages/legal/SubprocessorsPage.tsx) in the UI describes FluidLabs' **hosted** edition only.
+- The self-hosted build has no subprocessors - the [subprocessors page](../baton-front/src/pages/legal/SubprocessorsPage.tsx) in the UI describes Fluidlabs' **hosted** edition only.
 - License: fair-code [Sustainable Use License](../LICENSE.md) - free to use, modify, and self-host for internal business purposes.
 
 ## Known trade-offs (read before filing)

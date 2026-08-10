@@ -32,7 +32,7 @@ function RequiresDocuSign({ children }: { children: React.ReactNode }) {
 }
 
 // Redirect to an absolute URL outside the app. Used for /privacy and /terms,
-// which now live on the FluidLabs marketing site rather than inside this SPA.
+// which now live on the Fluidlabs marketing site rather than inside this SPA.
 function ExternalRedirect({ to }: { to: string }) {
   useEffect(() => {
     window.location.replace(to);
@@ -110,7 +110,7 @@ export default function App() {
       <Routes>
         {/* Public, no-auth routes.
             Privacy / Terms / Contact live on fluidlabs.com — the canonical
-            FluidLabs marketing site. The /subprocessors page is unique to
+            Fluidlabs marketing site. The /subprocessors page is unique to
             the Baton platform and stays in this SPA. */}
         <Route path="/subprocessors" element={<SubprocessorsPage />} />
 

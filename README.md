@@ -27,7 +27,7 @@ Listen to the platforms you already use, verify every event, and launch the matc
   <img src=".github/media/flow-builder.png" alt="The Flow Builder canvas: platforms, automations with live run counts, and Docusign workflows" width="900">
 </p>
 
-Baton is maintained by [FluidLabs](https://fluidlabs.com) under the fair-code [Sustainable Use License](LICENSE.md): free to self-host, modify, and use for your own business. Everything runs in **your** environment - your AWS account, your data, [no telemetry](docs/security-review.md).
+Baton is maintained by [Fluidlabs](https://fluidlabs.com) under the fair-code [Sustainable Use License](LICENSE.md): free to self-host, modify, and use for your own business. Everything runs in **your** environment - your AWS account, your data, [no telemetry](docs/security-review.md).
 
 ## Why Baton
 
@@ -120,6 +120,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev-server setup, test commands, 
 
 ## License & hosted edition
 
-This repository is licensed under the [Sustainable Use License](LICENSE.md) (fair-code): use it freely inside your business; don't resell it as a hosted service. The Salesforce package works against any Baton instance, self-hosted or cloud. FluidLabs also offers a managed cloud edition with multi-org management, SSO, and support - the core you see here is the same engine.
+This repository is licensed under the [Sustainable Use License](LICENSE.md) (fair-code): use it freely inside your business; don't resell it as a hosted service. The Salesforce package works against any Baton instance, self-hosted or cloud. Fluidlabs also offers a managed cloud edition with multi-org management, SSO, and support - the core you see here is the same engine.
 
 Security reports: see [SECURITY.md](SECURITY.md). Questions & ideas: [GitHub Discussions](https://github.com/docufluidlabs/baton-core/discussions).
