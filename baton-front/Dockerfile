@@ -1,5 +1,9 @@
 # ── Build stage ───────────────────────────────────────────────
-FROM node:20-alpine AS build
+# Pinned to $BUILDPLATFORM: the Vite build runs natively on the build host,
+# never under QEMU (which intermittently kills Node with SIGILL mid-npm-ci
+# and hangs the job). The output is static files, identical for every
+# target architecture; only the nginx stage below is per-platform.
+FROM --platform=$BUILDPLATFORM node:20-alpine AS build
 
 WORKDIR /app
 
