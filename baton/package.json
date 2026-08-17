@@ -26,7 +26,7 @@
     "@aws-sdk/client-dynamodb": "^3.700.0",
     "@aws-sdk/client-sqs": "^3.700.0",
     "@aws-sdk/lib-dynamodb": "^3.700.0",
-    "@slack/web-api": "^7.7.0",
+    "@slack/web-api": "^8.0.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "docusign-esign": "^8.0.1",
