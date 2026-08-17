@@ -30,7 +30,7 @@ jobs:
           - image: baton-front
             context: ./baton-front
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: docker/setup-qemu-action@v3
 
@@ -65,7 +65,7 @@ jobs:
     timeout-minutes: 10
     needs: build-and-push
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: softprops/action-gh-release@v2
         with:
