@@ -26,6 +26,7 @@ import { sendMessage, QueueNames } from '../../queue/sqs-client';
 import { getDocClient, TableNames } from '../../db/client';
 import { TriggerPipelineEntry, WebhookProcessingJob } from '../../lib/types';
 import { logInfo, logDebug, logWarn, logError } from '../../lib/logger';
+import { headerString } from '../../lib/request';
 
 const router = Router();
 router.use(webhookRateLimiter);
@@ -43,7 +44,7 @@ router.post('/', async (req: Request, res: Response) => {
   try {
     const rawBody = req.body as Buffer;
     const headers = Object.fromEntries(
-      Object.entries(req.headers).map(([k, v]) => [k, String(v)]),
+      Object.entries(req.headers).map(([k, v]) => [k, headerString(v)]),
     );
 
     // Parse JSON payload

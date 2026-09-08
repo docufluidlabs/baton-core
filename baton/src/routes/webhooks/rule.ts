@@ -23,6 +23,7 @@ import { resolveSfRegistration, sfRegKey } from '../../lib/sf-registration-key';
 import * as webhookEventService from '../../services/webhook-event.service';
 import { sendMessage, QueueNames } from '../../queue/sqs-client';
 import { logInfo, logWarn, logError } from '../../lib/logger';
+import { headerString } from '../../lib/request';
 
 const router = Router();
 
@@ -128,7 +129,7 @@ router.post('/:webhookKey', async (req: Request, res: Response, _next: NextFunct
     // Header normalization moved up — we need it for sfOrgId lookup before
     // resolving which secret to verify against.
     const headers = Object.fromEntries(
-      Object.entries(req.headers).map(([k, v]) => [k, String(v)]),
+      Object.entries(req.headers).map(([k, v]) => [k, headerString(v)]),
     );
 
     // ─── Resolve which secret to verify with ───────────────

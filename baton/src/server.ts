@@ -96,9 +96,22 @@ if (env.NODE_ENV === 'production') {
     },
   }));
 } else {
-  // Development: CSP off — Vite injects inline scripts without nonce
+  // Development: a permissive CSP rather than none - Vite's dev server injects
+  // inline scripts without a nonce and HMR needs websockets, but every other
+  // Helmet header stays on so dev and prod differ only in the CSP directives.
   app.use(helmet({
-    contentSecurityPolicy: false,
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+        imgSrc: ["'self'", 'data:', 'blob:'],
+        connectSrc: ["'self'", 'ws:', 'wss:', 'http://localhost:*'],
+        frameSrc: ["'none'"],
+        objectSrc: ["'none'"],
+      },
+    },
   }));
 }
 app.use(cors({

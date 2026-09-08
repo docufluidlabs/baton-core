@@ -20,6 +20,7 @@ import { getDocClient, TableNames } from '../../db/client';
 import { sendMessage, QueueNames } from '../../queue/sqs-client';
 import { WebhookProcessingJob } from '../../lib/types';
 import { logInfo, logError, logWarn } from '../../lib/logger';
+import { headerString } from '../../lib/request';
 import { sendNotification, webhookFailedNotification } from '../../services/notification.service';
 import { getOrgAdmins } from '../../services/user.service';
 
@@ -54,7 +55,7 @@ export function createWebhookHandler(options: WebhookHandlerOptions) {
       // Raw body is available because server.ts uses express.raw() for /api/webhooks
       const rawBody = req.body as Buffer;
       const headers = Object.fromEntries(
-        Object.entries(req.headers).map(([k, v]) => [k, String(v)])
+        Object.entries(req.headers).map(([k, v]) => [k, headerString(v)])
       );
 
       // Parse JSON payload
