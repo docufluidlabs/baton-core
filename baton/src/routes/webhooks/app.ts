@@ -34,7 +34,15 @@ router.post('/:webhookKey', async (req: Request, res: Response, _next: NextFunct
 
   try {
     // Parse raw body
-    const rawBody = req.body as Buffer;
+    // Webhook routes are mounted behind express.raw(); anything else means the
+    // middleware order is wrong. Guard explicitly so rawBody is provably a Buffer.
+    const body: unknown = req.body;
+    if (Array.isArray(body) || typeof body === 'string' || !Buffer.isBuffer(body)) {
+      logWarn('Webhook body is not a raw Buffer - check express.raw() middleware', { webhookKey });
+      res.status(400).json({ error: 'Expected raw request body' });
+      return;
+    }
+    const rawBody: Buffer = body;
     let payload: Record<string, any>;
     const bodyStr = rawBody.toString('utf8');
     const contentType = (req.headers['content-type'] || '').toLowerCase();
