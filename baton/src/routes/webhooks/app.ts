@@ -25,6 +25,7 @@ import { decryptToken } from '../../lib/encryption';
 import * as webhookEventService from '../../services/webhook-event.service';
 import { sendMessage, QueueNames } from '../../queue/sqs-client';
 import { logInfo, logWarn, logError } from '../../lib/logger';
+import { headerString } from '../../lib/request';
 
 const router = Router();
 
@@ -103,7 +104,7 @@ router.post('/:webhookKey', async (req: Request, res: Response, _next: NextFunct
 
     // ─── 5. Verify signature ──────────────────────────────
     const headers = Object.fromEntries(
-      Object.entries(req.headers).map(([k, v]) => [k, String(v)]),
+      Object.entries(req.headers).map(([k, v]) => [k, headerString(v)]),
     );
 
     if (verificationMethod.type === 'hmac_sha256') {

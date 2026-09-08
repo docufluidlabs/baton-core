@@ -21,6 +21,7 @@ import { WebhookEndpoint, WebhookProcessingJob, TriggerPipelineEntry, WorkflowLa
 import * as webhookEventService from '../../services/webhook-event.service';
 import { sendMessage, QueueNames } from '../../queue/sqs-client';
 import { logInfo, logWarn, logError } from '../../lib/logger';
+import { headerString } from '../../lib/request';
 
 const router = Router();
 
@@ -152,7 +153,7 @@ router.post('/:orgId/:endpointId', async (req: Request, res: Response, _next: Ne
       connectionId: undefined,
       payload,
       headers: Object.fromEntries(
-        Object.entries(req.headers).map(([k, v]) => [k, String(v)]),
+        Object.entries(req.headers).map(([k, v]) => [k, headerString(v)]),
       ),
       signatureValid: true,
     });

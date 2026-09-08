@@ -22,6 +22,7 @@ import { requireAuth } from '../middleware/auth';
 import { SlackConfigInput } from '../docs/schemas/slack';
 import { requireAdmin } from '../middleware/rbac';
 import { logInfo, logWarn, logError } from '../lib/logger';
+import { queryString } from '../lib/request';
 import { encryptToken } from '../lib/encryption';
 import {
   verifySlackSignature,
@@ -170,7 +171,9 @@ slackInstallRouter.get('/', (_req: Request, res: Response) => {
 export const slackOAuthCallbackRouter = Router();
 
 slackOAuthCallbackRouter.get('/', async (req: Request, res: Response) => {
-  const { code, state, error } = req.query as Record<string, string>;
+  const code = queryString(req.query as Record<string, unknown>, 'code');
+  const state = queryString(req.query as Record<string, unknown>, 'state');
+  const error = queryString(req.query as Record<string, unknown>, 'error');
   const frontendBase = `${env.FRONTEND_URL}/notifications`;
 
   if (error) {
