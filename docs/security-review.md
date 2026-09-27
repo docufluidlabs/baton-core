@@ -58,7 +58,7 @@ Verify: `grep -rhoE "https://[a-z0-9.-]+\.[a-z]{2,}" baton/src --include="*.ts" 
 
 ## Supply chain and code quality
 
-- TypeScript strict mode; **1,067 backend tests** + frontend suites run on every push (`.github/workflows/ci.yml`), plus a Docker build of both images.
+- TypeScript strict mode; **1,084 backend tests** + frontend suites run on every push (`.github/workflows/ci.yml`), plus a Docker build of both images.
 - Secret scanning: gitleaks runs across history in CI ([.gitleaks.toml](../.gitleaks.toml)).
 - Static analysis: CodeQL on every push/PR and weekly ([codeql.yml](../.github/workflows/codeql.yml)); Dependabot watches both `package-lock.json` files and the GitHub Actions pins weekly.
 - Releases are tagged semver; images are built from the tag by CI and published to GHCR (`ghcr.io/docufluidlabs/baton-api`, `baton-front`). You can always build from the same tag yourself and compare behavior - the images add nothing that isn't in the repo.

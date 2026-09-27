@@ -36,9 +36,16 @@ router.use(requireAuth);
 // Validation schemas live in src/docs/schemas/batch.ts.
 
 // Multer is applied to the upload route ONLY — everything else is JSON.
+// The route takes one file and nothing else, and the limits hold it to that.
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB cap
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB cap
+    files: 1,
+    fields: 10,
+    parts: 11,
+    fieldNameSize: 100,
+  },
 });
 
 const TERMINAL_INSTANCE_STATUSES = new Set(['completed', 'failed', 'cancelled']);
@@ -259,15 +266,17 @@ router.post(
   requireMember,
   (req: Request, res: Response, next: NextFunction) => {
     upload.single('file')(req, res, (err: any) => {
-      if (err) {
-        if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-          next(new ValidationError('The file is larger than 10MB. Split it into smaller files and try again.'));
-          return;
-        }
-        next(err);
+      if (!err) {
+        next();
         return;
       }
-      next();
+      if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+        next(new ValidationError('The file is larger than 10MB. Split it into smaller files and try again.'));
+        return;
+      }
+      // With in-memory storage nothing on this side can fail: whatever else
+      // multer or its parser reports is a request it could not read.
+      next(new ValidationError('The upload could not be read. Send one CSV, XLSX or TSV file in the "file" field.'));
     });
   },
   async (req: Request, res: Response, next: NextFunction) => {
