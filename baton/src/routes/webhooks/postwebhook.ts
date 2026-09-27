@@ -21,7 +21,8 @@ import { WebhookEndpoint, WebhookProcessingJob, TriggerPipelineEntry, WorkflowLa
 import * as webhookEventService from '../../services/webhook-event.service';
 import { sendMessage, QueueNames } from '../../queue/sqs-client';
 import { logInfo, logWarn, logError } from '../../lib/logger';
-import { headerString } from '../../lib/request';
+import { headerString, rawBodyOf } from '../../lib/request';
+import { safeEqual } from '../../lib/webhook-auth';
 
 const router = Router();
 
@@ -110,8 +111,8 @@ router.post('/:orgId/:endpointId', async (req: Request, res: Response, _next: Ne
 
     // 2. Validate API key (if configured)
     if (endpoint.apiKey) {
-      const providedKey = req.headers['x-api-key'] as string;
-      if (!providedKey || providedKey !== endpoint.apiKey) {
+      const providedKey = headerString(req.headers['x-api-key']);
+      if (!providedKey || !safeEqual(providedKey, endpoint.apiKey)) {
         logWarn('Postwebhook invalid API key', { orgId, endpointId });
         res.status(401).json({ error: 'Invalid or missing API key' });
         return;
@@ -126,7 +127,12 @@ router.post('/:orgId/:endpointId', async (req: Request, res: Response, _next: Ne
     }
 
     // 4. Parse payload
-    const rawBody = req.body as Buffer;
+    const rawBody = rawBodyOf(req);
+    if (!rawBody) {
+      logWarn('Postwebhook body is not raw bytes', { orgId, endpointId });
+      res.status(400).json({ error: 'Invalid JSON' });
+      return;
+    }
     let payload: Record<string, any>;
     try {
       payload = JSON.parse(rawBody.toString('utf8'));
@@ -232,8 +238,11 @@ router.post('/:orgId/:endpointId', async (req: Request, res: Response, _next: Ne
     });
   } catch (error: any) {
     logError('Postwebhook handler error', error, { orgId, endpointId });
-    // Return 200 to prevent retries
-    res.status(200).json({ received: true, error: 'Processing error' });
+    // Return 200 to prevent retries. Everything after step 7 runs with the
+    // response already sent, so answer only if it has not been.
+    if (!res.headersSent) {
+      res.status(200).json({ received: true, error: 'Processing error' });
+    }
   }
 });
 

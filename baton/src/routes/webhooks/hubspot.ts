@@ -10,6 +10,7 @@ import { Router, Request, Response } from 'express';
 import { webhookRateLimiter } from '../../middleware/rate-limit';
 import { createWebhookHandler } from './handler';
 import { logDebug, logWarn } from '../../lib/logger';
+import { redactUrl } from '../../lib/redact';
 import * as connectionService from '../../services/connection.service';
 import env from '../../env';
 
@@ -25,7 +26,9 @@ router.use((req: Request, _res: Response, next) => {
   const protocol = (req.get('x-forwarded-proto') || req.protocol).split(',')[0].trim();
   const host = req.get('x-forwarded-host') || req.get('host') || '';
   const uri = `${protocol}://${host}${req.originalUrl}`;
-  logDebug('HubSpot webhook URI reconstruction', { protocol, host, originalUrl: req.originalUrl, uri });
+  logDebug('HubSpot webhook URI reconstruction', {
+    protocol, host, originalUrl: redactUrl(req.originalUrl), uri: redactUrl(uri),
+  });
   req.headers['x-baton-request-uri'] = uri;
   next();
 });

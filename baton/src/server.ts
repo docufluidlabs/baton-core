@@ -47,6 +47,7 @@ import { rateLimiter } from './middleware/rate-limit';
 import { orgRateLimiter } from './middleware/org-rate-limit';
 import { requireAuth } from './middleware/auth';
 import { requestLogger } from './middleware/request-logger';
+import { mountBodyParsers } from './middleware/body-parsers';
 
 // SQS Workers
 import { startAllWorkers, stopAllWorkers } from './workers';
@@ -126,14 +127,9 @@ app.use(cors({
 app.use(requestLogger);
 app.use(rateLimiter);
 
-// Raw body for webhook signature verification (including Slack events)
-app.use('/api/webhooks', express.raw({ type: 'application/json', limit: '5mb' }));
-app.use('/api/postwebhook', express.raw({ type: 'application/json', limit: '5mb' }));
-app.use('/api/slack/events', express.raw({ type: 'application/json', limit: '1mb' }));
-
-// JSON body for all other routes
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+// Raw bodies for the webhook routes (signature verification), parsed bodies
+// for everything else - see middleware/body-parsers.ts for why the order matters.
+mountBodyParsers(app);
 
 // ─── Health Check ────────────────────────────────────────────
 app.get('/health', (_req, res) => {

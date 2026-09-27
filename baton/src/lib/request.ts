@@ -22,3 +22,41 @@ export function queryString(query: Record<string, unknown>, name: string): strin
   const value = query[name];
   return typeof value === 'string' ? value : undefined;
 }
+
+/**
+ * A list of strings from a payload field that arrives as an array in JSON and
+ * as one comma-separated string when the same webhook is sent as a form post.
+ */
+export function stringList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((v) => String(v));
+  if (typeof value === 'string') return value.split(',').map((v) => v.trim()).filter(Boolean);
+  if (typeof value === 'number') return [String(value)];
+  return [];
+}
+
+/**
+ * The raw request body, or null when the request did not arrive as one.
+ *
+ * Webhook routes verify signatures over the exact bytes received, which exist
+ * only because express.raw() is mounted ahead of them
+ * (middleware/body-parsers.ts). This checks that instead of assuming it;
+ * callers answer null with a 400.
+ */
+export function rawBodyOf(req: { body?: unknown }): Buffer | null {
+  const body: unknown = req.body;
+  if (typeof body === 'string' || Array.isArray(body)) return null;
+  return Buffer.isBuffer(body) ? body : null;
+}
+
+/**
+ * Parse a webhook body by its content type. Form posts - what Zoho workflow
+ * webhooks send unless told otherwise - become a flat object of strings;
+ * anything else must be JSON. Throws on a body that is neither.
+ */
+export function parseWebhookBody(rawBody: Buffer, contentType: string | string[] | undefined): any {
+  const text = rawBody.toString('utf8');
+  if (headerString(contentType).toLowerCase().includes('application/x-www-form-urlencoded')) {
+    return Object.fromEntries(new URLSearchParams(text));
+  }
+  return JSON.parse(text);
+}

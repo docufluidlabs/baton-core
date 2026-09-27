@@ -170,7 +170,7 @@ router.get('/:platform/callback', async (req: Request, res: Response, next: Next
     // Retrieve and validate stored state (DynamoDB, one-time use)
     const storedState = await retrieveOAuthState(state);
     if (!storedState) {
-      logError('Invalid OAuth state', { platform, state });
+      logError('Invalid OAuth state', { platform, state: `${String(state).slice(0, 8)}...` });
       res.redirect(`${env.FRONTEND_URL}/connections?status=error&platform=${platform}&error=invalid_state`);
       return;
     }
