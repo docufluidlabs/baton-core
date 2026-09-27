@@ -4,6 +4,24 @@ All notable changes to Baton are documented here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-09-27
+
+Security and reliability patch. One change can need action: see the first item and [UPGRADING.md](UPGRADING.md#102).
+
+### Security
+- **Basic auth credentials are checked on both webhook URLs.** Zoho CRM and Power Automate webhooks are now verified the same way on the per-automation URL (`/api/webhooks/rule/<key>`) as on the per-app URL; earlier versions checked them on the per-app URL only. **A flow that posts to an automation URL without its credentials will receive `401`** - set the username and password on it as the setup guide describes.
+- **Logs no longer carry credentials.** Sensitive query parameters (OAuth `code` and `state`, bootstrap tokens, anything named like a token, key, secret or signature) are masked as `[REDACTED]` wherever a URL is logged, and a HubSpot signature debug line is removed.
+- **Stored webhook events no longer carry credentials.** `Authorization`, cookie, API-key and shared-token headers are masked before an event is written, and the nightly cleanup masks them in events already stored. Signature headers are kept.
+- The custom endpoint receiver (`/api/postwebhook`) compares its API key in constant time and no longer answers twice when work after its response fails.
+- The per-app webhook URL rejects a verification method it does not implement and requires BambooHR's timestamp header, as the per-automation URL already did.
+- Cleared the `qs` advisories (GHSA-x5fp-wj9c-mxmx, GHSA-4mjr-xmp4-gh2g) by moving to express 4.22.3 and body-parser 1.20.8; `npm audit --omit=dev` reports **0 vulnerabilities** in both packages. Development-tooling advisories with non-breaking fixes are applied too; what remains is the vitest major chain.
+
+### Fixed
+- **Zoho CRM webhooks sent as form data keep their fields.** Form posts - what a Zoho webhook sends by default - are now read correctly on every webhook route, and `ids` is accepted as a list or as one comma-separated string.
+- **Webhook events older than 30 days are deleted on every install size.** The nightly cleanup now walks the whole events table, a bounded number of pages per night, and removes expired idempotency markers too.
+- Calls to the Docusign account server (token exchange, token refresh, user info) and to Resend time out instead of waiting indefinitely on a stalled connection.
+- Temporary AWS credentials work: `AWS_SESSION_TOKEN` is passed to DynamoDB and SQS when set alongside the access key pair.
+
 ## [1.0.1] - 2026-08-10
 
 ### Security
@@ -63,5 +81,7 @@ First stable release. Baton is a self-hostable webhook → Docusign Workflow Bui
 - `DOCUSIGN_RSA_PRIVATE_KEY` - a leftover from the unused JWT grant. Nothing read it, and asking self-hosters to paste an RSA private key into `.env` for no purpose was a needless security smell. Baton authenticates with Authorization Code Grant; no action is needed if you had set it
 - Stale Microsoft Clarity configuration and CSP allowances - the self-hosted build makes no third-party calls (see the outbound inventory in [docs/security-review.md](docs/security-review.md))
 
-[Unreleased]: https://github.com/docufluidlabs/baton-core/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/docufluidlabs/baton-core/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/docufluidlabs/baton-core/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/docufluidlabs/baton-core/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/docufluidlabs/baton-core/releases/tag/v1.0.0

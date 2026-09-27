@@ -1,6 +1,6 @@
 {
   "name": "baton",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Baton - Workflow orchestration platform backend (Docusign Workflow Builder + Business Platforms)",
   "main": "dist/server.js",

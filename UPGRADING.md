@@ -56,6 +56,16 @@ git fetch --tags && git checkout v1.1.0
 docker compose up -d --build
 ```
 
+## Version notes
+
+Patch and minor releases need no action as a rule. These are the exceptions.
+
+### 1.0.2
+
+**Zoho CRM and Power Automate: check that your flows send their credentials.** Automation URLs (`/api/webhooks/rule/<key>`) now check the Basic auth username and password, as the per-app URL always has. A flow that was set up without them gets `401 Missing Authorization header`, and the delivery shows as failed on the sending side. Set the same username and password on the flow that you entered in Baton (Flow Builder, the automation, **Basic Auth Credentials**). Flows set up as the guides describe are not affected. After updating, send one test event per Zoho CRM or Power Automate automation and confirm it arrives.
+
+**Stored webhook events.** New events are stored with credential headers masked, and the nightly cleanup (03:00 UTC) masks them in events stored by earlier versions - up to 20,000 events per night, so most installs are done after the first run. No action is needed. If your events table or its backups are readable more widely than your webhook credentials should be, rotate those credentials: choose a new password or token in Baton and set the same value on the sending side.
+
 ## Major versions
 
 *(none yet - v1 is current)*
