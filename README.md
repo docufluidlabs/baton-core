@@ -101,7 +101,7 @@ To receive real webhooks from external platforms, expose the app on a public URL
 Releases follow [semver](https://github.com/docufluidlabs/baton-core/releases): patch = fixes, minor = backward-compatible features, major = action required (called out in the release notes). Pin the version in a root-level `.env` next to `docker-compose.yml`:
 
 ```bash
-echo "BATON_VERSION=1.0.0" > .env
+echo "BATON_VERSION=1.0.2" > .env
 docker compose pull && docker compose up -d
 ```
 

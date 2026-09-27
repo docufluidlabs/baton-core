@@ -67,7 +67,7 @@ Keep both generated secrets in your secret manager. Rotating `AUTH_JWT_SECRET` l
 ## 3. Run the containers
 
 ```bash
-echo "BATON_VERSION=1.0.0" > .env    # pin the release you deploy (see /releases)
+echo "BATON_VERSION=1.0.2" > .env    # pin the release you deploy (see /releases)
 docker compose -f docker-compose.prod.yml up -d
 docker compose -f docker-compose.prod.yml ps    # both services healthy?
 ```

@@ -7,7 +7,7 @@
 #     talks to real AWS (create the tables/queues first — see
 #     docs/deploy-production.md and baton/infrastructure/)
 #   - pull-only pinned images, no build fallback: set BATON_VERSION in a
-#     root-level .env (e.g. BATON_VERSION=1.0.0)
+#     root-level .env (e.g. BATON_VERSION=1.0.2)
 #   - the app listens on plain HTTP behind YOUR reverse proxy / load balancer,
 #     which terminates TLS (required: session cookies are Secure-only when
 #     FRONTEND_URL is https)
