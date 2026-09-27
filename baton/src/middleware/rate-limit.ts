@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import { logWarn } from '../lib/logger';
+import { redactUrl } from '../lib/redact';
 
 export const rateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -8,7 +9,7 @@ export const rateLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Too Many Requests', message: 'Rate limit exceeded', statusCode: 429 },
   handler: (req, res, _next, options) => {
-    logWarn('Global rate limit exceeded', { ip: req.ip, path: req.originalUrl, method: req.method });
+    logWarn('Global rate limit exceeded', { ip: req.ip, path: redactUrl(req.originalUrl), method: req.method });
     res.status(429).json(options.message);
   },
 });
@@ -19,7 +20,7 @@ export const webhookRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
-    logWarn('Webhook rate limit exceeded', { ip: req.ip, path: req.originalUrl, method: req.method });
+    logWarn('Webhook rate limit exceeded', { ip: req.ip, path: redactUrl(req.originalUrl), method: req.method });
     res.status(429).json({ error: 'Too Many Requests', message: 'Webhook rate limit exceeded', statusCode: 429 });
   },
 });

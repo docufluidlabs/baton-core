@@ -20,7 +20,7 @@ import { getDocClient, TableNames } from '../../db/client';
 import { sendMessage, QueueNames } from '../../queue/sqs-client';
 import { WebhookProcessingJob } from '../../lib/types';
 import { logInfo, logError, logWarn } from '../../lib/logger';
-import { headerString } from '../../lib/request';
+import { headerString, rawBodyOf, parseWebhookBody } from '../../lib/request';
 import { sendNotification, webhookFailedNotification } from '../../services/notification.service';
 import { getOrgAdmins } from '../../services/user.service';
 
@@ -53,15 +53,20 @@ export function createWebhookHandler(options: WebhookHandlerOptions) {
   return async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
     try {
       // Raw body is available because server.ts uses express.raw() for /api/webhooks
-      const rawBody = req.body as Buffer;
+      const rawBody = rawBodyOf(req);
+      if (!rawBody) {
+        logWarn('Webhook body is not raw bytes', { platform });
+        res.status(400).json({ error: 'Invalid JSON' });
+        return;
+      }
       const headers = Object.fromEntries(
         Object.entries(req.headers).map(([k, v]) => [k, headerString(v)])
       );
 
-      // Parse JSON payload
+      // Parse the payload (JSON, or a form post)
       let payload: Record<string, any>;
       try {
-        payload = JSON.parse(rawBody.toString('utf8'));
+        payload = parseWebhookBody(rawBody, req.headers['content-type']);
       } catch {
         logWarn('Invalid JSON in webhook body', { platform });
         res.status(400).json({ error: 'Invalid JSON' });

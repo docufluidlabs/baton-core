@@ -31,7 +31,14 @@ Verify: `grep -rhoE "https://[a-z0-9.-]+\.[a-z]{2,}" baton/src --include="*.ts" 
 - **Tables** are created with KMS server-side encryption and point-in-time recovery by the CloudFormation stack ([baton/infrastructure/dynamodb.yml](../baton/infrastructure/dynamodb.yml) - generated from the app's own schema via `npm run infra:generate`, so template and code cannot drift).
 - **Platform credentials** (OAuth tokens, webhook secrets) get an additional application layer: AES-256-GCM with `TOKEN_ENCRYPTION_KEY` before storage, so table dumps don't expose third-party credentials.
 - **Passwords** are bcrypt hashes, cost 12 ([local-auth.service.ts](../baton/src/services/local-auth.service.ts)).
-- Ephemeral records expire via DynamoDB TTL: `oauth-states`, `bootstrap-tokens`. Webhook payloads older than 30 days are purged by a daily job.
+- Ephemeral records expire via DynamoDB TTL: `oauth-states`, `bootstrap-tokens`. Processed webhook events older than 30 days are deleted by a daily job that walks the whole events table ([webhook-event-cleanup.ts](../baton/src/services/webhook-event-cleanup.ts)); events that never finished processing are kept as the record of the failure.
+- **Stored webhook events do not keep the credentials they arrived with.** Request headers are stored for troubleshooting, with `Authorization`, cookies, API keys and shared tokens masked as `[REDACTED]` before the write ([redact.ts](../baton/src/lib/redact.ts)). Signature headers are kept: a signature is bound to one body and says nothing about the secret.
+
+## Logs
+
+- Logs go to stdout as JSON (pino); Baton ships them nowhere. What your log pipeline stores is what the process writes.
+- URLs are logged with sensitive query parameters masked - OAuth `code` and `state` on connection callbacks, Salesforce bootstrap tokens, anything named like a token, key, secret or signature. Verify: `grep -rn "originalUrl" baton/src --include="*.ts" | grep -v tests` - every logged use goes through `redactUrl`; the three that do not build the string a HubSpot signature is computed over, and are never logged.
+- A failed signature check logs that it failed, never the signature that would have passed.
 
 ## Authentication and authorization
 
@@ -42,7 +49,8 @@ Verify: `grep -rhoE "https://[a-z0-9.-]+\.[a-z]{2,}" baton/src --include="*.ts" 
 
 ## Webhook ingress hardening
 
-- **Fail closed, always:** every source connector implements signature verification; unverifiable requests are rejected. HMAC-SHA256 comparisons use Node's `timingSafeEqual` in all nine HMAC connectors (verify: `grep -rc timingSafeEqual baton/src/services/connectors/`). Basic-auth platforms get per-connection credentials; platforms that cannot sign use the documented URL-secrecy model with per-rule secret keys.
+- **Fail closed, always:** every source connector implements signature verification; unverifiable requests are rejected. HMAC-SHA256 comparisons use Node's `timingSafeEqual` in all nine HMAC connectors (verify: `grep -rc timingSafeEqual baton/src/services/connectors/`). Basic-auth platforms get per-connection credentials, checked on both webhook URLs (per app and per automation) by one shared routine ([webhook-auth.ts](../baton/src/lib/webhook-auth.ts)); platforms that cannot sign use the documented URL-secrecy model with per-rule secret keys. A catalog entry naming a verification method the routes do not implement is rejected, not waved through.
+- Webhook routes receive the request body as the raw bytes that were sent, whatever its content type, and refuse a body that reached them any other way ([body-parsers.ts](../baton/src/middleware/body-parsers.ts)).
 - The project's contribution policy forbids merging a connector without signature-verification tests ([CONTRIBUTING.md](../CONTRIBUTING.md)).
 - Events are stored idempotently (duplicate deliveries collapse), then processed via SQS with bounded retries and dead-letter queues.
 - Per-IP rate limiting on authenticated APIs (`RATE_LIMIT_PER_MINUTE`, default 300) plus `helmet` hardening headers on the API.
@@ -50,7 +58,7 @@ Verify: `grep -rhoE "https://[a-z0-9.-]+\.[a-z]{2,}" baton/src --include="*.ts" 
 
 ## Supply chain and code quality
 
-- TypeScript strict mode; **903 backend tests** + frontend suites run on every push (`.github/workflows/ci.yml`), plus a Docker build of both images.
+- TypeScript strict mode; **1,067 backend tests** + frontend suites run on every push (`.github/workflows/ci.yml`), plus a Docker build of both images.
 - Secret scanning: gitleaks runs across history in CI ([.gitleaks.toml](../.gitleaks.toml)).
 - Static analysis: CodeQL on every push/PR and weekly ([codeql.yml](../.github/workflows/codeql.yml)); Dependabot watches both `package-lock.json` files and the GitHub Actions pins weekly.
 - Releases are tagged semver; images are built from the tag by CI and published to GHCR (`ghcr.io/docufluidlabs/baton-api`, `baton-front`). You can always build from the same tag yourself and compare behavior - the images add nothing that isn't in the repo.

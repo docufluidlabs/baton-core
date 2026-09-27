@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import { Logger } from 'pino';
 import { createLogger } from '../lib/logger';
 import { requestContext } from '../lib/context';
+import { redactUrl } from '../lib/redact';
 
 // Extend Request to carry correlation ID and child logger
 declare global {
@@ -39,7 +40,9 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
       const duration = Date.now() - start;
       const logData = {
         method: req.method,
-        path: req.originalUrl,
+        // The query string carries OAuth codes on connection callbacks and
+        // bootstrap tokens on Salesforce registration calls.
+        path: redactUrl(req.originalUrl),
         status: res.statusCode,
         duration,
         ip: req.ip,

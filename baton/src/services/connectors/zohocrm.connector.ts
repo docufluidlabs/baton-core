@@ -26,6 +26,7 @@ import {
 import { Platform } from '../../lib/types';
 import env from '../../env';
 import { logInfo, logError, logDebug } from '../../lib/logger';
+import { stringList } from '../../lib/request';
 
 // ─── Constants ────────────────────────────────────────────────
 
@@ -225,7 +226,8 @@ export class ZohoCRMConnector extends BasePlatformConnector {
     // { query_params: { module, operation, ... }, body: { ids: [...] } }
     const module = (payload.module || payload.query_params?.module || '').toLowerCase();
     const operation = (payload.operation || payload.query_params?.operation || '').toLowerCase();
-    const ids: string[] = payload.ids || payload.body?.ids || [];
+    // An array in JSON deliveries, one comma-separated string in form posts.
+    const ids = stringList(payload.ids ?? payload.body?.ids);
 
     const eventType = `${module}.${normalizeZohoOperation(operation)}`;
     const eventLabel = `${capitalize(module)} ${capitalize(normalizeZohoOperation(operation))}`;

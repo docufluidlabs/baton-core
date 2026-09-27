@@ -25,7 +25,9 @@ import { decryptToken } from '../../lib/encryption';
 import * as webhookEventService from '../../services/webhook-event.service';
 import { sendMessage, QueueNames } from '../../queue/sqs-client';
 import { logInfo, logWarn, logError } from '../../lib/logger';
-import { headerString } from '../../lib/request';
+import { headerString, rawBodyOf, parseWebhookBody } from '../../lib/request';
+import { redactUrl } from '../../lib/redact';
+import { verifyBasicAuth, credentialHeadersOf } from '../../lib/webhook-auth';
 
 const router = Router();
 
@@ -34,16 +36,16 @@ router.post('/:webhookKey', async (req: Request, res: Response, _next: NextFunct
 
   try {
     // Parse raw body
-    const rawBody = req.body as Buffer;
+    const rawBody = rawBodyOf(req);
+    const contentType = headerString(req.headers['content-type']).toLowerCase();
+    if (!rawBody) {
+      logWarn('Webhook body is not raw bytes', { webhookKey, contentType });
+      res.status(400).json({ error: 'Invalid request body' });
+      return;
+    }
     let payload: Record<string, any>;
-    const bodyStr = rawBody.toString('utf8');
-    const contentType = (req.headers['content-type'] || '').toLowerCase();
     try {
-      if (contentType.includes('application/x-www-form-urlencoded')) {
-        payload = Object.fromEntries(new URLSearchParams(bodyStr));
-      } else {
-        payload = JSON.parse(bodyStr);
-      }
+      payload = parseWebhookBody(rawBody, contentType);
     } catch {
       logWarn('Invalid webhook body', { webhookKey, contentType });
       res.status(400).json({ error: 'Invalid request body' });
@@ -193,7 +195,9 @@ router.post('/:webhookKey', async (req: Request, res: Response, _next: NextFunct
       }
 
       if (!valid) {
-        logWarn('App webhook: HubSpot v3 HMAC verification failed', { appSlug, orgId, requestUri });
+        logWarn('App webhook: HubSpot v3 HMAC verification failed', {
+          appSlug, orgId, requestUri: redactUrl(requestUri),
+        });
         res.status(401).json({ error: 'Invalid signature' });
         return;
       }
@@ -270,6 +274,13 @@ router.post('/:webhookKey', async (req: Request, res: Response, _next: NextFunct
         res.status(401).json({ error: 'Missing x-bamboohr-signature header' });
         return;
       }
+      // The timestamp is part of what BambooHR signs; the per-automation URL
+      // has always required it, and the two routes must agree.
+      if (!timestamp) {
+        logWarn('App webhook: missing x-bamboohr-timestamp header', { appSlug, orgId });
+        res.status(401).json({ error: 'Missing x-bamboohr-timestamp header' });
+        return;
+      }
 
       const expected = crypto
         .createHmac('sha256', secretKey)
@@ -333,61 +344,28 @@ router.post('/:webhookKey', async (req: Request, res: Response, _next: NextFunct
       }
 
     } else if (verificationMethod.type === 'basic_auth') {
-      const authHeader = headers['authorization'];
-
-      if (!authHeader) {
-        logWarn('App webhook: missing Authorization header', { appSlug, orgId });
-        res.status(401).json({ error: 'Missing Authorization header' });
+      const result = verifyBasicAuth(headers['authorization'], secretKey);
+      if (!result.ok) {
+        if (result.reason === 'misconfigured') {
+          logError(
+            'App webhook: basic_auth secret not in username:password format',
+            new Error('Invalid secret format'),
+            { appSlug, orgId },
+          );
+        } else {
+          logWarn('App webhook: Basic Auth verification failed', { appSlug, orgId, reason: result.reason });
+        }
+        res.status(result.status).json({ error: result.error });
         return;
       }
-      if (!authHeader.startsWith('Basic ')) {
-        logWarn('App webhook: Authorization header is not Basic scheme', { appSlug, orgId });
-        res.status(401).json({ error: 'Invalid authorization scheme' });
-        return;
-      }
-
-      const decoded = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
-      const colonIdx = decoded.indexOf(':');
-      if (colonIdx === -1) {
-        res.status(401).json({ error: 'Malformed Authorization header' });
-        return;
-      }
-
-      const providedUsername = decoded.slice(0, colonIdx);
-      const providedPassword = decoded.slice(colonIdx + 1); // handles colons in password
-
-      const storedColonIdx = secretKey.indexOf(':');
-      if (storedColonIdx === -1) {
-        logError(
-          'App webhook: basic_auth secret not in username:password format',
-          new Error('Invalid secret format'),
-          { appSlug, orgId },
-        );
-        res.status(500).json({ error: 'Internal configuration error' });
-        return;
-      }
-
-      const storedUsername = secretKey.slice(0, storedColonIdx);
-      const storedPassword = secretKey.slice(storedColonIdx + 1);
-
-      let valid = false;
-      try {
-        const uBuf = Buffer.from(providedUsername);
-        const uExp = Buffer.from(storedUsername);
-        const pBuf = Buffer.from(providedPassword);
-        const pExp = Buffer.from(storedPassword);
-        const usernameMatch = uBuf.length === uExp.length && crypto.timingSafeEqual(uBuf, uExp);
-        const passwordMatch = pBuf.length === pExp.length && crypto.timingSafeEqual(pBuf, pExp);
-        valid = usernameMatch && passwordMatch;
-      } catch {
-        valid = false;
-      }
-
-      if (!valid) {
-        logWarn('App webhook: Basic Auth verification failed', { appSlug, orgId });
-        res.status(401).json({ error: 'Invalid credentials' });
-        return;
-      }
+    } else if (verificationMethod.type !== 'none') {
+      // Fail closed: a catalog template naming a method this route does not
+      // implement must not be accepted unverified.
+      logError('App webhook: unknown verification type — rejecting', new Error('Unknown verificationMethod.type'), {
+        appSlug, orgId, type: verificationMethod.type,
+      });
+      res.status(500).json({ error: 'Unsupported verification method' });
+      return;
     }
     // verificationMethod.type === 'none' → no check needed
 
@@ -397,6 +375,7 @@ router.post('/:webhookKey', async (req: Request, res: Response, _next: NextFunct
       connectionId: app.id,
       payload,
       headers,
+      credentialHeaders: credentialHeadersOf(verificationMethod),
       signatureValid: true,
     });
 

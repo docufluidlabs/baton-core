@@ -228,6 +228,7 @@ async function sendEmailNotification(payload: NotificationPayload): Promise<void
         subject: `${severityEmoji[payload.severity] || ''} ${payload.title}`,
         html: buildEmailHtml(payload),
       }),
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!response.ok) {

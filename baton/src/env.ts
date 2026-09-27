@@ -20,6 +20,9 @@ const env = {
   AWS_REGION: process.env.AWS_REGION || 'us-east-1',
   AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID || '',
   AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || '',
+  // Set alongside the two above by temporary credentials (SSO, an assumed
+  // role, OIDC). AWS rejects the key pair without it.
+  AWS_SESSION_TOKEN: process.env.AWS_SESSION_TOKEN || '',
 
   // DynamoDB
   DYNAMODB_REGION: process.env.DYNAMODB_REGION || process.env.AWS_REGION || 'us-east-1',

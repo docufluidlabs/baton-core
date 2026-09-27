@@ -26,7 +26,7 @@ import { sendMessage, QueueNames } from '../../queue/sqs-client';
 import { getDocClient, TableNames } from '../../db/client';
 import { TriggerPipelineEntry, WebhookProcessingJob } from '../../lib/types';
 import { logInfo, logDebug, logWarn, logError } from '../../lib/logger';
-import { headerString } from '../../lib/request';
+import { headerString, rawBodyOf, parseWebhookBody } from '../../lib/request';
 
 const router = Router();
 router.use(webhookRateLimiter);
@@ -42,15 +42,21 @@ const CACHE_TTL = 5 * 60 * 1000;
 
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const rawBody = req.body as Buffer;
+    const rawBody = rawBodyOf(req);
+    if (!rawBody) {
+      logWarn('Zoho CRM webhook body is not raw bytes');
+      res.status(400).json({ error: 'Invalid JSON' });
+      return;
+    }
     const headers = Object.fromEntries(
       Object.entries(req.headers).map(([k, v]) => [k, headerString(v)]),
     );
 
-    // Parse JSON payload
+    // Parse the payload. Zoho workflow webhooks post form data unless the
+    // body type is changed to JSON, so both are accepted.
     let payload: Record<string, any>;
     try {
-      payload = JSON.parse(rawBody.toString('utf8'));
+      payload = parseWebhookBody(rawBody, req.headers['content-type']);
     } catch {
       logWarn('Invalid JSON in Zoho CRM webhook body');
       res.status(400).json({ error: 'Invalid JSON' });

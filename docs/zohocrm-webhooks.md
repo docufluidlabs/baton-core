@@ -9,8 +9,9 @@ Webhooks are received via the **App Webhook**:
 | URL | Authentication | Setup |
 |-----|----------------|-------|
 | `/api/webhooks/app/:webhookKey` | **Basic Auth** (username + password) | "out of the box" via the app install wizard in the UI |
+| `/api/webhooks/rule/:webhookKey` | **Basic Auth** (the same credentials) | shown on each automation in the Flow Builder; delivers to that one automation only |
 
-This is exactly the path that the "Install Zoho CRM" wizard opens in the interface.
+The first is exactly the path that the "Install Zoho CRM" wizard opens in the interface. Both check the credentials on every request and accept the body as JSON or as form data, which is what a Zoho webhook sends unless you change its body type.
 
 ---
 
@@ -80,19 +81,23 @@ Expected response:
 { "received": true, "eventId": "..." }
 ```
 
-Rejection checks ([app.ts:365-420](../baton/src/routes/webhooks/app.ts#L365-L420)):
+Rejection checks (the same on both URLs):
 - no `Authorization` header → `401 { "error": "Missing Authorization header" }`
 - wrong username/password → `401 { "error": "Invalid credentials" }`
 - unknown `webhookKey` → `404`
 - app deactivated → `403`
 
+A rejected request is not stored and launches nothing.
+
 ### How Basic Auth verification works
 
-From [app.ts:365-420](../baton/src/routes/webhooks/app.ts#L365-L420):
+From [webhook-auth.ts](../baton/src/lib/webhook-auth.ts), used by both webhook routes:
 1. The `Authorization: Basic <base64>` header is read.
 2. It is decoded into `username:password` (colons in the password are supported - the first colon is used as the separator).
-3. Username and password are compared **separately**, each one timing-safe (`crypto.timingSafeEqual`, length check first).
+3. Username and password are compared **separately**, each in constant time, and both are always compared - a wrong username takes as long to reject as a wrong password.
 4. Any mismatch → `401`.
+
+The stored copy of an accepted event keeps the header as `Basic [REDACTED]`: the credentials are never written to the database or the logs.
 
 ---
 

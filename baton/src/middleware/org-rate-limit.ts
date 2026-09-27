@@ -8,6 +8,7 @@
 import rateLimit from 'express-rate-limit';
 import env from '../env';
 import { logWarn } from '../lib/logger';
+import { redactUrl } from '../lib/redact';
 
 // ─── Rate Limiter Middleware ────────────────────────────────
 
@@ -25,7 +26,7 @@ export const orgRateLimiter = rateLimit({
   handler: (req, res, _next, options) => {
     logWarn('Rate limit exceeded', {
       ip: req.ip,
-      path: req.originalUrl,
+      path: redactUrl(req.originalUrl),
       method: req.method,
     });
     res.status(429).json(options.message);

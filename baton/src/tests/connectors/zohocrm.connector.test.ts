@@ -105,6 +105,23 @@ describe('extractEventInfo', () => {
     expect(result.recordId).toBeUndefined();
     expect(result.summary).toContain('0 record(s)');
   });
+
+  it('reads ids sent as one comma-separated string, as a form post does', () => {
+    const payload = { module: 'Deals', operation: 'insert', ids: '4876876000001,4876876000002' };
+
+    const result = connector.extractEventInfo(payload);
+
+    expect(result.recordId).toBe('4876876000001');
+    expect(result.summary).toContain('2 record(s)');
+    expect(result.metadata?.recordIds).toEqual(['4876876000001', '4876876000002']);
+  });
+
+  it('reads a single id sent as a string', () => {
+    const result = connector.extractEventInfo({ module: 'Leads', operation: 'update', ids: '99' });
+
+    expect(result.recordId).toBe('99');
+    expect(result.summary).toContain('1 record(s)');
+  });
 });
 
 // ─── verifyWebhookSignature ──────────────────────────────────

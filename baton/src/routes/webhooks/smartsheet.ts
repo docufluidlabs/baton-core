@@ -19,6 +19,7 @@ import { webhookRateLimiter } from '../../middleware/rate-limit';
 import { createWebhookHandler } from './handler';
 import env from '../../env';
 import { logInfo, logDebug, logWarn } from '../../lib/logger';
+import { rawBodyOf } from '../../lib/request';
 import * as connectionService from '../../services/connection.service';
 
 const router = Router();
@@ -29,7 +30,11 @@ const connectionCache = new Map<string, { orgId: string; connectionId: string; c
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 router.post('/', (req: Request, res: Response, next: any) => {
-  const rawBody = req.body as Buffer;
+  const rawBody = rawBodyOf(req);
+  if (!rawBody) {
+    res.status(400).json({ error: 'Invalid JSON' });
+    return;
+  }
   let payload: any;
 
   try {

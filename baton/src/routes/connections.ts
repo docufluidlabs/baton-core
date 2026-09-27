@@ -170,7 +170,7 @@ router.get('/:platform/callback', async (req: Request, res: Response, next: Next
     // Retrieve and validate stored state (DynamoDB, one-time use)
     const storedState = await retrieveOAuthState(state);
     if (!storedState) {
-      logError('Invalid OAuth state', { platform, state });
+      logError('Invalid OAuth state', { platform, state: `${String(state).slice(0, 8)}...` });
       res.redirect(`${env.FRONTEND_URL}/connections?status=error&platform=${platform}&error=invalid_state`);
       return;
     }
@@ -292,6 +292,7 @@ router.get('/:id/accounts', requireAuth, requireViewer, async (req: Request, res
       if (userAccounts.length === 0) {
         const response = await fetch(`${env.DOCUSIGN_OAUTH_BASE}/oauth/userinfo`, {
           headers: { Authorization: `Bearer ${accessToken}` },
+          signal: AbortSignal.timeout(30_000),
         });
         if (response.ok) {
           const userInfo: any = await response.json();

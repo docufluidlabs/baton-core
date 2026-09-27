@@ -22,7 +22,7 @@ import { requireAuth } from '../middleware/auth';
 import { SlackConfigInput } from '../docs/schemas/slack';
 import { requireAdmin } from '../middleware/rbac';
 import { logInfo, logWarn, logError } from '../lib/logger';
-import { queryString } from '../lib/request';
+import { queryString, headerString, rawBodyOf } from '../lib/request';
 import { encryptToken } from '../lib/encryption';
 import {
   verifySlackSignature,
@@ -44,9 +44,13 @@ export const slackEventsRouter = Router();
 // Raw body is required for signature verification.
 // Mounted at /slack/events (before express.json middleware).
 slackEventsRouter.post('/', async (req: Request, res: Response) => {
-  const rawBody = req.body as Buffer;
-  const timestamp = req.headers['x-slack-request-timestamp'] as string;
-  const signature = req.headers['x-slack-signature'] as string;
+  const rawBody = rawBodyOf(req);
+  if (!rawBody) {
+    res.status(400).json({ error: 'Invalid JSON' });
+    return;
+  }
+  const timestamp = headerString(req.headers['x-slack-request-timestamp']);
+  const signature = headerString(req.headers['x-slack-signature']);
 
   // ── Signature verification ────────────────────────────────
   const signingSecret = env.SLACK_SIGNING_SECRET;

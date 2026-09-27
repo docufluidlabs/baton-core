@@ -15,6 +15,8 @@ import { PutCommand, GetCommand, QueryCommand, UpdateCommand } from '@aws-sdk/li
 import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
 import { getDocClient, TableNames } from '../db/client';
 import { logInfo, logDebug, logWarn } from '../lib/logger';
+import { redactHeaders } from '../lib/redact';
+import { stringList } from '../lib/request';
 import { Platform, WebhookEvent } from '../lib/types';
 
 // ─── Platform event ID extraction ────────────────────────────
@@ -39,9 +41,11 @@ function extractPlatformEventId(platform: Platform, payload: Record<string, any>
       return payload.id?.toString() || payload.eventId?.toString();
     }
     case 'zohocrm': {
-      // Zoho doesn't provide a stable event ID — use a hash of org_id + ids
+      // Zoho doesn't provide a stable event ID — use a hash of org_id + ids.
+      // `ids` is an array in JSON deliveries and a comma-separated string in
+      // form posts; sort a copy so the stored payload keeps its order.
       const orgId = payload.org_id?.toString() || '';
-      const ids = (payload.ids || []).sort().join(',');
+      const ids = stringList(payload.ids).sort().join(',');
       const module = payload.module || '';
       const operation = payload.operation || '';
       if (orgId && ids) return `${orgId}:${module}:${operation}:${ids}`;
@@ -68,6 +72,8 @@ export async function storeWebhookEvent(params: {
   connectionId?: string;
   payload: Record<string, any>;
   headers?: Record<string, any>;
+  /** Extra header names that carry a credential for this source (a template's static token header). */
+  credentialHeaders?: string[];
   signatureValid?: boolean;
 }): Promise<WebhookEvent> {
   const docClient = getDocClient();
@@ -81,7 +87,9 @@ export async function storeWebhookEvent(params: {
     platform: params.platform,
     connectionId: params.connectionId,
     payload: params.payload,
-    headers: params.headers,
+    // The request has been verified by now; the stored copy is a record of
+    // what arrived, and must not keep the credentials it arrived with.
+    headers: redactHeaders(params.headers, params.credentialHeaders),
     signatureValid: params.signatureValid,
     processed: false,
     receivedAt: now,

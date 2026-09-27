@@ -23,7 +23,9 @@ import { resolveSfRegistration, sfRegKey } from '../../lib/sf-registration-key';
 import * as webhookEventService from '../../services/webhook-event.service';
 import { sendMessage, QueueNames } from '../../queue/sqs-client';
 import { logInfo, logWarn, logError } from '../../lib/logger';
-import { headerString } from '../../lib/request';
+import { headerString, rawBodyOf, parseWebhookBody } from '../../lib/request';
+import { redactUrl } from '../../lib/redact';
+import { verifyBasicAuth, credentialHeadersOf } from '../../lib/webhook-auth';
 
 const router = Router();
 
@@ -38,16 +40,16 @@ router.post('/:webhookKey', async (req: Request, res: Response, _next: NextFunct
 
   try {
     // Parse raw body
-    const rawBody = req.body as Buffer;
+    const rawBody = rawBodyOf(req);
+    const contentType = headerString(req.headers['content-type']).toLowerCase();
+    if (!rawBody) {
+      logWarn('Webhook body is not raw bytes', { webhookKey, contentType, sfDispatchId });
+      res.status(400).json({ error: 'Invalid request body' });
+      return;
+    }
     let payload: Record<string, any>;
-    const bodyStr = rawBody.toString('utf8');
-    const contentType = (req.headers['content-type'] || '').toLowerCase();
     try {
-      if (contentType.includes('application/x-www-form-urlencoded')) {
-        payload = Object.fromEntries(new URLSearchParams(bodyStr));
-      } else {
-        payload = JSON.parse(bodyStr);
-      }
+      payload = parseWebhookBody(rawBody, contentType);
     } catch {
       logWarn('Invalid webhook body', { webhookKey, contentType, sfDispatchId });
       res.status(400).json({ error: 'Invalid request body' });
@@ -260,20 +262,20 @@ router.post('/:webhookKey', async (req: Request, res: Response, _next: NextFunct
       const sourceString = 'POST' + requestUri + rawBody.toString('utf8') + timestamp;
       const expected = crypto.createHmac('sha256', secretKey).update(sourceString, 'utf8').digest('base64');
 
-      logWarn('HubSpot v3 signature debug', {
-        requestUri,
-        timestamp,
-        sigHeader,
-        expected,
-        sourceStringPreview: sourceString.slice(0, 120),
-      });
-
       let valid = false;
       try { valid = crypto.timingSafeEqual(Buffer.from(sigHeader), Buffer.from(expected)); }
       catch { valid = false; }
 
       if (!valid) {
-        logWarn('Rule webhook: HubSpot v3 HMAC verification failed', { ruleId: rule.id, appSlug: app.appSlug, orgId, requestUri, sigHeader, expected });
+        // `expected` is the valid signature for this request: never log it.
+        logWarn('Rule webhook: HubSpot v3 HMAC verification failed', {
+          ruleId: rule.id,
+          appSlug: app.appSlug,
+          orgId,
+          requestUri: redactUrl(requestUri),
+          hasTimestamp: !!timestamp,
+          bodyByteLength: rawBody.length,
+        });
         res.status(401).json({ error: 'Invalid signature' });
         return;
       }
@@ -395,7 +397,25 @@ router.post('/:webhookKey', async (req: Request, res: Response, _next: NextFunct
         res.status(401).json({ error: 'Invalid token' });
         return;
       }
-    } else if (verificationMethod.type !== 'none' && verificationMethod.type !== 'basic_auth') {
+    } else if (verificationMethod.type === 'basic_auth') {
+      // The same check the per-app URL runs.
+      const result = verifyBasicAuth(headers['authorization'], secretKey);
+      if (!result.ok) {
+        if (result.reason === 'misconfigured') {
+          logError(
+            'Rule webhook: basic_auth secret not in username:password format',
+            new Error('Invalid secret format'),
+            { ruleId: rule.id, appSlug: app.appSlug, orgId },
+          );
+        } else {
+          logWarn('Rule webhook: Basic Auth verification failed', {
+            ruleId: rule.id, appSlug: app.appSlug, orgId, reason: result.reason,
+          });
+        }
+        res.status(result.status).json({ error: result.error });
+        return;
+      }
+    } else if (verificationMethod.type !== 'none') {
       // Fail-closed for any unrecognized verification type so a new template
       // can't silently bypass HMAC like `hmac_bamboohr` did before this fix.
       logError('Rule webhook: unknown verification type — rejecting', new Error('Unknown verificationMethod.type'), {
@@ -404,7 +424,7 @@ router.post('/:webhookKey', async (req: Request, res: Response, _next: NextFunct
       res.status(500).json({ error: 'Unsupported verification method' });
       return;
     }
-    // verificationMethod.type === 'none' / 'basic_auth' → no check needed here
+    // verificationMethod.type === 'none' → no check needed here
 
     // ─── 5. Store webhook event ────────────────────────────
     const event = await webhookEventService.storeWebhookEvent({
@@ -412,6 +432,7 @@ router.post('/:webhookKey', async (req: Request, res: Response, _next: NextFunct
       connectionId: app.id,
       payload,
       headers,
+      credentialHeaders: credentialHeadersOf(verificationMethod),
       signatureValid: true,
     });
 
