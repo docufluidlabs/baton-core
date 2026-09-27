@@ -54,6 +54,12 @@ jobs:
         with:
           ref: refs/tags/${{ env.RELEASE_TAG }}
 
+      # On a manual run github.sha is the branch the run started from, not the
+      # tag that is being built. The image is labelled with what it contains.
+      - id: tagged
+        name: Resolve the tagged commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
       - uses: docker/setup-qemu-action@v3
 
       - uses: docker/setup-buildx-action@v3
@@ -73,6 +79,8 @@ jobs:
           tags: |
             type=semver,pattern={{version}},value=${{ env.RELEASE_TAG }}
             type=semver,pattern={{major}}.{{minor}},value=${{ env.RELEASE_TAG }}
+          labels: |
+            org.opencontainers.image.revision=${{ steps.tagged.outputs.sha }}
 
       - uses: docker/build-push-action@v6
         with:
