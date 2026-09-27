@@ -18,6 +18,7 @@ import {
 } from '../services/notification.service';
 import { getOrgAdmins } from '../services/user.service';
 import { dispatchDueBatchRuns } from '../services/batch.service';
+import { cleanupWebhookEvents } from '../services/webhook-event-cleanup';
 
 // ─── Rate limit backoff ──────────────────────────────────────
 
@@ -87,10 +88,11 @@ export function startScheduledJobs(): void {
     }
   });
 
-  // Daily at 3am UTC: cleanup old webhook events (>30 days)
+  // Daily at 3am UTC: delete old webhook events (>30 days) and mask
+  // credentials in events stored before headers were redacted on write.
   cron.schedule('0 3 * * *', async () => {
     try {
-      await cleanupOldWebhookEvents();
+      await cleanupWebhookEvents();
     } catch (err) {
       logError('Webhook event cleanup failed', err);
     }
@@ -444,46 +446,4 @@ async function syncRunningInstanceStatuses(): Promise<void> {
   }
 }
 
-// ─── Cleanup Old Webhook Events ──────────────────────────────
-
-async function cleanupOldWebhookEvents(): Promise<void> {
-  const docClient = getDocClient();
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-
-  // This is a simplified version — production would use batch delete
-  // `processed` is a DynamoDB reserved word — aliased via ExpressionAttributeNames.
-  const result = await docClient.send(new ScanCommand({
-    TableName: TableNames.WEBHOOK_EVENTS,
-    FilterExpression: 'receivedAt <= :cutoff AND #processed = :true',
-    ExpressionAttributeNames: {
-      '#processed': 'processed',
-    },
-    ExpressionAttributeValues: {
-      ':cutoff': thirtyDaysAgo,
-      ':true': true,
-    },
-    Limit: 200,
-  }));
-
-  const toDelete = result.Items || [];
-
-  if (toDelete.length > 0) {
-    const { DeleteCommand } = await import('@aws-sdk/lib-dynamodb');
-
-    // Delete in batches of 25 (DynamoDB limit)
-    for (let i = 0; i < toDelete.length; i += 25) {
-      const batch = toDelete.slice(i, i + 25);
-      await Promise.allSettled(
-        batch.map((item: any) =>
-          docClient.send(new DeleteCommand({
-            TableName: TableNames.WEBHOOK_EVENTS,
-            Key: { id: item.id },
-          })),
-        ),
-      );
-    }
-
-    logInfo('Cleaned up old webhook events', { count: toDelete.length });
-  }
-}
 
