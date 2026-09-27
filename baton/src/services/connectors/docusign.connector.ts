@@ -21,6 +21,15 @@ import { Platform } from '../../lib/types';
 import env from '../../env';
 import { logInfo, logError, logDebug } from '../../lib/logger';
 
+/**
+ * Upper bound for calls to the Docusign account server. Without one a
+ * connection that stalls mid-response holds its caller - the token-refresh
+ * worker, or a request - indefinitely. Generous on purpose: a refresh that
+ * Docusign did process but we gave up on would leave the stored refresh token
+ * stale.
+ */
+const DOCUSIGN_OAUTH_TIMEOUT_MS = 30_000;
+
 export class DocuSignConnector extends BasePlatformConnector {
   readonly platform: Platform = 'docusign';
   readonly displayName = 'Docusign';
@@ -64,6 +73,7 @@ export class DocuSignConnector extends BasePlatformConnector {
         code,
         redirect_uri: `${env.API_URL}/api/connections/docusign/callback`,
       }).toString(),
+      signal: AbortSignal.timeout(DOCUSIGN_OAUTH_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -78,6 +88,7 @@ export class DocuSignConnector extends BasePlatformConnector {
     // Fetch userinfo to get account_id
     const userInfoResponse = await fetch(`${this.oauthBase}/oauth/userinfo`, {
       headers: { Authorization: `Bearer ${data.access_token}` },
+      signal: AbortSignal.timeout(DOCUSIGN_OAUTH_TIMEOUT_MS),
     });
     const userInfo: any = userInfoResponse.ok ? await userInfoResponse.json() : null;
 
@@ -108,6 +119,7 @@ export class DocuSignConnector extends BasePlatformConnector {
         grant_type: 'refresh_token',
         refresh_token: refreshToken,
       }).toString(),
+      signal: AbortSignal.timeout(DOCUSIGN_OAUTH_TIMEOUT_MS),
     });
 
     if (!response.ok) {
@@ -196,6 +208,7 @@ export class DocuSignConnector extends BasePlatformConnector {
     try {
       const response = await fetch(`${this.oauthBase}/oauth/userinfo`, {
         headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(DOCUSIGN_OAUTH_TIMEOUT_MS),
       });
 
       const latencyMs = Date.now() - start;

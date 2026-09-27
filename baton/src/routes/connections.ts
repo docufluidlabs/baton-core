@@ -292,6 +292,7 @@ router.get('/:id/accounts', requireAuth, requireViewer, async (req: Request, res
       if (userAccounts.length === 0) {
         const response = await fetch(`${env.DOCUSIGN_OAUTH_BASE}/oauth/userinfo`, {
           headers: { Authorization: `Bearer ${accessToken}` },
+          signal: AbortSignal.timeout(30_000),
         });
         if (response.ok) {
           const userInfo: any = await response.json();
