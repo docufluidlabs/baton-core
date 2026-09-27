@@ -9,8 +9,9 @@ Webhooks are received via the **App Webhook**:
 | URL | Authentication | Setup |
 |-----|----------------|-------|
 | `/api/webhooks/app/:webhookKey` | **Basic Auth** (username + password) | "out of the box" via the app install wizard in the UI |
+| `/api/webhooks/rule/:webhookKey` | **Basic Auth** (the same credentials) | shown on each automation in the Flow Builder; delivers to that one automation only |
 
-This is the same path used by Zoho CRM - see [zohocrm-webhooks.md](zohocrm-webhooks.md) for the shared App Webhook mechanics.
+Both check the credentials on every request. This is the same path used by Zoho CRM - see [zohocrm-webhooks.md](zohocrm-webhooks.md) for the shared App Webhook mechanics.
 
 ---
 
@@ -83,7 +84,7 @@ Expected response:
 { "received": true, "eventId": "..." }
 ```
 
-Rejection checks (see [app.ts](../baton/src/routes/webhooks/app.ts)):
+Rejection checks (the same on both URLs, see [webhook-auth.ts](../baton/src/lib/webhook-auth.ts)):
 - no `Authorization` header → `401 { "error": "Missing Authorization header" }`
 - wrong username/password → `401 { "error": "Invalid credentials" }`
 - unknown `webhookKey` → `404`
