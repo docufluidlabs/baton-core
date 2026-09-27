@@ -34,7 +34,7 @@ docker compose up -d          # pulls the published images
 docker compose up -d --build
 ```
 
-To pin a specific release, set `BATON_VERSION` in a root-level `.env` next to `docker-compose.yml` (e.g. `BATON_VERSION=1.0.0`) - see the [releases page](https://github.com/docufluidlabs/baton-core/releases).
+To pin a specific release, set `BATON_VERSION` in a root-level `.env` next to `docker-compose.yml` (e.g. `BATON_VERSION=1.0.2`) - see the [releases page](https://github.com/docufluidlabs/baton-core/releases).
 
 Compose waits for DynamoDB Local to be healthy, then the API creates all 21 DynamoDB tables and 6 SQS queues automatically on first boot (retrying briefly while the emulators finish starting) - no host-side Node/npm required.
 

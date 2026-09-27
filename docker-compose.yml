@@ -1,6 +1,6 @@
 # Baton self-host quickstart: frontend (/) and backend (/api) on one domain (http://localhost).
 #
-# Images: pulls the published release images by default (set BATON_VERSION to pin, e.g. "1.0.0"
+# Images: pulls the published release images by default (set BATON_VERSION to pin, e.g. "1.0.2"
 # in a root-level .env file next to this compose file):
 #   docker compose pull && docker compose up -d
 # Building from source instead (contributors / unreleased changes):

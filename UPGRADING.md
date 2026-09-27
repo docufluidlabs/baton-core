@@ -18,7 +18,7 @@ Your data lives in DynamoDB (or the local `dynamodb-data` volume) and your confi
 
 ```bash
 # 1. Pin the new version (root-level .env next to the compose file)
-sed -i 's/^BATON_VERSION=.*/BATON_VERSION=1.1.0/' .env   # or edit by hand
+sed -i 's/^BATON_VERSION=.*/BATON_VERSION=1.0.2/' .env   # or edit by hand
 
 # 2. Pull and roll
 docker compose pull && docker compose up -d               # quickstart (local emulators)
@@ -41,18 +41,20 @@ docker compose pull && docker compose up -d               # quickstart (local em
 Within the same minor series, repoint and restart:
 
 ```bash
-sed -i 's/^BATON_VERSION=.*/BATON_VERSION=1.0.0/' .env
+sed -i 's/^BATON_VERSION=.*/BATON_VERSION=1.0.1/' .env
 docker compose pull && docker compose up -d
 ```
 
 Data written by a newer version stays in place (DynamoDB is schemaless; older code ignores attributes it doesn't know). Rolling back across a **major** boundary is not supported - restore from PITR backups instead if you must.
+
+A rollback also takes back the security fixes of the release you leave, so treat it as temporary and move forward again once the cause is resolved.
 
 ## Building from source instead
 
 Contributors and air-gapped installs can always build the same tag themselves:
 
 ```bash
-git fetch --tags && git checkout v1.1.0
+git fetch --tags && git checkout v1.0.2
 docker compose up -d --build
 ```
 
