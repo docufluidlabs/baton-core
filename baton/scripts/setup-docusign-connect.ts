@@ -139,8 +139,7 @@ async function main() {
   console.log('Now set your HMAC key in the Docusign Admin UI:');
   console.log('  Settings → Connect → Connect Keys tab');
   console.log('  Copy the key and set it in .env as DOCUSIGN_CONNECT_HMAC_KEY');
-  console.log('\nOr if the UI is broken, the webhook will still work without HMAC');
-  console.log('(signature verification will be skipped if DOCUSIGN_CONNECT_HMAC_KEY is empty)');
+  console.log('\nBaton rejects Connect events until that key is set: it accepts signed events only.');
 }
 
 main().catch((err) => {
